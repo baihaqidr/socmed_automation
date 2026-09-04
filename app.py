@@ -224,7 +224,7 @@ def get_recent_posts(limit=10):
 def get_post_comments(media_id):
     url = f"{GRAPH_URL}/{media_id}/comments"
     params = {
-        "fields": "id,text,username,timestamp,replies",
+        "fields": "id,text,username,timestamp,replies{id,text,username,timestamp}",
         "access_token": ACCESS_TOKEN
     }
     return requests.get(url, params=params).json()
@@ -355,11 +355,31 @@ def api_auto_reply_scan():
             if "data" in comments_data:
                 for comment in comments_data["data"]:
                     c_id = comment["id"]
+                    c_user = comment.get("username", "").lower()
+                    
+                    # 1. Skip if own account
+                    if c_user in ["sarangestate", "sarang_estate"]:
+                        continue
+
+                    # 2. Skip if already in replied database
                     if c_id in replied_ids:
                         continue
-                    text = comment.get("text", "").lower()
-                    username = comment.get("username", "")
                     
+                    # 3. Skip if comment already has existing replies on Instagram
+                    existing_replies = comment.get("replies", {}).get("data", []) if isinstance(comment.get("replies"), dict) else []
+                    if existing_replies:
+                        record_replied_comment(
+                            comment_id=c_id,
+                            post_id=post["id"],
+                            username=comment.get("username", ""),
+                            comment_text=comment.get("text", ""),
+                            reply_text="[Existing Instagram Reply]"
+                        )
+                        replied_ids.add(c_id)
+                        continue
+
+                    # 4. Check keyword match and reply
+                    text = comment.get("text", "").lower()
                     for kw, reply_msg in rules.items():
                         if kw.lower() in text:
                             res = reply_to_comment(c_id, reply_msg)
@@ -367,14 +387,15 @@ def api_auto_reply_scan():
                                 record_replied_comment(
                                     comment_id=c_id,
                                     post_id=post["id"],
-                                    username=username,
+                                    username=comment.get("username", ""),
                                     comment_text=comment.get("text", ""),
                                     reply_text=reply_msg
                                 )
+                                replied_ids.add(c_id)
                                 total_replied += 1
                                 details.append({
                                     "comment_id": c_id,
-                                    "username": username,
+                                    "username": comment.get("username", ""),
                                     "keyword": kw,
                                     "reply_id": res["id"]
                                 })
