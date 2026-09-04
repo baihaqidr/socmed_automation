@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socmed Automation - Simplifyer Hub</title>
+  <link rel="stylesheet" href="/static/css/simplifyer.css">
+  <!-- Remix Icons for crisp UI icons -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation (Simplifyer Layout) -->
+    <aside class="sidebar">
+      <div class="brand-header">
+        <div class="brand-icon">
+          <i class="ri-share-forward-box-line"></i>
+        </div>
+        <div>
+          <div class="brand-title">Socmed Automation</div>
+          <div style="font-size: 11px; color: var(--text-muted); font-weight: 500;">Simplifyer Engine</div>
+        </div>
+      </div>
+
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <button class="active" onclick="switchTab('dashboard')">
+            <i class="ri-dashboard-3-line"></i>
+            <span>Dashboard</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('autoreply')">
+            <i class="ri-chat-voice-line"></i>
+            <span>Auto-Reply Rules</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('publish')">
+            <i class="ri-add-box-line"></i>
+            <span>Content Publisher</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('inbox')">
+            <i class="ri-message-3-line"></i>
+            <span>Comments Inbox</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('settings')">
+            <i class="ri-key-2-line"></i>
+            <span>Token & Settings</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div style="font-size: 12px; color: var(--text-dim); display: flex; align-items: center; justify-content: space-between;">
+          <span>Version 2.0 (Flask/Vercel)</span>
+          <span class="badge badge-success">Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <main class="main-wrapper">
+      
+      <!-- Top Navbar Header -->
+      <header class="top-navbar">
+        <div>
+          <h2 style="font-size: 18px; font-weight: 700; color: white;">Automation Suite</h2>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div class="account-badge">
+            <div class="status-dot"></div>
+            <span style="font-size: 13px; font-weight: 600; color: white;" id="header-username">@sarangestate</span>
+          </div>
+
+          <button class="btn-primary" onclick="refreshData()" style="padding: 8px 14px; font-size: 13px;">
+            <i class="ri-refresh-line"></i> Refresh
+          </button>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <div class="content-area">
+
+        <!-- TAB 1: DASHBOARD OVERVIEW -->
+        <div id="tab-dashboard" class="tab-view active">
+          <div class="section-header">
+            <h1 class="section-title">Overview Dashboard</h1>
+            <p class="section-desc">Ringkasan status akun, postingan terbaru, dan metrik otomatisasi Instagram kamu.</p>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="simplifyer-card stat-card">
+              <div>
+                <div class="stat-lbl">Connected Account</div>
+                <div class="stat-val" id="stat-username">@sarangestate</div>
+              </div>
+              <div class="stat-icon"><i class="ri-user-follow-line"></i></div>
+            </div>
+
+            <div class="simplifyer-card stat-card">
+              <div>
+                <div class="stat-lbl">Total Media Posts</div>
+                <div class="stat-val" id="stat-media-count">13</div>
+              </div>
+              <div class="stat-icon"><i class="ri-image-2-line"></i></div>
+            </div>
+
+            <div class="simplifyer-card stat-card">
+              <div>
+                <div class="stat-lbl">Token Status</div>
+                <div class="stat-val" style="color: var(--success); font-size: 20px;">60 Days Active</div>
+              </div>
+              <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: var(--success);">
+                <i class="ri-shield-check-line"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feed & Activity Grid -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+            
+            <div class="simplifyer-card">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                <h3 style="font-size: 16px; font-weight: 700;">Postingan Terbaru di Feed</h3>
+                <span class="badge badge-purple" id="post-count-badge">13 Posts</span>
+              </div>
+              
+              <div class="posts-grid" id="dashboard-posts-container">
+                <!-- Dynamically populated via JS -->
+                <div style="color: var(--text-muted); font-size: 14px;">Memuat data postingan...</div>
+              </div>
+            </div>
+
+            <!-- Quick Auto-Reply Controls -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <div class="simplifyer-card">
+                <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">Auto-Reply Quick Status</h3>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+                  Bot memantau kata kunci <strong>harga</strong>, <strong>lokasi</strong>, dan <strong>spesifikasi</strong> secara otomatis.
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <button class="btn-primary" onclick="triggerScanOnce()" style="width: 100%; justify-content: center;">
+                    <i class="ri-search-eye-line"></i> Pindai Komentar 1x
+                  </button>
+                  <button class="btn-secondary" onclick="switchTab('autoreply')" style="width: 100%; justify-content: center;">
+                    <i class="ri-settings-4-line"></i> Kelola Kata Kunci
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 2: AUTO-REPLY RULES -->
+        <div id="tab-autoreply" class="tab-view">
+          <div class="section-header">
+            <h1 class="section-title">Kelola Kata Kunci & Balasan Bot</h1>
+            <p class="section-desc">Atur kata kunci otomatis yang akan dibalas seketika oleh bot ketika user berkomentar di Instagram.</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <!-- Active Rules List -->
+            <div class="simplifyer-card">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Daftar Aturan Aktif</h3>
+              
+              <div id="rules-container" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Add/Edit Rule Form -->
+            <div class="simplifyer-card">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Tambah / Edit Aturan Baru</h3>
+              
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                  <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Kata Kunci (Keyword)</label>
+                  <input type="text" id="rule-keyword" class="input-field" placeholder="Contoh: harga, pricelist, lokasi">
+                </div>
+
+                <div>
+                  <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Pesan Balasan Otomatis</label>
+                  <textarea id="rule-reply" class="input-field" placeholder="Contoh: Halo kak! Untuk info harga & pricelist lengkap bisa DM kami ya 😊"></textarea>
+                </div>
+
+                <button class="btn-primary" onclick="saveRule()" style="justify-content: center;">
+                  <i class="ri-save-line"></i> Simpan Aturan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: CONTENT PUBLISHER -->
+        <div id="tab-publish" class="tab-view">
+          <div class="section-header">
+            <h1 class="section-title">Content Publisher Properti</h1>
+            <p class="section-desc">Unggah foto rumah dari file lokal laptop atau link URL langsung ke Feed Instagram @sarangestate.</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <!-- Upload Form -->
+            <div class="simplifyer-card">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Form Upload Postingan</h3>
+              
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                  <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">File Lokal Komputer ATAU Direct Image URL</label>
+                  <input type="text" id="post-image-input" class="input-field" placeholder="Misal: C:\Users\Baihaqi\Desktop\Rumah Ciracas.jpg ATAU https://...">
+                </div>
+
+                <div>
+                  <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">Caption Postingan Properti</label>
+                  <textarea id="post-caption-input" class="input-field" style="min-height: 140px;" placeholder="Tulis caption properti di sini..."></textarea>
+                </div>
+
+                <button class="btn-primary" id="publish-btn" onclick="publishPost()" style="justify-content: center; padding: 14px;">
+                  <i class="ri-send-plane-fill"></i> Publish to Feed Instagram
+                </button>
+              </div>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="simplifyer-card" style="display: flex; flex-direction: column;">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Preview Postingan</h3>
+              
+              <div style="background-color: var(--bg-canvas); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; flex: 1; display: flex; flex-direction: column;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                  <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white;">SE</div>
+                  <span style="font-weight: 700; font-size: 14px;">sarangestate</span>
+                </div>
+
+                <div id="preview-img-box" style="width: 100%; height: 260px; background-color: #0F172A; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--text-dim); margin-bottom: 12px; overflow: hidden;">
+                  <span id="preview-img-placeholder">Preview Foto Akan Muncul Di Sini</span>
+                  <img id="preview-img-element" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                </div>
+
+                <div id="preview-caption-box" style="font-size: 13px; color: var(--text-main); line-height: 1.5; white-space: pre-line;">
+                  Preview caption akan tampil di sini...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: COMMENTS INBOX -->
+        <div id="tab-inbox" class="tab-view">
+          <div class="section-header">
+            <h1 class="section-title">Comments Inbox</h1>
+            <p class="section-desc">Pantau komentar dari seluruh postingan dan kirim balasan manual dengan cepat.</p>
+          </div>
+
+          <div class="simplifyer-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+              <h3 style="font-size: 16px; font-weight: 700;">Daftar Komentar Masuk</h3>
+              <button class="btn-secondary" onclick="loadInboxComments()">
+                <i class="ri-refresh-line"></i> Muat Ulang Komentar
+              </button>
+            </div>
+
+            <div id="inbox-comments-container" style="display: flex; flex-direction: column; gap: 12px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: TOKEN & SETTINGS -->
+        <div id="tab-settings" class="tab-view">
+          <div class="section-header">
+            <h1 class="section-title">Token & Configuration</h1>
+            <p class="section-desc">Pengaturan Long-Lived Token (60 Hari) dan Webhook Endpoint untuk Vercel Serverless Deployment.</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="simplifyer-card">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Status Meta Access Token</h3>
+              
+              <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; padding: 12px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
+                  <span style="color: var(--text-muted); font-size: 13px;">Token Type:</span>
+                  <span style="font-weight: 700; color: #93C5FD; font-size: 13px;">Long-Lived Page Token (60 Days)</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 12px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
+                  <span style="color: var(--text-muted); font-size: 13px;">App ID:</span>
+                  <span style="font-weight: 700; font-size: 13px;">27570108882691783</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 12px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
+                  <span style="color: var(--text-muted); font-size: 13px;">Instagram Business ID:</span>
+                  <span style="font-weight: 700; font-size: 13px;">17841466987503898</span>
+                </div>
+              </div>
+
+              <button class="btn-primary" onclick="refreshToken()" style="width: 100%; justify-content: center;">
+                <i class="ri-restart-line"></i> Auto-Refresh Token (Perpanjang 60 Hari Lagi)
+              </button>
+            </div>
+
+            <div class="simplifyer-card">
+              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Vercel Webhook Deployment Info</h3>
+              <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                Aplikasi ini dilengkapi dengan endpoint Meta Webhook bawaan. Setelah kamu deploy ke Vercel, daftarkan URL berikut di Meta App Dashboard kamu untuk balasan komentar real-time under 1 detik:
+              </p>
+              
+              <div style="padding: 12px; background: rgba(17, 26, 54, 0.8); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: monospace; font-size: 12px; color: #93C5FD; word-break: break-all; margin-bottom: 16px;">
+                https://[your-vercel-domain].vercel.app/api/webhook
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
