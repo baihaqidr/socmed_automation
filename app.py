@@ -431,26 +431,28 @@ def generate_ai_reply(comment_text, username="", post_caption="", cta_link=""):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}"
     
     caption_context = f"\n- Konteks Konten Postingan yang sedang dikomentari:\n  \"{post_caption}\"" if post_caption else ""
-    link_instruction = f"Sertakan link ini dalam balasan: {cta_link}" if cta_link else "Arahkan ke link WhatsApp di Bio Instagram kami jika ingin tanya detail / survey."
+    cta_direction = f"Beri tahu calon pembeli bahwa info detail & link lengkapnya sudah dikirimkan langsung ke DM mereka (atau bisa cek link di bio kami)." if cta_link else "Beri tahu calon pembeli bahwa info/pricelist lengkap sudah dikirim ke DM mereka atau bisa cek link di bio kami."
 
     system_prompt = f"""Kamu adalah Customer Service AI resmi dari @sarangestate (Akun Properti & Hunian).
 Tugasmu adalah membalas komentar prospek/audiens di Instagram secara ramah, santun, natural, bersahabat, dan profesional.
 
 KNOWLEDGE BASE & KONTEKS BISNIS:{caption_context}
 - Profil Umum: Menyediakan rumah hunian modern & strategis (seperti Rumah Ciracas 2 Lantai mulai 800Jt-an, DP 0%, promo free biaya-biaya, kerjasama bank KPR syariah/konvensional, dll).
-- Sikap: Jika ditanya hal santai/humor/di luar properti (misal: "lapar ga min", "lagi ngapain min"), tanggapi dengan ramah dan santai dengan nada humoris/sopan, lalu tetap selipkan sapaan hangat atau ajakan cek info rumah/WA di bio secara natural.
-- Call to Action: {link_instruction}
+- Sikap: Jika ditanya hal santai/humor/di luar properti (misal: "lapar ga min", "lagi ngapain min"), tanggapi dengan ramah dan santai dengan nada humoris/sopan, lalu tetap selipkan sapaan hangat atau ajakan cek DM/bio secara natural.
+- Call to Action: {cta_direction}
 
-ATURAN MENJAWAB:
-1. Jawab dengan ringkas dan padat (maksimal 2 kalimat saja agar nyaman dibaca di kolom komentar).
-2. Gunakan sapaan ramah "Halo kak [username]!" atau "Halo kak!".
-3. Gunakan 1-2 emoji yang relevan (😊, 🏡, ✨).
-4. Jawab HANYA teks balasan Instagram saja tanpa tanda kutip.
+ATURAN MENJAWAB DI KOMENTAR INSTAGRAM (PENTING):
+1. JANGAN PERNAH menaruh link URL mentah (seperti https://...) di dalam balasan komentar, karena link di kolom komentar Instagram TIDAK BISA DIKLIK oleh pengguna.
+2. Selalu arahkan pengguna untuk "Cek DM / Inbox ya kak" atau "Cek link di bio kami".
+3. Jawab dengan ringkas dan padat (maksimal 2 kalimat saja agar nyaman dibaca di kolom komentar).
+4. Gunakan sapaan ramah "Halo kak [username]!" atau "Halo kak!".
+5. Gunakan 1-2 emoji yang relevan (😊, 🏡, 📩, ✨).
+6. Jawab HANYA teks balasan Instagram saja tanpa tanda kutip.
 
 Komentar dari @{username if username else 'user'}:
 "{comment_text}"
 
-Balasan Instagram:"""
+Balasan Komentar Instagram:"""
 
     try:
         payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
@@ -632,9 +634,6 @@ def api_auto_reply_scan():
                         if kw.lower() in lower_text:
                             final_reply = reply_msg
                             reply_source = f"Rule ({kw})"
-                            # Append custom link if post has one
-                            if post_cta_link and "http" in post_cta_link:
-                                final_reply += f" Info detail & survey: {post_cta_link}"
                             break
 
                 # Priority C: Intelligent Gemini AI Fallback
@@ -649,17 +648,21 @@ def api_auto_reply_scan():
                         final_reply = ai_generated
                         reply_source = "Gemini AI"
 
-                # 5. Send public reply & optional private DM
+                # 5. Send public reply & Send Clickable Link via Direct Message (DM)
                 if final_reply:
                     res = reply_to_comment(c_id, final_reply)
                     if "id" in res:
-                        dm_status = "Not Requested"
-                        # Send Direct Message if configured for this post
-                        if post_send_dm and post_dm_message:
-                            dm_text = post_dm_message
-                            if post_cta_link:
-                                dm_text += f"\n\nLink detail & survey: {post_cta_link}"
-                            dm_res = send_private_dm(c_id, dm_text)
+                        dm_status = "Not Sent"
+                        
+                        # Send Clickable Link directly via DM (Private Reply)
+                        dm_content = post_dm_message if (post_send_dm and post_dm_message) else ""
+                        if not dm_content and post_cta_link:
+                            dm_content = f"Halo kak @{comment.get('username', '')}! Terima kasih sudah tertarik dengan properti ini. 😊\n\nUntuk info detail, brosur, & jadwal survey, silakan klik link WhatsApp kami di sini ya:\n{post_cta_link}"
+                        elif dm_content and post_cta_link and post_cta_link not in dm_content:
+                            dm_content += f"\n\nLink WhatsApp & Survey: {post_cta_link}"
+
+                        if dm_content:
+                            dm_res = send_private_dm(c_id, dm_content)
                             dm_status = dm_res.get("status", "sent")
                             if dm_status == "success":
                                 total_dms_sent += 1
