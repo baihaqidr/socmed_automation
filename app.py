@@ -40,6 +40,9 @@ if SUPABASE_URL and SUPABASE_KEY:
     except Exception as e:
         print(f"[DATABASE WARNING] Failed to initialize Supabase client: {e}")
 
+# Gemini AI Configuration
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
 RULES_FILE = "rules.json"
 REPLIED_COMMENTS_FILE = "replied_comments.json"
 
@@ -338,6 +341,52 @@ def api_publish():
     return jsonify(res)
 
 
+def generate_ai_reply(comment_text, username=""):
+    """Generate intelligent contextual reply using Google Gemini AI."""
+    if not GEMINI_API_KEY:
+        return None
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    system_prompt = f"""Kamu adalah Customer Service AI resmi dari @sarangestate (Akun Properti & Rumah Hunian Modern).
+Tugasmu adalah membalas komentar calon pembeli di Instagram secara ramah, sopan, natural, hangat, dan profesional.
+
+KNOWLEDGE BASE BISNIS:
+- Unit Unggulan: Rumah Mewah Minimalis 2 Lantai di Ciracas, Jakarta Timur.
+- Spesifikasi: Luas Tanah 65m2, Luas Bangunan 65m2, 3 Kamar Tidur, 2 Kamar Mandi, Carport, Desain Modern.
+- Harga: Mulai Rp 800 Jutaan.
+- Promo & Skema: DP 0% (Tanpa DP), Bebas Biaya BPHTB, Subsidi Biaya KPR, Kerjasama Bank Syariah & Konvensional.
+- Lokasi: Sangat strategis di Ciracas Jakarta Timur, dekat akses tol dan stasiun LRT, bebas banjir.
+- Call to Action: Selalu ajak calon pembeli untuk survey lokasi atau konsultasi via link WA di bio kami.
+
+ATURAN MENJAWAB:
+1. Jawab pertanyaan user dengan ringkas dan padat (maksimal 2-3 kalimat saja).
+2. Gunakan sapaan ramah "Halo kak [username]!" atau "Halo kak!".
+3. Gunakan 1-2 emoji yang relevan (😊, 🏡, ✨).
+4. Jangan berhalusinasi atau memberikan nomor telepon sembarangan, selalu sebutkan "link WA di bio kami".
+5. Jawab HANYA isi pesan balasan Instagram saja tanpa tanda kutip.
+
+Komentar Prospek dari @{username if username else 'user'}:
+"{comment_text}"
+
+Balasan Instagram:"""
+
+    try:
+        payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
+        res = requests.post(url, json=payload, timeout=12)
+        if res.status_code == 200:
+            data = res.json()
+            candidates = data.get("candidates", [])
+            if candidates and "content" in candidates[0]:
+                parts = candidates[0]["content"].get("parts", [])
+                if parts:
+                    return parts[0].get("text", "").strip()
+    except Exception as e:
+        print(f"[GEMINI AI ERROR] Failed to generate AI reply: {e}")
+        
+    return None
+
+
 @app.route('/api/auto-reply-scan', methods=['GET', 'POST'])
 def api_auto_reply_scan():
     rules = load_rules()
@@ -378,34 +427,68 @@ def api_auto_reply_scan():
                         replied_ids.add(c_id)
                         continue
 
-                    # 4. Check keyword match and reply
-                    text = comment.get("text", "").lower()
+                    # 4. Check keyword match first
+                    raw_text = comment.get("text", "").strip()
+                    lower_text = raw_text.lower()
+                    matched_rule_reply = None
+                    matched_kw = None
+
                     for kw, reply_msg in rules.items():
-                        if kw.lower() in text:
-                            res = reply_to_comment(c_id, reply_msg)
-                            if "id" in res:
-                                record_replied_comment(
-                                    comment_id=c_id,
-                                    post_id=post["id"],
-                                    username=comment.get("username", ""),
-                                    comment_text=comment.get("text", ""),
-                                    reply_text=reply_msg
-                                )
-                                replied_ids.add(c_id)
-                                total_replied += 1
-                                details.append({
-                                    "comment_id": c_id,
-                                    "username": comment.get("username", ""),
-                                    "keyword": kw,
-                                    "reply_id": res["id"]
-                                })
+                        if kw.lower() in lower_text:
+                            matched_rule_reply = reply_msg
+                            matched_kw = kw
                             break
-                            
+                    
+                    final_reply = matched_rule_reply
+                    reply_source = f"Rule ({matched_kw})" if matched_kw else "Gemini AI"
+
+                    # 5. If no keyword rule matched, fallback to Gemini AI Chatbot!
+                    if not final_reply and GEMINI_API_KEY and len(raw_text) >= 2:
+                        ai_generated = generate_ai_reply(raw_text, username=comment.get("username", ""))
+                        if ai_generated:
+                            final_reply = ai_generated
+                            reply_source = "Gemini AI"
+
+                    # 6. Send reply if matched or generated
+                    if final_reply:
+                        res = reply_to_comment(c_id, final_reply)
+                        if "id" in res:
+                            record_replied_comment(
+                                comment_id=c_id,
+                                post_id=post["id"],
+                                username=comment.get("username", ""),
+                                comment_text=raw_text,
+                                reply_text=f"[{reply_source}] {final_reply}"
+                            )
+                            replied_ids.add(c_id)
+                            total_replied += 1
+                            details.append({
+                                "comment_id": c_id,
+                                "username": comment.get("username", ""),
+                                "source": reply_source,
+                                "reply_text": final_reply,
+                                "reply_id": res["id"]
+                            })
+
+
     return jsonify({
         "status": "success",
         "total_scanned_posts": len(posts_data.get("data", [])),
         "total_new_replies": total_replied,
         "details": details
+    })
+
+
+@app.route('/api/ai-reply-test', methods=['POST'])
+def api_ai_reply_test():
+    data = request.get_json() or {}
+    test_comment = data.get('comment', 'Min, ada promo bebas biaya apa aja bulan ini?')
+    test_user = data.get('username', 'calon_pembeli')
+    ai_reply = generate_ai_reply(test_comment, test_user)
+    return jsonify({
+        "status": "success" if ai_reply else "error",
+        "input_comment": test_comment,
+        "ai_reply": ai_reply or "Gagal membuat balasan AI (Pastikan GEMINI_API_KEY valid)."
     })
 
 
