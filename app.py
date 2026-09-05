@@ -341,32 +341,44 @@ def api_publish():
     return jsonify(res)
 
 
-def generate_ai_reply(comment_text, username=""):
-    """Generate intelligent contextual reply using Google Gemini AI."""
-    if not GEMINI_API_KEY:
+def get_app_setting(setting_key, default_val=""):
+    """Get setting value from Supabase app_settings table."""
+    if supabase_client:
+        try:
+            res = supabase_client.table("app_settings").select("value").eq("key", setting_key).execute()
+            if res.data:
+                return res.data[0]["value"]
+        except Exception:
+            pass
+    return default_val
+
+
+def generate_ai_reply(comment_text, username="", post_caption=""):
+    """Generate intelligent contextual reply using Google Gemini AI, considering both comment and post caption."""
+    gemini_key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY") or get_app_setting("gemini_api_key", "")
+    if not gemini_key:
         return None
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}"
     
-    system_prompt = f"""Kamu adalah Customer Service AI resmi dari @sarangestate (Akun Properti & Rumah Hunian Modern).
-Tugasmu adalah membalas komentar calon pembeli di Instagram secara ramah, sopan, natural, hangat, dan profesional.
+    caption_context = f"\n- Konteks Konten Postingan yang sedang dikomentari:\n  \"{post_caption}\"" if post_caption else ""
 
-KNOWLEDGE BASE BISNIS:
-- Unit Unggulan: Rumah Mewah Minimalis 2 Lantai di Ciracas, Jakarta Timur.
-- Spesifikasi: Luas Tanah 65m2, Luas Bangunan 65m2, 3 Kamar Tidur, 2 Kamar Mandi, Carport, Desain Modern.
-- Harga: Mulai Rp 800 Jutaan.
-- Promo & Skema: DP 0% (Tanpa DP), Bebas Biaya BPHTB, Subsidi Biaya KPR, Kerjasama Bank Syariah & Konvensional.
-- Lokasi: Sangat strategis di Ciracas Jakarta Timur, dekat akses tol dan stasiun LRT, bebas banjir.
-- Call to Action: Selalu ajak calon pembeli untuk survey lokasi atau konsultasi via link WA di bio kami.
+    system_prompt = f"""Kamu adalah Customer Service AI resmi dari @sarangestate (Akun Properti & Hunian).
+Tugasmu adalah membalas komentar prospek/audiens di Instagram secara ramah, santun, natural, bersahabat, dan profesional.
+
+KNOWLEDGE BASE & KONTEKS BISNIS:{caption_context}
+- Profil Umum: Menyediakan rumah hunian modern & strategis (seperti Rumah Ciracas 2 Lantai mulai 800Jt-an, DP 0%, promo free biaya-biaya, kerjasama bank KPR syariah/konvensional, dll).
+- Sikap: Jika ditanya hal santai/humor/di luar properti (misal: "lapar ga min", "lagi ngapain min"), tanggapi dengan ramah dan santai dengan nada humoris/sopan, lalu tetap selipkan sapaan hangat atau ajakan cek info rumah/WA di bio secara natural.
+- Call to Action: Arahkan ke link WhatsApp di Bio Instagram kami jika ingin tanya detail / survey.
 
 ATURAN MENJAWAB:
-1. Jawab pertanyaan user dengan ringkas dan padat (maksimal 2-3 kalimat saja).
+1. Jawab dengan ringkas dan padat (maksimal 2 kalimat saja agar nyaman dibaca di kolom komentar).
 2. Gunakan sapaan ramah "Halo kak [username]!" atau "Halo kak!".
 3. Gunakan 1-2 emoji yang relevan (😊, 🏡, ✨).
-4. Jangan berhalusinasi atau memberikan nomor telepon sembarangan, selalu sebutkan "link WA di bio kami".
-5. Jawab HANYA isi pesan balasan Instagram saja tanpa tanda kutip.
+4. Jangan berhalusinasi nomor telepon, selalu arahkan ke "link WA di bio kami".
+5. Jawab HANYA teks balasan Instagram saja tanpa tanda kutip.
 
-Komentar Prospek dari @{username if username else 'user'}:
+Komentar dari @{username if username else 'user'}:
 "{comment_text}"
 
 Balasan Instagram:"""
@@ -400,6 +412,7 @@ def api_auto_reply_scan():
         for post in posts_data["data"]:
             if post.get("comments_count", 0) == 0:
                 continue
+            post_caption = post.get("caption", "")
             comments_data = get_post_comments(post["id"])
             if "data" in comments_data:
                 for comment in comments_data["data"]:
@@ -443,8 +456,12 @@ def api_auto_reply_scan():
                     reply_source = f"Rule ({matched_kw})" if matched_kw else "Gemini AI"
 
                     # 5. If no keyword rule matched, fallback to Gemini AI Chatbot!
-                    if not final_reply and GEMINI_API_KEY and len(raw_text) >= 2:
-                        ai_generated = generate_ai_reply(raw_text, username=comment.get("username", ""))
+                    if not final_reply and len(raw_text) >= 2:
+                        ai_generated = generate_ai_reply(
+                            comment_text=raw_text,
+                            username=comment.get("username", ""),
+                            post_caption=post_caption
+                        )
                         if ai_generated:
                             final_reply = ai_generated
                             reply_source = "Gemini AI"
