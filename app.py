@@ -47,6 +47,19 @@ RULES_FILE = "rules.json"
 REPLIED_COMMENTS_FILE = "replied_comments.json"
 POST_RULES_FILE = "post_rules.json"
 
+# Multi-Account Registry
+KNOWN_INSTAGRAM_ACCOUNTS = [
+    {"id": "17841466987503898", "username": "sarangestate", "name": "Sarang Estate", "category": "Real Estate / Property"},
+    {"id": "17841448570126268", "username": "produkly", "name": "Produkly", "category": "Digital Products"},
+    {"id": "17841474608292986", "username": "murahnesia", "name": "Murahnesia", "category": "E-Commerce / Promo"}
+]
+
+KNOWN_GMAIL_USERS = [
+    {"email": "baihaqidr@gmail.com", "name": "baihaqidr", "plan": "FREE", "avatar": "B", "role": "Organization Owner"},
+    {"email": "admin.socmed@gmail.com", "name": "Admin Socmed", "plan": "PRO", "avatar": "A", "role": "Team Admin"},
+    {"email": "baihaqi.workspace@gmail.com", "name": "Baihaqi Workspace", "plan": "TEAM", "avatar": "W", "role": "Developer"}
+]
+
 
 # ==========================================
 # DATABASE HELPER FUNCTIONS (SUPABASE + FALLBACK)
@@ -61,6 +74,32 @@ def get_app_setting(setting_key, default_val=""):
         except Exception:
             pass
     return default_val
+
+
+def set_app_setting(setting_key, setting_val):
+    """Save setting value to Supabase app_settings table."""
+    if supabase_client:
+        try:
+            supabase_client.table("app_settings").upsert({
+                "key": setting_key,
+                "value": str(setting_val)
+            }, on_conflict="key").execute()
+            return True
+        except Exception as e:
+            print(f"[SUPABASE ERROR] set_app_setting failed: {e}")
+    return False
+
+
+def get_active_account_id():
+    """Get currently active Instagram Account ID."""
+    active_id = get_app_setting("INSTAGRAM_ACCOUNT_ID", INSTAGRAM_ACCOUNT_ID)
+    return active_id or INSTAGRAM_ACCOUNT_ID
+
+
+def get_active_user_email():
+    """Get currently active Gmail / User Workspace."""
+    active_email = get_app_setting("ACTIVE_USER_EMAIL", "baihaqidr@gmail.com")
+    return active_email or "baihaqidr@gmail.com"
 
 
 def load_rules():
@@ -282,19 +321,21 @@ def upload_local_file_to_cloud(file_path):
 # ==========================================
 # INSTAGRAM GRAPH API ACTIONS
 # ==========================================
-def get_account_info():
-    url = f"{GRAPH_URL}/{INSTAGRAM_ACCOUNT_ID}"
+def get_account_info(target_id=None):
+    acc_id = target_id or get_active_account_id()
+    url = f"{GRAPH_URL}/{acc_id}"
     params = {
-        "fields": "id,username,name,media_count",
+        "fields": "id,username,name,media_count,profile_picture_url",
         "access_token": ACCESS_TOKEN
     }
     return requests.get(url, params=params).json()
 
 
-def get_all_posts(limit=100):
-    """Fetch all posts from Instagram account with pagination."""
+def get_all_posts(limit=100, target_id=None):
+    """Fetch all posts from active Instagram account with pagination."""
+    acc_id = target_id or get_active_account_id()
     all_posts = []
-    url = f"{GRAPH_URL}/{INSTAGRAM_ACCOUNT_ID}/media"
+    url = f"{GRAPH_URL}/{acc_id}/media"
     params = {
         "fields": "id,caption,media_type,media_url,permalink,timestamp,comments_count",
         "limit": min(limit, 50),
@@ -351,9 +392,10 @@ def reply_to_comment(comment_id, message):
 
 def send_private_dm(comment_id, message):
     """Send Direct Message (Private Reply) to commenter."""
+    acc_id = get_active_account_id()
     # Attempt 1: Instagram Messaging Send API
     try:
-        url = f"{GRAPH_URL}/{INSTAGRAM_ACCOUNT_ID}/messages"
+        url = f"{GRAPH_URL}/{acc_id}/messages"
         payload = {
             "recipient": {"comment_id": comment_id},
             "message": {"text": message},
@@ -382,6 +424,7 @@ def send_private_dm(comment_id, message):
 
 
 def create_and_publish_image_post(image_input, caption):
+    acc_id = get_active_account_id()
     image_input = image_input.strip('"').strip("'").strip()
     
     if not image_input.startswith("http://") and not image_input.startswith("https://"):
@@ -392,21 +435,21 @@ def create_and_publish_image_post(image_input, caption):
     else:
         image_url = image_input
 
-    container_url = f"{GRAPH_URL}/{INSTAGRAM_ACCOUNT_ID}/media"
+    container_url = f"{GRAPH_URL}/{acc_id}/media"
     container_data = {
         "image_url": image_url,
         "caption": caption,
         "access_token": ACCESS_TOKEN
     }
     container_res = requests.post(container_url, data=container_data).json()
-    
+
     if "id" not in container_res:
-        return container_res
-        
+        return {"error": "Gagal membuat kontainer media Instagram.", "details": container_res}
+
     creation_id = container_res["id"]
-    time.sleep(5)
-    
-    publish_url = f"{GRAPH_URL}/{INSTAGRAM_ACCOUNT_ID}/media_publish"
+    time.sleep(3)
+
+    publish_url = f"{GRAPH_URL}/{acc_id}/media_publish"
     publish_data = {
         "creation_id": creation_id,
         "access_token": ACCESS_TOKEN
@@ -484,13 +527,93 @@ def api_health():
         "status": "healthy",
         "supabase_connected": supabase_client is not None,
         "gemini_ai_configured": bool(GEMINI_API_KEY or get_app_setting("gemini_api_key")),
-        "instagram_account_id": INSTAGRAM_ACCOUNT_ID
+        "active_account_id": get_active_account_id(),
+        "active_user": get_active_user_email()
     })
 
 
 @app.route('/api/account')
 def api_account():
     return jsonify(get_account_info())
+
+
+@app.route('/api/accounts')
+def api_accounts():
+    """Get all connected Instagram accounts with live status."""
+    active_id = get_active_account_id()
+    account_list = []
+    
+    for acc in KNOWN_INSTAGRAM_ACCOUNTS:
+        info = get_account_info(target_id=acc["id"])
+        is_active = (acc["id"] == active_id)
+        account_list.append({
+            "id": acc["id"],
+            "username": info.get("username", acc["username"]),
+            "name": info.get("name", acc["name"]),
+            "category": acc["category"],
+            "media_count": info.get("media_count", 0),
+            "profile_picture_url": info.get("profile_picture_url", ""),
+            "is_active": is_active,
+            "status": "connected" if "username" in info else "error"
+        })
+        
+    return jsonify({
+        "active_account_id": active_id,
+        "accounts": account_list
+    })
+
+
+@app.route('/api/switch-account', methods=['POST'])
+def api_switch_account():
+    """Switch active Instagram account."""
+    data = request.get_json() or {}
+    account_id = str(data.get('account_id', '')).strip()
+    
+    if not account_id:
+        return jsonify({"error": "Missing account_id"}), 400
+        
+    # Save to Supabase app_settings
+    set_app_setting("INSTAGRAM_ACCOUNT_ID", account_id)
+    info = get_account_info(target_id=account_id)
+    
+    return jsonify({
+        "status": "success",
+        "active_account_id": account_id,
+        "username": info.get("username", "unknown"),
+        "media_count": info.get("media_count", 0)
+    })
+
+
+@app.route('/api/user-profiles')
+def api_user_profiles():
+    """Get available Gmail / User Workspace Profiles."""
+    active_email = get_active_user_email()
+    users = []
+    for u in KNOWN_GMAIL_USERS:
+        u_copy = dict(u)
+        u_copy["is_active"] = (u["email"] == active_email)
+        users.append(u_copy)
+        
+    return jsonify({
+        "active_email": active_email,
+        "users": users
+    })
+
+
+@app.route('/api/switch-user', methods=['POST'])
+def api_switch_user():
+    """Switch active Gmail / Workspace User."""
+    data = request.get_json() or {}
+    email = str(data.get('email', '')).strip()
+    
+    if not email:
+        return jsonify({"error": "Missing email"}), 400
+        
+    set_app_setting("ACTIVE_USER_EMAIL", email)
+    return jsonify({
+        "status": "success",
+        "active_email": email
+    })
 
 
 @app.route('/api/posts')

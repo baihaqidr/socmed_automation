@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Socmed Automation - Simplifyer Hub</title>
+  <title>Socmed Automation - Supabase Studio</title>
   <link rel="stylesheet" href="/static/css/simplifyer.css">
   <!-- Lucide Icons Official CDN (lucide.dev) -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -12,15 +12,15 @@
 
   <div class="app-container">
     
-    <!-- Sidebar Navigation (Simplifyer Layout) -->
+    <!-- Sidebar Navigation (Supabase Studio Layout) -->
     <aside class="sidebar">
       <div class="brand-header">
         <div class="brand-icon">
-          <i data-lucide="share-2"></i>
+          <i data-lucide="zap"></i>
         </div>
         <div>
-          <div class="brand-title">Socmed Automation</div>
-          <div style="font-size: 11px; color: var(--text-muted); font-weight: 500;">Simplifyer Engine</div>
+          <div class="brand-title">Socmed Studio</div>
+          <div style="font-size: 11px; color: var(--ink-mute); font-weight: 500;">Automation Engine</div>
         </div>
       </div>
 
@@ -28,7 +28,7 @@
         <li class="nav-item">
           <button class="active" onclick="switchTab('dashboard')">
             <i data-lucide="layout-dashboard"></i>
-            <span>Dashboard</span>
+            <span>Project Overview</span>
           </button>
         </li>
         <li class="nav-item">
@@ -57,16 +57,16 @@
         </li>
         <li class="nav-item">
           <button onclick="switchTab('settings')">
-            <i data-lucide="settings"></i>
-            <span>Token & Settings</span>
+            <i data-lucide="database"></i>
+            <span>Database & Cloud</span>
           </button>
         </li>
       </ul>
 
       <div class="sidebar-footer">
-        <div style="font-size: 12px; color: var(--text-dim); display: flex; align-items: center; justify-content: space-between;">
-          <span>Version 2.6 (Lucide UI)</span>
-          <span class="badge badge-success">24/7 Cloud</span>
+        <div style="font-size: 11px; color: var(--ink-mute); display: flex; align-items: center; justify-content: space-between;">
+          <span>Version 3.0</span>
+          <span class="pill-badge pill-green">24/7 Active</span>
         </div>
       </div>
     </aside>
@@ -74,21 +74,104 @@
     <!-- Main Wrapper -->
     <main class="main-wrapper">
       
-      <!-- Top Bar -->
+      <!-- Supabase Studio Top Bar & Breadcrumbs -->
       <header class="top-bar">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 14px; font-weight: 600; color: var(--text-muted);">Connected Account:</span>
-          <span class="badge badge-blue" id="header-username">@sarangestate</span>
-          <span class="badge badge-success" style="display: flex; align-items: center; gap: 6px;">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: #10B981; display: inline-block;"></span> 24h Cron Active
-          </span>
+        <!-- Left: Supabase Breadcrumbs Navigation -->
+        <div class="supa-breadcrumbs">
+          <div style="display: flex; align-items: center; color: var(--primary); font-size: 16px;">
+            <i data-lucide="zap"></i>
+          </div>
+          
+          <span class="supa-breadcrumb-sep">/</span>
+
+          <!-- 1. GMAIL / USER WORKSPACE SWITCHER -->
+          <div class="supa-dropdown-wrapper" id="gmail-dropdown-wrapper">
+            <button class="supa-breadcrumb-btn" onclick="toggleGmailDropdown(event)" id="btn-user-switcher">
+              <span class="user-avatar-sm" id="header-user-avatar">B</span>
+              <span class="breadcrumb-text" id="header-user-name">baihaqidr</span>
+              <span class="pill-badge pill-green" id="header-user-plan">FREE</span>
+              <i data-lucide="chevron-down" style="width: 13px; height: 13px; color: var(--ink-mute);"></i>
+            </button>
+
+            <!-- Gmail Accounts Dropdown Menu -->
+            <div class="supa-dropdown-menu" id="gmail-dropdown-menu">
+              <div class="dropdown-header">Workspace Account (Gmail)</div>
+              <div id="gmail-accounts-list">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" onclick="promptAddGmail()" style="color: var(--primary);">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Tambah Akun Gmail Baru
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <span class="supa-breadcrumb-sep">/</span>
+
+          <!-- 2. INSTAGRAM ACCOUNT SWITCHER -->
+          <div class="supa-dropdown-wrapper" id="ig-dropdown-wrapper">
+            <button class="supa-breadcrumb-btn" onclick="toggleIgDropdown(event)" id="btn-ig-switcher">
+              <i data-lucide="at-sign" style="width: 14px; height: 14px; color: var(--primary);"></i>
+              <span class="breadcrumb-text" id="header-ig-username" style="font-weight: 600;">@sarangestate</span>
+              <i data-lucide="chevron-down" style="width: 13px; height: 13px; color: var(--ink-mute);"></i>
+            </button>
+
+            <!-- Instagram Accounts Dropdown Menu -->
+            <div class="supa-dropdown-menu" id="ig-dropdown-menu">
+              <div class="dropdown-header">Pilih Akun Instagram</div>
+              <div id="ig-accounts-list">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item" onclick="showConnectModal()" style="color: var(--primary);">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> Hubungkan Akun IG Lain
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <span class="supa-breadcrumb-sep">/</span>
+
+          <!-- 3. Git Branch & Production Badge -->
+          <div class="supa-branch-pill">
+            <i data-lucide="git-branch" style="width: 13px; height: 13px;"></i>
+            <span>main</span>
+          </div>
+          <span class="pill-badge pill-amber">PRODUCTION</span>
+
+          <!-- 4. Connect Button -->
+          <button class="supa-btn-connect" onclick="showConnectModal()">
+            <i data-lucide="link-2" style="width: 13px; height: 13px;"></i>
+            <span>Connect</span>
+          </button>
         </div>
 
-        <div style="display: flex; gap: 12px;">
-          <button class="btn-primary" onclick="runAutoReplyScan()" id="btn-scan">
-            <i data-lucide="scan-line"></i>
-            <span>Scan All Posts Now</span>
+        <!-- Right: Studio Tools -->
+        <div class="top-tools">
+          <button class="btn-primary" onclick="runAutoReplyScan()" id="btn-scan" style="padding: 5px 12px; font-size: 12px;">
+            <i data-lucide="scan-line" style="width: 14px; height: 14px;"></i>
+            <span>Scan Comments</span>
           </button>
+
+          <a href="https://github.com/baihaqidr/socmed_automation" target="_blank" class="supa-header-link">Feedback</a>
+          
+          <div class="supa-search-bar" onclick="focusSearch()">
+            <i data-lucide="search" style="width: 13px; height: 13px;"></i>
+            <span>Search...</span>
+            <kbd>Ctrl K</kbd>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; color: var(--ink-mute);">
+            <i data-lucide="help-circle" style="width: 16px; height: 16px; cursor: pointer;"></i>
+            <i data-lucide="bell" style="width: 16px; height: 16px; cursor: pointer;"></i>
+          </div>
+
+          <div style="width: 24px; height: 24px; border-radius: var(--radius-sm); background: #262626; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--primary);">
+            B
+          </div>
         </div>
       </header>
 
@@ -98,19 +181,26 @@
         <!-- TAB 1: DASHBOARD OVERVIEW -->
         <div id="tab-dashboard" class="tab-view active">
           
-          <div class="section-header">
-            <h1 class="section-title">Overview & Automation Status</h1>
-            <p class="section-desc">Pantau statistik akun Instagram, database Supabase, dan postingan terkini.</p>
+          <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <h1 class="section-title">Overview & Live Status</h1>
+              <p class="section-desc">Pantau statistik akun yang aktif, status database Supabase, dan postingan Instagram.</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <span class="pill-badge pill-green" style="font-size: 12px; padding: 4px 10px;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: #3ECF8E; display: inline-block; margin-right: 6px;"></span> Supabase PostgreSQL Live
+              </span>
+            </div>
           </div>
 
           <!-- Stats Grid -->
           <div class="stats-grid">
             <div class="stat-card">
-              <div class="stat-icon purple">
+              <div class="stat-icon emerald">
                 <i data-lucide="at-sign"></i>
               </div>
               <div>
-                <div class="stat-label">Instagram Target</div>
+                <div class="stat-label">Akun Instagram Aktif</div>
                 <div class="stat-value" id="stat-username">@sarangestate</div>
               </div>
             </div>
@@ -126,12 +216,12 @@
             </div>
 
             <div class="stat-card">
-              <div class="stat-icon emerald">
+              <div class="stat-icon purple">
                 <i data-lucide="database"></i>
               </div>
               <div>
-                <div class="stat-label">Supabase Database</div>
-                <div class="stat-value" style="color: #34D399; font-size: 16px;">Live & Connected</div>
+                <div class="stat-label">Database Tables</div>
+                <div class="stat-value" style="font-size: 16px;">5 Tables Active</div>
               </div>
             </div>
 
@@ -140,20 +230,20 @@
                 <i data-lucide="sparkles"></i>
               </div>
               <div>
-                <div class="stat-label">AI Auto-Responder</div>
-                <div class="stat-value" style="color: #FBBF24; font-size: 16px;">Gemini 3.6 Active</div>
+                <div class="stat-label">AI Engine</div>
+                <div class="stat-value" style="color: #FBBF24; font-size: 16px;">Gemini 3.6 Flash</div>
               </div>
             </div>
           </div>
 
           <!-- Recent Posts Grid -->
-          <div class="simplifyer-card" style="margin-top: 24px;">
+          <div class="supa-card" style="margin-top: 24px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
               <div>
-                <h3 style="font-size: 16px; font-weight: 700;">Semua Postingan Terpantau</h3>
-                <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Bot memindai komentar di semua postingan aktif di bawah ini secara berkala.</p>
+                <h3 style="font-size: 15px; font-weight: 600;">Semua Postingan Terpantau (<span id="current-account-label">@sarangestate</span>)</h3>
+                <p style="font-size: 13px; color: var(--ink-mute); margin-top: 4px;">Bot memindai komentar di semua postingan aktif di bawah ini secara berkala.</p>
               </div>
-              <span class="badge badge-purple" id="post-count-badge">Loading...</span>
+              <span class="pill-badge pill-purple" id="post-count-badge">Loading...</span>
             </div>
 
             <div id="dashboard-posts-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
@@ -184,18 +274,18 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
             
             <!-- Add Rule Form -->
-            <div class="simplifyer-card">
-              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Tambah Aturan Kata Kunci Baru</h3>
+            <div class="supa-card">
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Tambah Aturan Kata Kunci Baru</h3>
               
               <div class="form-group">
                 <label class="form-label">Kata Kunci Pemicu (Trigger Keyword)</label>
                 <input type="text" id="new-keyword" class="form-input" placeholder="contoh: cicilan, survey, kpr">
-                <span style="font-size: 11px; color: var(--text-dim); margin-top: 4px; display: block;">Bot akan mencocokkan kata ini di komentar user.</span>
+                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 4px; display: block;">Bot akan mencocokkan kata ini di komentar user.</span>
               </div>
 
               <div class="form-group">
                 <label class="form-label">Template Pesan Balasan</label>
-                <textarea id="new-reply" class="form-textarea" rows="4" placeholder="Halo kak! Untuk info detail cicilan & brosur lengkap, sudah kami kirimkan ke DM kamu ya 😊"></textarea>
+                <textarea id="new-reply" class="form-textarea" rows="4" placeholder="Halo kak! Untuk info detail & brosur lengkap, sudah kami kirimkan ke DM kamu ya 😊"></textarea>
               </div>
 
               <button class="btn-primary" onclick="addRule()" style="width: 100%; justify-content: center;">
@@ -204,8 +294,8 @@
               </button>
 
               <!-- AI Test Box -->
-              <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                <h4 style="font-size: 14px; font-weight: 700; color: #FBBF24; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
+              <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+                <h4 style="font-size: 13px; font-weight: 600; color: #FBBF24; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
                   <i data-lucide="sparkles"></i> Uji Coba Chatbot Gemini AI (Fallback)
                 </h4>
                 <div class="form-group">
@@ -215,16 +305,16 @@
                   <i data-lucide="sparkles"></i>
                   <span>Generate Test AI Reply</span>
                 </button>
-                <div id="ai-test-output" style="margin-top: 12px; display: none; padding: 12px; background: rgba(17, 26, 54, 0.8); border: 1px solid #4F46E5; border-radius: var(--radius-md); font-size: 13px; line-height: 1.5; color: #E2E8F0;">
+                <div id="ai-test-output" style="margin-top: 12px; display: none; padding: 12px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5; color: var(--on-dark);">
                 </div>
               </div>
             </div>
 
             <!-- Rules List -->
-            <div class="simplifyer-card">
+            <div class="supa-card">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                <h3 style="font-size: 16px; font-weight: 700;">Daftar Aturan Aktif (Supabase)</h3>
-                <span class="badge badge-blue">Real-time</span>
+                <h3 style="font-size: 15px; font-weight: 600;">Daftar Aturan Aktif (Supabase)</h3>
+                <span class="pill-badge pill-green">Real-time</span>
               </div>
 
               <div id="rules-container" style="display: flex; flex-direction: column; gap: 12px;">
@@ -239,20 +329,20 @@
         <div id="tab-publish" class="tab-view">
           <div class="section-header">
             <h1 class="section-title">Instagram Content Publisher</h1>
-            <p class="section-desc">Unggah foto dari laptop atau URL langsung ke Feed Instagram @sarangestate secara instan.</p>
+            <p class="section-desc">Unggah foto langsung ke Feed Instagram akun yang sedang aktif (<span id="publish-account-target">@sarangestate</span>).</p>
           </div>
 
           <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
-            <div class="simplifyer-card">
+            <div class="supa-card">
               <div class="form-group">
                 <label class="form-label">Sumber Gambar (URL atau Path File Komputer)</label>
-                <input type="text" id="publish-image-input" class="form-input" placeholder="contoh: D:\foto_rumah.jpg atau https://example.com/foto.jpg">
-                <span style="font-size: 11px; color: var(--text-dim); margin-top: 4px; display: block;">File lokal otomatis di-stream secara aman ke Meta API crawler.</span>
+                <input type="text" id="publish-image-input" class="form-input" placeholder="contoh: D:\foto.jpg atau https://example.com/foto.jpg">
+                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 4px; display: block;">File lokal otomatis di-stream secara aman ke Meta API crawler.</span>
               </div>
 
               <div class="form-group">
                 <label class="form-label">Caption Postingan</label>
-                <textarea id="publish-caption-input" class="form-textarea" rows="7" placeholder="Tulis caption listing properti Anda..."></textarea>
+                <textarea id="publish-caption-input" class="form-textarea" rows="7" placeholder="Tulis caption postingan Anda..."></textarea>
               </div>
 
               <button class="btn-primary" onclick="publishPost()" id="btn-publish" style="width: 100%; justify-content: center;">
@@ -261,17 +351,17 @@
               </button>
             </div>
 
-            <div class="simplifyer-card" style="background: rgba(17, 26, 54, 0.4);">
-              <h3 style="font-size: 14px; font-weight: 700; color: var(--text-muted); margin-bottom: 12px;">Preview Postingan</h3>
-              <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: #0B1120;">
+            <div class="supa-card" style="background: var(--canvas-night-soft);">
+              <h3 style="font-size: 13px; font-weight: 600; color: var(--ink-mute); margin-bottom: 12px;">Preview Postingan</h3>
+              <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--canvas-night);">
                 <div style="padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color);">
-                  <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-gradient);"></div>
-                  <span style="font-size: 12px; font-weight: 700;">sarangestate</span>
+                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary);"></div>
+                  <span style="font-size: 12px; font-weight: 600;" id="preview-account-username">sarangestate</span>
                 </div>
-                <div id="preview-image-box" style="height: 220px; background: #152042; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 13px;">
+                <div id="preview-image-box" style="height: 220px; background: #181818; display: flex; align-items: center; justify-content: center; color: var(--ink-mute); font-size: 13px;">
                   <i data-lucide="image" style="width: 36px; height: 36px;"></i>
                 </div>
-                <div id="preview-caption-box" style="padding: 12px; font-size: 12px; color: var(--text-muted); max-height: 100px; overflow-y: auto;">
+                <div id="preview-caption-box" style="padding: 12px; font-size: 12px; color: var(--ink-mute); max-height: 100px; overflow-y: auto;">
                   Preview caption akan tampil di sini...
                 </div>
               </div>
@@ -283,12 +373,12 @@
         <div id="tab-inbox" class="tab-view">
           <div class="section-header">
             <h1 class="section-title">Comments Inbox</h1>
-            <p class="section-desc">Pantau komentar dari seluruh postingan dan kirim balasan manual dengan cepat.</p>
+            <p class="section-desc">Pantau komentar dari seluruh postingan dan riwayat balasan otomatis bot.</p>
           </div>
 
-          <div class="simplifyer-card">
+          <div class="supa-card">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-              <h3 style="font-size: 16px; font-weight: 700;">Daftar Komentar Masuk</h3>
+              <h3 style="font-size: 15px; font-weight: 600;">Daftar Komentar Masuk</h3>
               <button class="btn-secondary" onclick="loadInboxComments()">
                 <i data-lucide="refresh-cw"></i>
                 <span>Muat Ulang Komentar</span>
@@ -304,37 +394,37 @@
         <!-- TAB 6: TOKEN & SETTINGS -->
         <div id="tab-settings" class="tab-view">
           <div class="section-header">
-            <h1 class="section-title">Token & Cloud Configuration</h1>
-            <p class="section-desc">Status Access Token, Supabase Database, dan integrasi Vercel 24 Jam.</p>
+            <h1 class="section-title">Database & Cloud Configuration</h1>
+            <p class="section-desc">Konfigurasi Supabase, Meta Access Token, dan integrasi Vercel 24 Jam.</p>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-            <div class="simplifyer-card">
-              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Status Meta Access Token</h3>
+            <div class="supa-card">
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Status Meta Access Token</h3>
               
               <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; padding: 12px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
-                  <span style="color: var(--text-muted); font-size: 13px;">Token Type:</span>
-                  <span style="font-weight: 700; color: #93C5FD; font-size: 13px;">Long-Lived Page Token (60 Days)</span>
+                <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                  <span style="color: var(--ink-mute); font-size: 13px;">Token Type:</span>
+                  <span style="font-weight: 600; color: var(--primary); font-size: 13px;">Long-Lived Master Token (60 Days)</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; padding: 12px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
-                  <span style="color: var(--text-muted); font-size: 13px;">App ID:</span>
-                  <span style="font-weight: 700; font-size: 13px;">27570108882691783</span>
+                <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                  <span style="color: var(--ink-mute); font-size: 13px;">App ID:</span>
+                  <span style="font-weight: 600; font-size: 13px; font-family: var(--font-mono);">27570108882691783</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; padding: 12px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
-                  <span style="color: var(--text-muted); font-size: 13px;">Instagram Business ID:</span>
-                  <span style="font-weight: 700; font-size: 13px;">17841466987503898</span>
+                <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                  <span style="color: var(--ink-mute); font-size: 13px;">Active Account ID:</span>
+                  <span style="font-weight: 600; font-size: 13px; font-family: var(--font-mono);" id="settings-account-id">17841466987503898</span>
                 </div>
               </div>
             </div>
 
-            <div class="simplifyer-card">
-              <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 16px;">Vercel 24/7 Automation Info</h3>
-              <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
-                Scheduler cron-job.org Anda saat ini aktif memicu scan komentar setiap 1 menit ke endpoint:
+            <div class="supa-card">
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Vercel 24/7 Automation Info</h3>
+              <p style="font-size: 13px; color: var(--ink-mute); line-height: 1.6; margin-bottom: 16px;">
+                Scheduler cron-job.org aktif memicu scan komentar setiap 1 menit ke endpoint:
               </p>
               
-              <div style="padding: 12px; background: rgba(17, 26, 54, 0.8); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: monospace; font-size: 12px; color: #93C5FD; word-break: break-all; margin-bottom: 16px;">
+              <div style="padding: 12px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 12px; color: var(--primary); word-break: break-all; margin-bottom: 16px;">
                 https://socmedautomation.vercel.app/api/cron/scan
               </div>
             </div>
@@ -344,6 +434,37 @@
       </div>
     </main>
 
+  </div>
+
+  <!-- CONNECT MODAL OVERLAY -->
+  <div class="modal-overlay" id="connect-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="brand-icon" style="width: 28px; height: 28px;">
+            <i data-lucide="link-2" style="width: 14px; height: 14px;"></i>
+          </div>
+          <h3 style="font-size: 15px; font-weight: 600;">Hubungkan Akun Instagram</h3>
+        </div>
+        <button onclick="closeConnectModal()" style="background: transparent; border: none; color: var(--ink-mute); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Instagram Business Account ID</label>
+        <input type="text" id="modal-account-id" class="form-input" placeholder="contoh: 17841448570126268">
+        <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 4px; display: block;">ID akun Instagram yang sudah dihubungkan ke Facebook Page Anda.</span>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button class="btn-secondary" onclick="closeConnectModal()">Batal</button>
+        <button class="btn-primary" onclick="submitConnectAccount()">
+          <i data-lucide="check"></i>
+          <span>Hubungkan & Aktifkan</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <script src="/static/js/dashboard.js"></script>

@@ -1,7 +1,11 @@
-// ==========================================
-// SOCMED AUTOMATION (SIMPLIFYER ENGINE) JS
-// 100% Lucide Icons (lucide.dev) & Clean URLs
-// ==========================================
+// ==========================================================================
+// SOCMED AUTOMATION (SUPABASE STUDIO ENGINE) JS
+// Multi-Account Switcher (Gmail + Instagram) + 100% Lucide Icons
+// ==========================================================================
+
+let currentActiveAccountId = "17841466987503898";
+let currentActiveUsername = "sarangestate";
+let currentActiveEmail = "baihaqidr@gmail.com";
 
 // Helper to trigger Lucide Icons render across dynamic elements
 function refreshIcons() {
@@ -39,11 +43,177 @@ function switchTab(tabId) {
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
   refreshIcons();
+  loadUserProfiles();
+  loadInstagramAccounts();
   loadDashboardData();
   setupLivePreview();
+
+  // Close dropdowns on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#gmail-dropdown-wrapper')) {
+      document.getElementById('gmail-dropdown-menu')?.classList.remove('active');
+    }
+    if (!e.target.closest('#ig-dropdown-wrapper')) {
+      document.getElementById('ig-dropdown-menu')?.classList.remove('active');
+    }
+  });
 });
 
-// Fetch Dashboard Overview
+// Toggle Gmail Switcher Dropdown
+function toggleGmailDropdown(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('gmail-dropdown-menu');
+  const igMenu = document.getElementById('ig-dropdown-menu');
+  if (igMenu) igMenu.classList.remove('active');
+  if (menu) menu.classList.toggle('active');
+}
+
+// Toggle Instagram Switcher Dropdown
+function toggleIgDropdown(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('ig-dropdown-menu');
+  const gmailMenu = document.getElementById('gmail-dropdown-menu');
+  if (gmailMenu) gmailMenu.classList.remove('active');
+  if (menu) menu.classList.toggle('active');
+}
+
+// 1. Fetch & Render Gmail Profiles
+async function loadUserProfiles() {
+  try {
+    const res = await fetch('/api/user-profiles');
+    const data = await res.json();
+    
+    if (data.users) {
+      currentActiveEmail = data.active_email;
+      const activeUser = data.users.find(u => u.is_active) || data.users[0];
+      
+      const headerAvatar = document.getElementById('header-user-avatar');
+      const headerName = document.getElementById('header-user-name');
+      const headerPlan = document.getElementById('header-user-plan');
+      
+      if (headerAvatar) headerAvatar.innerText = activeUser.avatar || 'B';
+      if (headerName) headerName.innerText = activeUser.name || 'baihaqidr';
+      if (headerPlan) headerPlan.innerText = activeUser.plan || 'FREE';
+
+      const listContainer = document.getElementById('gmail-accounts-list');
+      if (listContainer) {
+        listContainer.innerHTML = data.users.map(user => `
+          <button class="dropdown-item ${user.is_active ? 'active' : ''}" onclick="switchUserAccount('${user.email}')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="user-avatar-sm" style="background: ${user.is_active ? 'var(--primary)' : '#333333'}; color: ${user.is_active ? 'var(--on-primary)' : '#AAAAAA'}; font-size: 10px;">${user.avatar}</span>
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 13px;">${user.name}</span>
+                <span style="font-size: 11px; color: var(--ink-mute); font-family: var(--font-mono);">${user.email}</span>
+              </div>
+            </div>
+            ${user.is_active ? '<i data-lucide="check" style="width: 14px; height: 14px; color: var(--primary);"></i>' : `<span class="pill-badge pill-green" style="font-size: 10px;">${user.plan}</span>`}
+          </button>
+        `).join('');
+      }
+    }
+  } catch (err) {
+    console.error('Error loading user profiles:', err);
+  } finally {
+    refreshIcons();
+  }
+}
+
+// Switch User Gmail Account
+async function switchUserAccount(email) {
+  try {
+    const res = await fetch('/api/switch-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast(`Beralih ke workspace: ${email}`, 'success');
+      document.getElementById('gmail-dropdown-menu')?.classList.remove('active');
+      loadUserProfiles();
+    }
+  } catch (err) {
+    showToast('Gagal beralih workspace.', 'error');
+  }
+}
+
+// 2. Fetch & Render Instagram Accounts
+async function loadInstagramAccounts() {
+  try {
+    const res = await fetch('/api/accounts');
+    const data = await res.json();
+    
+    if (data.accounts) {
+      currentActiveAccountId = data.active_account_id;
+      const activeAcc = data.accounts.find(a => a.is_active) || data.accounts[0];
+      currentActiveUsername = activeAcc.username;
+
+      // Update UI Header & Targets
+      const headerIg = document.getElementById('header-ig-username');
+      const statUser = document.getElementById('stat-username');
+      const currentAccLabel = document.getElementById('current-account-label');
+      const publishTarget = document.getElementById('publish-account-target');
+      const previewUsername = document.getElementById('preview-account-username');
+      const settingsAccId = document.getElementById('settings-account-id');
+
+      if (headerIg) headerIg.innerText = `@${activeAcc.username}`;
+      if (statUser) statUser.innerText = `@${activeAcc.username}`;
+      if (currentAccLabel) currentAccLabel.innerText = `@${activeAcc.username}`;
+      if (publishTarget) publishTarget.innerText = `@${activeAcc.username}`;
+      if (previewUsername) previewUsername.innerText = activeAcc.username;
+      if (settingsAccId) settingsAccId.innerText = activeAcc.id;
+
+      const listContainer = document.getElementById('ig-accounts-list');
+      if (listContainer) {
+        listContainer.innerHTML = data.accounts.map(acc => `
+          <button class="dropdown-item ${acc.is_active ? 'active' : ''}" onclick="switchInstagramAccount('${acc.id}', '${acc.username}')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="at-sign" style="width: 14px; height: 14px; color: ${acc.is_active ? 'var(--primary)' : 'var(--ink-mute)'};"></i>
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 600; font-size: 13px;">@${acc.username}</span>
+                <span style="font-size: 11px; color: var(--ink-mute);">${acc.name} (${acc.media_count} Posts)</span>
+              </div>
+            </div>
+            ${acc.is_active ? '<i data-lucide="check" style="width: 14px; height: 14px; color: var(--primary);"></i>' : ''}
+          </button>
+        `).join('');
+      }
+    }
+  } catch (err) {
+    console.error('Error loading Instagram accounts:', err);
+  } finally {
+    refreshIcons();
+  }
+}
+
+// Switch Instagram Account
+async function switchInstagramAccount(accountId, username) {
+  try {
+    const res = await fetch('/api/switch-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accountId })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast(`Akun Instagram aktif beralih ke: @${username}`, 'success');
+      document.getElementById('ig-dropdown-menu')?.classList.remove('active');
+      
+      // Reload all account data
+      await loadInstagramAccounts();
+      await loadDashboardData();
+      
+      // If currently on other tabs, reload them
+      const activeTab = document.querySelector('.tab-view.active')?.id;
+      if (activeTab === 'tab-postrules') loadPostRulesView();
+      if (activeTab === 'tab-inbox') loadInboxComments();
+    }
+  } catch (err) {
+    showToast('Gagal beralih akun Instagram.', 'error');
+  }
+}
+
+// 3. Fetch Dashboard Overview
 async function loadDashboardData() {
   try {
     const res = await fetch('/api/account');
@@ -51,8 +221,7 @@ async function loadDashboardData() {
     
     if (data.id) {
       document.getElementById('stat-username').innerText = `@${data.username}`;
-      document.getElementById('stat-media-count').innerText = data.media_count || 14;
-      document.getElementById('header-username').innerText = `@${data.username}`;
+      document.getElementById('stat-media-count').innerText = data.media_count || 0;
     }
     
     loadPostsFeed();
@@ -67,7 +236,7 @@ async function loadPostsFeed() {
   if (!container) return;
 
   try {
-    container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Memuat data postingan...</div>';
+    container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Memuat data postingan...</div>';
     const res = await fetch('/api/posts?limit=50');
     const data = await res.json();
 
@@ -75,29 +244,30 @@ async function loadPostsFeed() {
       document.getElementById('post-count-badge').innerText = `${data.data.length} Posts`;
       
       container.innerHTML = data.data.map(post => `
-        <div class="simplifyer-card post-card" style="padding: 16px;">
-          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-family: monospace; display: flex; justify-content: space-between;">
+        <div class="supa-card post-card" style="padding: 16px;">
+          <div style="font-size: 11px; color: var(--ink-mute); margin-bottom: 8px; font-family: var(--font-mono); display: flex; justify-content: space-between;">
             <span>ID: ${post.id}</span>
-            <span style="color: #60A5FA; font-weight: 600;">${new Date(post.timestamp).toLocaleDateString('id-ID')}</span>
+            <span style="color: var(--primary); font-weight: 500;">${new Date(post.timestamp).toLocaleDateString('id-ID')}</span>
           </div>
           <div class="post-caption">
-            ${post.caption ? post.caption : 'No Caption'}
+            ${post.caption ? post.caption : 'Tanpa Caption'}
           </div>
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-color);">
-            <span style="font-size: 12px; color: #93C5FD; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+            <span style="font-size: 12px; color: var(--primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
               <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> ${post.comments_count || 0} Komentar
             </span>
-            <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+            <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--ink-mute); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
               Lihat di IG <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
             </a>
           </div>
         </div>
       `).join('');
     } else {
-      container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Belum ada postingan.</div>';
+      container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Belum ada postingan di akun ini.</div>';
+      document.getElementById('post-count-badge').innerText = `0 Posts`;
     }
   } catch (err) {
-    container.innerHTML = '<div style="color: var(--danger); font-size: 14px;">Gagal memuat postingan.</div>';
+    container.innerHTML = '<div style="color: var(--danger); font-size: 13px;">Gagal memuat postingan.</div>';
   } finally {
     refreshIcons();
   }
@@ -108,7 +278,7 @@ async function loadPostRulesView() {
   const container = document.getElementById('post-rules-cards-container');
   if (!container) return;
 
-  container.innerHTML = '<div style="color: var(--text-muted); padding: 20px;">Memuat seluruh postingan dan konfigurasi...</div>';
+  container.innerHTML = '<div style="color: var(--ink-mute); padding: 20px;">Memuat seluruh postingan dan konfigurasi...</div>';
 
   try {
     const [postsRes, rulesRes] = await Promise.all([
@@ -121,7 +291,7 @@ async function loadPostRulesView() {
     const posts = postsData.data || [];
 
     if (posts.length === 0) {
-      container.innerHTML = '<div class="simplifyer-card" style="color: var(--text-muted);">Tidak ada postingan ditemukan.</div>';
+      container.innerHTML = '<div class="supa-card" style="color: var(--ink-mute);">Tidak ada postingan ditemukan di akun ini.</div>';
       return;
     }
 
@@ -135,20 +305,20 @@ async function loadPostRulesView() {
       const captionText = post.caption || 'Tanpa Caption';
 
       return `
-        <div class="simplifyer-card" style="display: grid; grid-template-columns: 260px 1fr; gap: 24px; border-left: 4px solid ${ctaLink ? '#10B981' : '#4F46E5'};">
+        <div class="supa-card" style="display: grid; grid-template-columns: 260px 1fr; gap: 24px; border-left: 3px solid ${ctaLink ? 'var(--primary)' : 'var(--border-color)'};">
           <!-- Post Summary -->
           <div>
-            <div style="font-size: 11px; font-family: monospace; color: var(--text-muted); margin-bottom: 6px;">
+            <div style="font-size: 11px; font-family: var(--font-mono); color: var(--ink-mute); margin-bottom: 6px;">
               Post ID: ${pId}
             </div>
-            <div style="font-size: 13px; font-weight: 700; color: #E2E8F0; margin-bottom: 10px; line-height: 1.4; max-height: 110px; overflow-y: auto; padding: 10px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
+            <div style="font-size: 13px; font-weight: 500; color: var(--on-dark); margin-bottom: 10px; line-height: 1.4; max-height: 110px; overflow-y: auto; padding: 10px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
               ${captionText}
             </div>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
-              <span class="badge ${post.comments_count > 0 ? 'badge-blue' : 'badge-purple'}" style="display: inline-flex; align-items: center; gap: 6px;">
-                <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> ${post.comments_count || 0} Komentar
+              <span class="pill-badge ${post.comments_count > 0 ? 'pill-green' : 'pill-purple'}" style="display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="message-square" style="width: 13px; height: 13px;"></i> ${post.comments_count || 0} Komentar
               </span>
-              <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--ink-mute); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
                 Buka Post <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
               </a>
             </div>
@@ -160,40 +330,40 @@ async function loadPostRulesView() {
               <!-- Custom Destination URL Link -->
               <div class="form-group" style="margin-bottom: 12px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
-                  <i data-lucide="link" style="width: 15px; height: 15px; color: var(--accent-blue);"></i> Custom Link (URL Tujuan / Landing Page / Tautan Khusus)
+                  <i data-lucide="link" style="width: 14px; height: 14px; color: var(--primary);"></i> Custom Link (URL Tujuan / Landing Page / Tautan Khusus)
                 </label>
-                <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://sarangestate.id/unit-promo atau https://linktr.ee/sarangestate">
-                <span style="font-size: 11px; color: var(--text-dim); margin-top: 3px; display: block;">Tautan tujuan ini akan dikirimkan langsung ke DM atau disiapkan bot secara otomatis.</span>
+                <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://domainanda.com/promo atau https://linktr.ee/...">
+                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 3px; display: block;">Tautan tujuan ini akan disisipkan bot ke DM / balasan secara otomatis.</span>
               </div>
 
               <!-- Custom Public Reply Template Override -->
               <div class="form-group" style="margin-bottom: 12px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
-                  <i data-lucide="message-circle" style="width: 15px; height: 15px; color: #818CF8;"></i> Custom Comment Reply (Opsional)
+                  <i data-lucide="message-circle" style="width: 14px; height: 14px; color: var(--accent-blue);"></i> Custom Comment Reply (Opsional)
                 </label>
                 <input type="text" id="custom-reply-${pId}" class="form-input" value="${customReply}" placeholder="Kosongkan jika ingin memakai AI Gemini otomatis">
-                <span style="font-size: 11px; color: var(--text-dim); margin-top: 3px; display: block;">Jika diisi, bot akan memakai teks tetap ini. Jika kosong, AI yang menjawab.</span>
+                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 3px; display: block;">Jika diisi, bot akan memakai teks tetap ini. Jika kosong, AI yang menjawab.</span>
               </div>
             </div>
 
             <!-- Direct Message (DM) Automation Section -->
-            <div style="padding: 12px 16px; background: rgba(17, 26, 54, 0.4); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-top: 8px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <label style="font-size: 13px; font-weight: 600; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <div style="padding: 12px 14px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-top: 6px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <label style="font-size: 13px; font-weight: 500; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
                   <input type="checkbox" id="send-dm-${pId}" ${sendDm ? 'checked' : ''} style="accent-color: #F59E0B; cursor: pointer;">
-                  <i data-lucide="mail" style="width: 15px; height: 15px; color: #FBBF24;"></i> Kirim DM Otomatis ke Inbox Komentator (Private Reply)
+                  <i data-lucide="mail" style="width: 14px; height: 14px; color: #FBBF24;"></i> Kirim DM Otomatis ke Inbox Komentator (Private Reply)
                 </label>
-                <span style="font-size: 11px; color: var(--text-dim);">Instagram Direct Message</span>
+                <span style="font-size: 11px; color: var(--ink-mute);">Instagram Direct Message</span>
               </div>
 
               <div class="form-group" style="margin-bottom: 0;">
-                <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Terima kasih sudah komentar. Ini info detail & brosur lengkapnya ya kak...">
+                <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Terima kasih sudah komentar. Ini info detail & tautan lengkapnya ya kak...">
               </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
               <button class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}" style="display: inline-flex; align-items: center; gap: 6px;">
-                <i data-lucide="save" style="width: 15px; height: 15px;"></i> Simpan Pengaturan Post Ini
+                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Simpan Pengaturan Post Ini
               </button>
             </div>
           </div>
@@ -218,7 +388,7 @@ async function savePostRule(postId) {
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 15px; height: 15px;"></i> Menyimpan...';
+    btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Menyimpan...';
     refreshIcons();
   }
 
@@ -246,7 +416,7 @@ async function savePostRule(postId) {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="save" style="width: 15px; height: 15px;"></i> Simpan Pengaturan Post Ini';
+      btn.innerHTML = '<i data-lucide="save" style="width: 14px; height: 14px;"></i> Simpan Pengaturan Post Ini';
       refreshIcons();
     }
   }
@@ -262,16 +432,16 @@ async function loadRulesData() {
     const rules = await res.json();
 
     container.innerHTML = Object.entries(rules).map(([keyword, reply]) => `
-      <div style="padding: 14px; background: rgba(17, 26, 54, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+      <div style="padding: 12px 14px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
         <div style="flex: 1;">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-            <span class="badge badge-purple">${keyword}</span>
-            <span style="font-size: 11px; color: var(--text-dim);">Trigger Match</span>
+            <span class="pill-badge pill-purple">${keyword}</span>
+            <span style="font-size: 11px; color: var(--ink-mute-2);">Trigger Match</span>
           </div>
-          <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">${reply}</p>
+          <p style="font-size: 13px; color: var(--on-dark); line-height: 1.5;">${reply}</p>
         </div>
         <button class="btn-secondary" onclick="deleteRule('${keyword}')" style="color: var(--danger); padding: 6px 10px; border-color: rgba(239, 68, 68, 0.3); display: inline-flex; align-items: center;">
-          <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
         </button>
       </div>
     `).join('');
@@ -345,7 +515,7 @@ async function testAIReply() {
   }
 
   output.style.display = 'block';
-  output.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><i data-lucide="loader-2" class="lucide-spin" style="width: 15px; height: 15px;"></i> Gemini 3.6 Flash sedang berpikir...</div>';
+  output.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Gemini 3.6 Flash sedang berpikir...</div>';
   refreshIcons();
 
   try {
@@ -358,10 +528,10 @@ async function testAIReply() {
     const data = await res.json();
     if (data.status === 'success') {
       output.innerHTML = `
-        <div style="font-size: 11px; color: #FBBF24; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+        <div style="font-size: 11px; color: #FBBF24; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
           <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i> RESPONS GEMINI AI:
         </div>
-        <div style="color: #F8FAFC;">"${data.ai_reply}"</div>
+        <div style="color: var(--on-dark-bright);">${data.ai_reply}</div>
       `;
     } else {
       output.innerHTML = `<span style="color: var(--danger);">${data.ai_reply}</span>`;
@@ -385,7 +555,7 @@ async function publishPost() {
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 16px; height: 16px;"></i> Sedang Memproses & Mengunggah...';
+  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Sedang Memproses & Mengunggah...';
   refreshIcons();
 
   try {
@@ -409,7 +579,7 @@ async function publishPost() {
     showToast('Terjadi kesalahan saat mempublish.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="send" style="width: 16px; height: 16px;"></i> Publish ke Feed Instagram Sekarang';
+    btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Publish ke Feed Instagram Sekarang';
     refreshIcons();
   }
 }
@@ -418,7 +588,7 @@ async function publishPost() {
 async function runAutoReplyScan() {
   const btn = document.getElementById('btn-scan');
   btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 16px; height: 16px;"></i> Memindai Seluruh Postingan...';
+  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Memindai...';
   refreshIcons();
 
   try {
@@ -436,7 +606,7 @@ async function runAutoReplyScan() {
     showToast('Terjadi kesalahan saat scan.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="scan-line" style="width: 16px; height: 16px;"></i> Scan All Posts Now';
+    btn.innerHTML = '<i data-lucide="scan-line" style="width: 14px; height: 14px;"></i> Scan Comments';
     refreshIcons();
   }
 }
@@ -446,7 +616,7 @@ async function loadInboxComments() {
   const container = document.getElementById('inbox-comments-container');
   if (!container) return;
 
-  container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Memuat komentar terbaru...</div>';
+  container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Memuat komentar terbaru...</div>';
 
   try {
     const res = await fetch('/api/inbox-comments');
@@ -454,33 +624,33 @@ async function loadInboxComments() {
 
     if (data.data && data.data.length > 0) {
       container.innerHTML = data.data.map(comment => `
-        <div style="padding: 16px; background: rgba(17, 26, 54, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+        <div style="padding: 14px 16px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-weight: 700; color: #93C5FD; font-size: 14px;">@${comment.username || 'user'}</span>
-              <span style="font-size: 11px; color: var(--text-dim);">${new Date(comment.timestamp).toLocaleString('id-ID')}</span>
+              <span style="font-weight: 600; color: var(--primary); font-size: 13px;">@${comment.username || 'user'}</span>
+              <span style="font-size: 11px; color: var(--ink-mute-2); font-family: var(--font-mono);">${new Date(comment.timestamp).toLocaleString('id-ID')}</span>
             </div>
-            <span class="badge ${comment.is_replied ? 'badge-success' : 'badge-purple'}" style="display: inline-flex; align-items: center; gap: 4px;">
+            <span class="pill-badge ${comment.is_replied ? 'pill-green' : 'pill-purple'}" style="display: inline-flex; align-items: center; gap: 4px;">
               ${comment.is_replied 
                 ? '<i data-lucide="check-circle-2" style="width: 13px; height: 13px;"></i> Sudah Dibalas' 
                 : '<i data-lucide="clock" style="width: 13px; height: 13px;"></i> Belum Dibalas'}
             </span>
           </div>
 
-          <p style="font-size: 13px; color: #E2E8F0; margin-bottom: 12px; line-height: 1.5;">${comment.text}</p>
+          <p style="font-size: 13px; color: var(--on-dark); margin-bottom: 12px; line-height: 1.5;">${comment.text}</p>
 
-          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 10px;">
-            <a href="${comment.post_permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+            <a href="${comment.post_permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--ink-mute); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
               Buka Postingan Terkait <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
             </a>
           </div>
         </div>
       `).join('');
     } else {
-      container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Belum ada komentar masuk.</div>';
+      container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Belum ada komentar masuk.</div>';
     }
   } catch (err) {
-    container.innerHTML = '<div style="color: var(--danger); font-size: 14px;">Gagal memuat inbox komentar.</div>';
+    container.innerHTML = '<div style="color: var(--danger); font-size: 13px;">Gagal memuat inbox komentar.</div>';
   } finally {
     refreshIcons();
   }
@@ -499,10 +669,10 @@ function setupLivePreview() {
       if (val.startsWith('http://') || val.startsWith('https://')) {
         imgBox.innerHTML = `<img src="${val}" style="width: 100%; height: 100%; object-fit: cover;">`;
       } else if (val) {
-        imgBox.innerHTML = `<div style="text-align: center; padding: 20px;"><i data-lucide="file-image" style="width: 32px; height: 32px; color: #818CF8;"></i><div style="font-size: 11px; margin-top: 6px; color: #94A3B8;">File Lokal: ${val.split('\\').pop()}</div></div>`;
+        imgBox.innerHTML = `<div style="text-align: center; padding: 20px;"><i data-lucide="file-image" style="width: 32px; height: 32px; color: var(--primary);"></i><div style="font-size: 11px; margin-top: 6px; color: var(--ink-mute);">File Lokal: ${val.split('\\').pop()}</div></div>`;
         refreshIcons();
       } else {
-        imgBox.innerHTML = '<i data-lucide="image" style="width: 32px; height: 32px; color: var(--text-dim);"></i>';
+        imgBox.innerHTML = '<i data-lucide="image" style="width: 32px; height: 32px; color: var(--ink-mute-2);"></i>';
         refreshIcons();
       }
     });
@@ -515,6 +685,37 @@ function setupLivePreview() {
   }
 }
 
+// Connect Account Modal Functions
+function showConnectModal() {
+  document.getElementById('connect-modal')?.classList.add('active');
+  refreshIcons();
+}
+
+function closeConnectModal() {
+  document.getElementById('connect-modal')?.classList.remove('active');
+}
+
+async function submitConnectAccount() {
+  const inputId = document.getElementById('modal-account-id')?.value.trim();
+  if (!inputId) {
+    showToast('Harap masukkan ID Akun Instagram.', 'warning');
+    return;
+  }
+  closeConnectModal();
+  await switchInstagramAccount(inputId, 'akun_baru');
+}
+
+function promptAddGmail() {
+  const email = prompt('Masukkan alamat email Gmail workspace baru:');
+  if (email && email.includes('@')) {
+    switchUserAccount(email.trim());
+  }
+}
+
+function focusSearch() {
+  showToast('Fitur pencarian global aktif. Ketik menu yang ingin dicari.', 'info');
+}
+
 // Toast Notifications
 function showToast(message, type = 'info') {
   let toast = document.getElementById('toast-notification');
@@ -525,14 +726,14 @@ function showToast(message, type = 'info') {
       position: fixed;
       bottom: 24px;
       right: 24px;
-      padding: 12px 20px;
-      border-radius: 10px;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       color: #fff;
       z-index: 9999;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      transition: all 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      transition: all 0.25s ease;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -541,17 +742,21 @@ function showToast(message, type = 'info') {
   }
 
   if (type === 'success') {
-    toast.style.background = '#10B981';
-    toast.innerHTML = `<i data-lucide="check-circle" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
+    toast.style.background = 'var(--canvas-night-soft)';
+    toast.style.border = '1px solid var(--primary)';
+    toast.innerHTML = `<i data-lucide="check-circle" style="width: 15px; height: 15px; color: var(--primary);"></i> <span style="color: var(--on-dark-bright);">${message}</span>`;
   } else if (type === 'error') {
-    toast.style.background = '#EF4444';
-    toast.innerHTML = `<i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
+    toast.style.background = 'var(--canvas-night-soft)';
+    toast.style.border = '1px solid var(--danger)';
+    toast.innerHTML = `<i data-lucide="alert-triangle" style="width: 15px; height: 15px; color: var(--danger);"></i> <span style="color: var(--on-dark-bright);">${message}</span>`;
   } else if (type === 'warning') {
-    toast.style.background = '#F59E0B';
-    toast.innerHTML = `<i data-lucide="alert-circle" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
+    toast.style.background = 'var(--canvas-night-soft)';
+    toast.style.border = '1px solid var(--accent-amber)';
+    toast.innerHTML = `<i data-lucide="alert-circle" style="width: 15px; height: 15px; color: var(--accent-amber);"></i> <span style="color: var(--on-dark-bright);">${message}</span>`;
   } else {
-    toast.style.background = '#4F46E5';
-    toast.innerHTML = `<i data-lucide="info" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
+    toast.style.background = 'var(--canvas-night-soft)';
+    toast.style.border = '1px solid var(--border-color)';
+    toast.innerHTML = `<i data-lucide="info" style="width: 15px; height: 15px; color: var(--accent-blue);"></i> <span style="color: var(--on-dark-bright);">${message}</span>`;
   }
 
   refreshIcons();
@@ -562,5 +767,5 @@ function showToast(message, type = 'info') {
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(10px)';
-  }, 4000);
+  }, 3500);
 }
