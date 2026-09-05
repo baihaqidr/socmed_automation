@@ -385,7 +385,7 @@ Balasan Instagram:"""
 
     try:
         payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
-        res = requests.post(url, json=payload, timeout=12)
+        res = requests.post(url, json=payload, timeout=25)
         if res.status_code == 200:
             data = res.json()
             candidates = data.get("candidates", [])
