@@ -1,3 +1,7 @@
+// ==========================================
+// SOCMED AUTOMATION (SIMPLIFYER ENGINE) JS
+// ==========================================
+
 // Switch Tab Navigation
 function switchTab(tabId) {
   document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
@@ -17,6 +21,7 @@ function switchTab(tabId) {
   });
 
   if (tabId === 'dashboard') loadDashboardData();
+  if (tabId === 'postrules') loadPostRulesView();
   if (tabId === 'autoreply') loadRulesData();
   if (tabId === 'inbox') loadInboxComments();
 }
@@ -35,7 +40,7 @@ async function loadDashboardData() {
     
     if (data.id) {
       document.getElementById('stat-username').innerText = `@${data.username}`;
-      document.getElementById('stat-media-count').innerText = data.media_count || 13;
+      document.getElementById('stat-media-count').innerText = data.media_count || 14;
       document.getElementById('header-username').innerText = `@${data.username}`;
     }
     
@@ -45,14 +50,14 @@ async function loadDashboardData() {
   }
 }
 
-// Fetch Posts Feed
+// Fetch Posts Feed for Dashboard Tab
 async function loadPostsFeed() {
   const container = document.getElementById('dashboard-posts-container');
   if (!container) return;
 
   try {
     container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Memuat data postingan...</div>';
-    const res = await fetch('/api/posts');
+    const res = await fetch('/api/posts?limit=50');
     const data = await res.json();
 
     if (data.data && data.data.length > 0) {
@@ -60,8 +65,9 @@ async function loadPostsFeed() {
       
       container.innerHTML = data.data.map(post => `
         <div class="simplifyer-card post-card" style="padding: 16px;">
-          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-family: monospace;">
-            ID: ${post.id}
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-family: monospace; display: flex; justify-content: space-between;">
+            <span>ID: ${post.id}</span>
+            <span style="color: #60A5FA; font-weight: 600;">${new Date(post.timestamp).toLocaleDateString('id-ID')}</span>
           </div>
           <div class="post-caption">
             ${post.caption ? post.caption : 'No Caption'}
@@ -84,7 +90,152 @@ async function loadPostsFeed() {
   }
 }
 
-// Load Auto-Reply Rules
+// Load Post Custom Rules & DM Links View
+async function loadPostRulesView() {
+  const container = document.getElementById('post-rules-cards-container');
+  if (!container) return;
+
+  container.innerHTML = '<div style="color: var(--text-muted); padding: 20px;">Memuat seluruh postingan dan konfigurasi...</div>';
+
+  try {
+    const [postsRes, rulesRes] = await Promise.all([
+      fetch('/api/posts?limit=50'),
+      fetch('/api/post-rules')
+    ]);
+
+    const postsData = await postsRes.json();
+    const rulesData = await rulesRes.json();
+    const posts = postsData.data || [];
+
+    if (posts.length === 0) {
+      container.innerHTML = '<div class="simplifyer-card" style="color: var(--text-muted);">Tidak ada postingan ditemukan.</div>';
+      return;
+    }
+
+    container.innerHTML = posts.map(post => {
+      const pId = String(post.id);
+      const rule = rulesData[pId] || {};
+      const ctaLink = rule.cta_link || '';
+      const customReply = rule.custom_reply || '';
+      const sendDm = rule.send_dm || false;
+      const dmMessage = rule.dm_message || '';
+      const captionText = post.caption || 'Tanpa Caption';
+
+      return `
+        <div class="simplifyer-card" style="display: grid; grid-template-columns: 260px 1fr; gap: 24px; border-left: 4px solid ${ctaLink ? '#10B981' : '#4F46E5'};">
+          <!-- Post Summary -->
+          <div>
+            <div style="font-size: 11px; font-family: monospace; color: var(--text-muted); margin-bottom: 6px;">
+              Post ID: ${pId}
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: #E2E8F0; margin-bottom: 10px; line-height: 1.4; max-height: 110px; overflow-y: auto; padding: 10px; background: rgba(17, 26, 54, 0.6); border-radius: var(--radius-md);">
+              ${captionText}
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+              <span class="badge ${post.comments_count > 0 ? 'badge-blue' : 'badge-purple'}">
+                <i class="ri-chat-1-line"></i> ${post.comments_count || 0} Komentar
+              </span>
+              <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">
+                Buka Post <i class="ri-external-link-line"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Configuration Form -->
+          <div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- Custom WhatsApp / Landing Page Link -->
+              <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
+                  <i class="ri-whatsapp-line" style="color: #34D399;"></i> Custom Link (WhatsApp / URL Khusus Unit Ini)
+                </label>
+                <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://wa.me/62812xxx?text=Halo%20saya%20tertarik%20listing%20ini">
+                <span style="font-size: 11px; color: var(--text-dim); margin-top: 3px; display: block;">Link ini otomatis disisipkan AI / Bot saat membalas komentar postingan ini.</span>
+              </div>
+
+              <!-- Custom Public Reply Template Override -->
+              <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label">
+                  <i class="ri-chat-voice-line" style="color: #60A5FA;"></i> Custom Comment Reply (Opsional)
+                </label>
+                <input type="text" id="custom-reply-${pId}" class="form-input" value="${customReply}" placeholder="Kosongkan jika ingin memakai AI Gemini otomatis">
+                <span style="font-size: 11px; color: var(--text-dim); margin-top: 3px; display: block;">Jika diisi, bot akan memakai teks tetap ini. Jika kosong, AI yang menjawab.</span>
+              </div>
+            </div>
+
+            <!-- Direct Message (DM) Automation Section -->
+            <div style="padding: 12px 16px; background: rgba(17, 26, 54, 0.4); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-top: 8px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <label style="font-size: 13px; font-weight: 600; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" id="send-dm-${pId}" ${sendDm ? 'checked' : ''} style="accent-color: #F59E0B; cursor: pointer;">
+                  Kirim DM Otomatis ke Inbox Komentator (Private Reply)
+                </label>
+                <span style="font-size: 11px; color: var(--text-dim);">Instagram Direct Message</span>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Terima kasih sudah komentar. Ini pricelist & brosur lengkapnya ya kak...">
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+              <button class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}">
+                <i class="ri-save-line"></i> Simpan Pengaturan Post Ini
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (err) {
+    container.innerHTML = '<div style="color: var(--danger); padding: 20px;">Gagal memuat aturan post: ' + err.message + '</div>';
+  }
+}
+
+// Save Single Post Rule
+async function savePostRule(postId) {
+  const btn = document.getElementById(`btn-save-${postId}`);
+  const ctaLink = document.getElementById(`cta-link-${postId}`)?.value.trim() || '';
+  const customReply = document.getElementById(`custom-reply-${postId}`)?.value.trim() || '';
+  const sendDm = document.getElementById(`send-dm-${postId}`)?.checked || false;
+  const dmMessage = document.getElementById(`dm-message-${postId}`)?.value.trim() || '';
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Menyimpan...';
+  }
+
+  try {
+    const res = await fetch('/api/post-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        post_id: postId,
+        cta_link: ctaLink,
+        custom_reply: customReply,
+        send_dm: sendDm,
+        dm_message: dmMessage
+      })
+    });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast('Pengaturan postingan berhasil disimpan ke Supabase!', 'success');
+    } else {
+      showToast('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'), 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan jaringan.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ri-save-line"></i> Simpan Pengaturan Post Ini';
+    }
+  }
+}
+
+// Load Auto-Reply Rules (Keyword List)
 async function loadRulesData() {
   const container = document.getElementById('rules-container');
   if (!container) return;
@@ -98,26 +249,27 @@ async function loadRulesData() {
         <div style="flex: 1;">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
             <span class="badge badge-purple">${keyword}</span>
+            <span style="font-size: 11px; color: var(--text-dim);">Trigger Match</span>
           </div>
-          <div style="font-size: 13px; color: var(--text-main); line-height: 1.4;">${reply}</div>
+          <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">${reply}</p>
         </div>
-        <button class="btn-secondary" onclick="deleteRule('${keyword}')" style="padding: 6px 10px; font-size: 12px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+        <button class="btn-secondary" onclick="deleteRule('${keyword}')" style="color: var(--danger); padding: 6px 10px; border-color: rgba(239, 68, 68, 0.3);">
           <i class="ri-delete-bin-line"></i>
         </button>
       </div>
     `).join('');
   } catch (err) {
-    console.error('Gagal memuat aturan:', err);
+    container.innerHTML = '<div style="color: var(--danger);">Gagal memuat aturan.</div>';
   }
 }
 
-// Save New Rule
-async function saveRule() {
-  const keyword = document.getElementById('rule-keyword').value.trim();
-  const reply = document.getElementById('rule-reply').value.trim();
+// Add Keyword Rule
+async function addRule() {
+  const keyword = document.getElementById('new-keyword').value.trim();
+  const reply = document.getElementById('new-reply').value.trim();
 
   if (!keyword || !reply) {
-    alert('Harap isi kata kunci dan pesan balasan!');
+    showToast('Harap isi kata kunci dan template balasan.', 'warning');
     return;
   }
 
@@ -127,21 +279,22 @@ async function saveRule() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ keyword, reply })
     });
-    
-    if (res.ok) {
-      document.getElementById('rule-keyword').value = '';
-      document.getElementById('rule-reply').value = '';
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast(`Aturan untuk kata "${keyword}" berhasil disimpan ke Supabase!`, 'success');
+      document.getElementById('new-keyword').value = '';
+      document.getElementById('new-reply').value = '';
       loadRulesData();
-      alert('Aturan berhasil disimpan!');
     }
   } catch (err) {
-    alert('Gagal menyimpan aturan: ' + err);
+    showToast('Gagal menambahkan aturan.', 'error');
   }
 }
 
-// Delete Rule
+// Delete Keyword Rule
 async function deleteRule(keyword) {
-  if (!confirm(`Hapus aturan untuk kata kunci '${keyword}'?`)) return;
+  if (!confirm(`Hapus aturan untuk kata kunci "${keyword}"?`)) return;
 
   try {
     const res = await fetch('/api/rules', {
@@ -149,96 +302,114 @@ async function deleteRule(keyword) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ keyword })
     });
-    if (res.ok) loadRulesData();
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast(`Aturan "${keyword}" berhasil dihapus.`, 'success');
+      loadRulesData();
+    }
   } catch (err) {
-    alert('Gagal menghapus aturan.');
+    showToast('Gagal menghapus aturan.', 'error');
   }
 }
 
-// Setup Live Preview for Content Publisher
-function setupLivePreview() {
-  const imgInput = document.getElementById('post-image-input');
-  const captionInput = document.getElementById('post-caption-input');
-  
-  if (imgInput) {
-    imgInput.addEventListener('input', () => {
-      const val = imgInput.value.trim();
-      const placeholder = document.getElementById('preview-img-placeholder');
-      const imgElem = document.getElementById('preview-img-element');
-      
-      if (val.startsWith('http://') || val.startsWith('https://')) {
-        imgElem.src = val;
-        imgElem.style.display = 'block';
-        placeholder.style.display = 'none';
-      } else if (val) {
-        placeholder.innerText = `File Lokal Detected:\n${val}`;
-        placeholder.style.display = 'block';
-        imgElem.style.display = 'none';
-      } else {
-        placeholder.innerText = 'Preview Foto Akan Muncul Di Sini';
-        placeholder.style.display = 'block';
-        imgElem.style.display = 'none';
-      }
-    });
+// Test AI Reply
+async function testAIReply() {
+  const input = document.getElementById('ai-test-input');
+  const output = document.getElementById('ai-test-output');
+  if (!input || !output) return;
+
+  const commentText = input.value.trim();
+  if (!commentText) {
+    showToast('Ketik contoh pertanyaan terlebih dahulu.', 'warning');
+    return;
   }
 
-  if (captionInput) {
-    captionInput.addEventListener('input', () => {
-      const val = captionInput.value;
-      const box = document.getElementById('preview-caption-box');
-      box.innerText = val ? val : 'Preview caption akan tampil di sini...';
+  output.style.display = 'block';
+  output.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Gemini 3.6 Flash sedang berpikir...';
+
+  try {
+    const res = await fetch('/api/ai-reply-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment: commentText, username: 'calon_pembeli' })
     });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      output.innerHTML = `
+        <div style="font-size: 11px; color: #FBBF24; font-weight: 700; margin-bottom: 4px;">RESPONS GEMINI AI:</div>
+        <div style="color: #F8FAFC;">"${data.ai_reply}"</div>
+      `;
+    } else {
+      output.innerHTML = `<span style="color: var(--danger);">${data.ai_reply}</span>`;
+    }
+  } catch (err) {
+    output.innerHTML = '<span style="color: var(--danger);">Gagal menghubungi endpoint AI.</span>';
   }
 }
 
 // Publish Post
 async function publishPost() {
-  const image_input = document.getElementById('post-image-input').value.trim();
-  const caption = document.getElementById('post-caption-input').value.trim();
-  const btn = document.getElementById('publish-btn');
+  const imageInput = document.getElementById('publish-image-input').value.trim();
+  const caption = document.getElementById('publish-caption-input').value.trim();
+  const btn = document.getElementById('btn-publish');
 
-  if (!image_input) {
-    alert('Harap masukkan lokasi file foto atau URL!');
+  if (!imageInput) {
+    showToast('Harap masukkan URL gambar atau path file lokal.', 'warning');
     return;
   }
 
-  try {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Memproses Upload ke Instagram...';
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Sedang Memproses & Mengunggah...';
 
+  try {
     const res = await fetch('/api/publish', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_input, caption })
+      body: JSON.stringify({ image_input: imageInput, caption: caption })
     });
 
     const data = await res.json();
 
     if (data.id) {
-      alert('🎉 BERHASIL POSTING KE INSTAGRAM! Media ID: ' + data.id);
-      document.getElementById('post-image-input').value = '';
-      document.getElementById('post-caption-input').value = '';
-      switchTab('dashboard');
+      showToast(`Sukses publish ke Instagram! Media ID: ${data.id}`, 'success');
+      document.getElementById('publish-image-input').value = '';
+      document.getElementById('publish-caption-input').value = '';
+      loadDashboardData();
     } else {
-      alert('❌ Gagal posting: ' + JSON.stringify(data));
+      showToast(`Gagal: ${JSON.stringify(data.error || data)}`, 'error');
     }
   } catch (err) {
-    alert('Terjadi kesalahan saat posting: ' + err);
+    showToast('Terjadi kesalahan saat mempublish.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="ri-send-plane-fill"></i> Publish to Feed Instagram';
+    btn.innerHTML = '<i class="ri-send-plane-fill"></i> Publish ke Feed Instagram Sekarang';
   }
 }
 
-// Single scan for auto-reply
-async function triggerScanOnce() {
+// Run Auto-Reply Scan Across All Posts
+async function runAutoReplyScan() {
+  const btn = document.getElementById('btn-scan');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Memindai Seluruh Postingan...';
+
   try {
-    alert('Sedang memindai komentar terbaru...');
     const res = await fetch('/api/auto-reply-scan', { method: 'POST' });
     const data = await res.json();
-    alert(`Pindaian Selesai! Total Komentar Dibalas Baru: ${data.total_replied || 0}`);
+
+    if (data.status === 'success') {
+      const msg = `Scan Selesai! ${data.total_scanned_posts} postingan dipindai, ${data.total_new_replies} balasan terkirim.`;
+      showToast(msg, 'success');
+      loadInboxComments();
+    } else {
+      showToast('Gagal memindai komentar.', 'error');
+    }
   } catch (err) {
-    alert('Gagal memindai komentar.');
+    showToast('Terjadi kesalahan saat scan.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-scan-2-line"></i> Scan All Posts Now';
   }
 }
 
@@ -247,45 +418,113 @@ async function loadInboxComments() {
   const container = document.getElementById('inbox-comments-container');
   if (!container) return;
 
+  container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Memuat komentar terbaru...</div>';
+
   try {
-    container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Memuat komentar...</div>';
     const res = await fetch('/api/inbox-comments');
     const data = await res.json();
 
-    if (data.comments && data.comments.length > 0) {
-      container.innerHTML = data.comments.map(c => `
-        <div class="comment-item">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div class="comment-user">@${c.username}</div>
-            <span style="font-size: 11px; color: var(--text-dim);">${new Date(c.timestamp).toLocaleString()}</span>
+    if (data.data && data.data.length > 0) {
+      container.innerHTML = data.data.map(comment => `
+        <div style="padding: 16px; background: rgba(17, 26, 54, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 700; color: #93C5FD; font-size: 14px;">@${comment.username || 'user'}</span>
+              <span style="font-size: 11px; color: var(--text-dim);">${new Date(comment.timestamp).toLocaleString('id-ID')}</span>
+            </div>
+            <span class="badge ${comment.is_replied ? 'badge-success' : 'badge-purple'}">
+              ${comment.is_replied ? '<i class="ri-check-line"></i> Sudah Dibalas' : '<i class="ri-time-line"></i> Belum Dibalas'}
+            </span>
           </div>
-          <div class="comment-text">${c.text}</div>
+
+          <p style="font-size: 13px; color: #E2E8F0; margin-bottom: 12px; line-height: 1.5;">${comment.text}</p>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 10px;">
+            <a href="${comment.post_permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">
+              Buka Postingan Terkait <i class="ri-external-link-line"></i>
+            </a>
+          </div>
         </div>
       `).join('');
     } else {
-      container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Belum ada komentar di postingan terbaru.</div>';
+      container.innerHTML = '<div style="color: var(--text-muted); font-size: 14px;">Belum ada komentar masuk.</div>';
     }
   } catch (err) {
     container.innerHTML = '<div style="color: var(--danger); font-size: 14px;">Gagal memuat inbox komentar.</div>';
   }
 }
 
-// Auto-Refresh Token
-async function refreshToken() {
-  try {
-    const res = await fetch('/api/refresh-token', { method: 'POST' });
-    const data = await res.json();
-    if (data.access_token) {
-      alert('✅ Token 60 Hari Berhasil Diperbarui!');
-    } else {
-      alert('Gagal memperbarui token: ' + JSON.stringify(data));
-    }
-  } catch (err) {
-    alert('Error refresh token: ' + err);
+// Live Preview Setup
+function setupLivePreview() {
+  const imgInput = document.getElementById('publish-image-input');
+  const capInput = document.getElementById('publish-caption-input');
+  const imgBox = document.getElementById('preview-image-box');
+  const capBox = document.getElementById('preview-caption-box');
+
+  if (imgInput && imgBox) {
+    imgInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      if (val.startsWith('http://') || val.startsWith('https://')) {
+        imgBox.innerHTML = `<img src="${val}" style="width: 100%; height: 100%; object-fit: cover;">`;
+      } else if (val) {
+        imgBox.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="ri-file-image-line" style="font-size: 32px; color: #818CF8;"></i><div style="font-size: 11px; margin-top: 6px; color: #94A3B8;">File Lokal: ${val.split('\\').pop()}</div></div>`;
+      } else {
+        imgBox.innerHTML = '<i class="ri-image-line" style="font-size: 32px;"></i>';
+      }
+    });
+  }
+
+  if (capInput && capBox) {
+    capInput.addEventListener('input', (e) => {
+      capBox.innerText = e.target.value || 'Preview caption akan tampil di sini...';
+    });
   }
 }
 
-// Manual Refresh Data
-function refreshData() {
-  loadDashboardData();
+// Toast Notifications
+function showToast(message, type = 'info') {
+  let toast = document.getElementById('toast-notification');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast-notification';
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      z-index: 9999;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    `;
+    document.body.appendChild(toast);
+  }
+
+  if (type === 'success') {
+    toast.style.background = '#10B981';
+    toast.innerHTML = `<i class="ri-checkbox-circle-fill"></i> ${message}`;
+  } else if (type === 'error') {
+    toast.style.background = '#EF4444';
+    toast.innerHTML = `<i class="ri-error-warning-fill"></i> ${message}`;
+  } else if (type === 'warning') {
+    toast.style.background = '#F59E0B';
+    toast.innerHTML = `<i class="ri-alert-fill"></i> ${message}`;
+  } else {
+    toast.style.background = '#4F46E5';
+    toast.innerHTML = `<i class="ri-information-fill"></i> ${message}`;
+  }
+
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+  }, 4000);
 }

@@ -45,11 +45,24 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 RULES_FILE = "rules.json"
 REPLIED_COMMENTS_FILE = "replied_comments.json"
+POST_RULES_FILE = "post_rules.json"
 
 
 # ==========================================
 # DATABASE HELPER FUNCTIONS (SUPABASE + FALLBACK)
 # ==========================================
+def get_app_setting(setting_key, default_val=""):
+    """Get setting value from Supabase app_settings table."""
+    if supabase_client:
+        try:
+            res = supabase_client.table("app_settings").select("value").eq("key", setting_key).execute()
+            if res.data:
+                return res.data[0]["value"]
+        except Exception:
+            pass
+    return default_val
+
+
 def load_rules():
     """Load auto-reply rules from Supabase (or fallback to local JSON)."""
     if supabase_client:
@@ -68,9 +81,9 @@ def load_rules():
             pass
 
     return {
-        "harga": "Halo kak! Info harga & pricelist lengkap bisa DM kami ya 😊",
-        "lokasi": "Lokasinya sangat strategis di Ciracas kak, yuk survey minggu ini!",
-        "spesifikasi": "Rumah mewah 2 lantai, LT 65m2 LB 65m2 siap huni kak!"
+        "harga": "Halo kak! Info harga & pricelist lengkap bisa DM kami atau klik link WA di bio ya 😊",
+        "lokasi": "Lokasinya sangat strategis di Ciracas kak, yuk survey minggu ini! Hubungi WA di bio untuk janji temu.",
+        "spesifikasi": "Rumah mewah 2 lantai, LT 65m2 LB 65m2 siap huni kak! Promo DP 0% & Free BPHTB."
     }
 
 
@@ -101,6 +114,70 @@ def delete_rule_db(keyword):
             supabase_client.table("rules").delete().eq("keyword", keyword.lower()).execute()
         except Exception as e:
             print(f"[SUPABASE ERROR] delete_rule failed: {e}")
+
+
+def load_post_rules():
+    """Load per-post custom rules & CTA links from Supabase or fallback JSON."""
+    if supabase_client:
+        try:
+            res = supabase_client.table("post_rules").select("*").eq("is_active", True).execute()
+            if res.data:
+                return {row["post_id"]: row for row in res.data}
+        except Exception as e:
+            print(f"[SUPABASE ERROR] load_post_rules failed: {e}")
+
+    if os.path.exists(POST_RULES_FILE):
+        try:
+            with open(POST_RULES_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview=""):
+    """Save custom automation rule for a specific post."""
+    data = {
+        "post_id": str(post_id),
+        "cta_link": cta_link,
+        "custom_reply": custom_reply,
+        "send_dm": bool(send_dm),
+        "dm_message": dm_message,
+        "post_caption_preview": post_caption_preview,
+        "is_active": True
+    }
+    if supabase_client:
+        try:
+            supabase_client.table("post_rules").upsert(data, on_conflict="post_id").execute()
+        except Exception as e:
+            print(f"[SUPABASE ERROR] save_post_rule_db failed: {e}")
+
+    post_rules = load_post_rules()
+    post_rules[str(post_id)] = data
+    try:
+        with open(POST_RULES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(post_rules, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+    return data
+
+
+def delete_post_rule_db(post_id):
+    """Delete custom post rule."""
+    if supabase_client:
+        try:
+            supabase_client.table("post_rules").delete().eq("post_id", str(post_id)).execute()
+        except Exception as e:
+            print(f"[SUPABASE ERROR] delete_post_rule_db failed: {e}")
+
+    post_rules = load_post_rules()
+    if str(post_id) in post_rules:
+        del post_rules[str(post_id)]
+        try:
+            with open(POST_RULES_FILE, 'w', encoding='utf-8') as f:
+                json.dump(post_rules, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
 
 
 def load_replied_comments():
@@ -214,14 +291,43 @@ def get_account_info():
     return requests.get(url, params=params).json()
 
 
-def get_recent_posts(limit=10):
+def get_all_posts(limit=100):
+    """Fetch all posts from Instagram account with pagination."""
+    all_posts = []
     url = f"{GRAPH_URL}/{INSTAGRAM_ACCOUNT_ID}/media"
     params = {
         "fields": "id,caption,media_type,media_url,permalink,timestamp,comments_count",
-        "limit": limit,
+        "limit": min(limit, 50),
         "access_token": ACCESS_TOKEN
     }
-    return requests.get(url, params=params).json()
+    
+    req_url = url
+    req_params = params
+    
+    while req_url:
+        try:
+            res = requests.get(req_url, params=req_params, timeout=15).json()
+            if "data" in res:
+                all_posts.extend(res["data"])
+            
+            paging = res.get("paging", {})
+            next_url = paging.get("next")
+            
+            if next_url and len(all_posts) < limit:
+                req_url = next_url
+                req_params = None  # Next URL already contains query params
+            else:
+                break
+        except Exception as e:
+            print(f"[GRAPH API ERROR] get_all_posts error: {e}")
+            break
+            
+    return all_posts
+
+
+def get_recent_posts(limit=25):
+    """Get recent posts (defaults to 25 items)."""
+    return {"data": get_all_posts(limit=limit)}
 
 
 def get_post_comments(media_id):
@@ -234,12 +340,45 @@ def get_post_comments(media_id):
 
 
 def reply_to_comment(comment_id, message):
+    """Send public comment reply."""
     url = f"{GRAPH_URL}/{comment_id}/replies"
     data = {
         "message": message,
         "access_token": ACCESS_TOKEN
     }
     return requests.post(url, data=data).json()
+
+
+def send_private_dm(comment_id, message):
+    """Send Direct Message (Private Reply) to commenter."""
+    # Attempt 1: Instagram Messaging Send API
+    try:
+        url = f"{GRAPH_URL}/{INSTAGRAM_ACCOUNT_ID}/messages"
+        payload = {
+            "recipient": {"comment_id": comment_id},
+            "message": {"text": message},
+            "access_token": ACCESS_TOKEN
+        }
+        res = requests.post(url, json=payload, timeout=10).json()
+        if "message_id" in res or "recipient_id" in res:
+            return {"status": "success", "result": res}
+    except Exception:
+        pass
+
+    # Attempt 2: Comment Messages Endpoint
+    try:
+        url = f"{GRAPH_URL}/{comment_id}/messages"
+        data = {
+            "message": message,
+            "access_token": ACCESS_TOKEN
+        }
+        res = requests.post(url, data=data, timeout=10).json()
+        if "id" in res or "success" in res:
+            return {"status": "success", "result": res}
+    except Exception:
+        pass
+
+    return {"status": "failed", "note": "Private reply requires instagram_manage_messages permission"}
 
 
 def create_and_publish_image_post(image_input, caption):
@@ -281,6 +420,55 @@ def create_and_publish_image_post(image_input, caption):
 
 
 # ==========================================
+# GEMINI AI SMART ENGINE
+# ==========================================
+def generate_ai_reply(comment_text, username="", post_caption="", cta_link=""):
+    """Generate intelligent contextual reply using Google Gemini AI, considering comment, post caption, and custom link."""
+    gemini_key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY") or get_app_setting("gemini_api_key", "")
+    if not gemini_key:
+        return None
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}"
+    
+    caption_context = f"\n- Konteks Konten Postingan yang sedang dikomentari:\n  \"{post_caption}\"" if post_caption else ""
+    link_instruction = f"Sertakan link ini dalam balasan: {cta_link}" if cta_link else "Arahkan ke link WhatsApp di Bio Instagram kami jika ingin tanya detail / survey."
+
+    system_prompt = f"""Kamu adalah Customer Service AI resmi dari @sarangestate (Akun Properti & Hunian).
+Tugasmu adalah membalas komentar prospek/audiens di Instagram secara ramah, santun, natural, bersahabat, dan profesional.
+
+KNOWLEDGE BASE & KONTEKS BISNIS:{caption_context}
+- Profil Umum: Menyediakan rumah hunian modern & strategis (seperti Rumah Ciracas 2 Lantai mulai 800Jt-an, DP 0%, promo free biaya-biaya, kerjasama bank KPR syariah/konvensional, dll).
+- Sikap: Jika ditanya hal santai/humor/di luar properti (misal: "lapar ga min", "lagi ngapain min"), tanggapi dengan ramah dan santai dengan nada humoris/sopan, lalu tetap selipkan sapaan hangat atau ajakan cek info rumah/WA di bio secara natural.
+- Call to Action: {link_instruction}
+
+ATURAN MENJAWAB:
+1. Jawab dengan ringkas dan padat (maksimal 2 kalimat saja agar nyaman dibaca di kolom komentar).
+2. Gunakan sapaan ramah "Halo kak [username]!" atau "Halo kak!".
+3. Gunakan 1-2 emoji yang relevan (😊, 🏡, ✨).
+4. Jawab HANYA teks balasan Instagram saja tanpa tanda kutip.
+
+Komentar dari @{username if username else 'user'}:
+"{comment_text}"
+
+Balasan Instagram:"""
+
+    try:
+        payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
+        res = requests.post(url, json=payload, timeout=25)
+        if res.status_code == 200:
+            data = res.json()
+            candidates = data.get("candidates", [])
+            if candidates and "content" in candidates[0]:
+                parts = candidates[0]["content"].get("parts", [])
+                if parts:
+                    return parts[0].get("text", "").strip()
+    except Exception as e:
+        print(f"[GEMINI AI ERROR] Failed to generate AI reply: {e}")
+        
+    return None
+
+
+# ==========================================
 # FLASK WEB ROUTES
 # ==========================================
 @app.route('/')
@@ -293,6 +481,7 @@ def api_health():
     return jsonify({
         "status": "healthy",
         "supabase_connected": supabase_client is not None,
+        "gemini_ai_configured": bool(GEMINI_API_KEY or get_app_setting("gemini_api_key")),
         "instagram_account_id": INSTAGRAM_ACCOUNT_ID
     })
 
@@ -304,7 +493,37 @@ def api_account():
 
 @app.route('/api/posts')
 def api_posts():
-    return jsonify(get_recent_posts(limit=10))
+    limit = request.args.get('limit', 25, type=int)
+    return jsonify({"data": get_all_posts(limit=limit)})
+
+
+@app.route('/api/post-rules', methods=['GET', 'POST', 'DELETE'])
+def api_post_rules():
+    post_rules = load_post_rules()
+    if request.method == 'GET':
+        return jsonify(post_rules)
+        
+    data = request.get_json() or {}
+    post_id = str(data.get('post_id', '')).strip()
+    
+    if request.method == 'POST':
+        if not post_id:
+            return jsonify({"error": "Missing post_id"}), 400
+        saved = save_post_rule_db(
+            post_id=post_id,
+            cta_link=data.get('cta_link', ''),
+            custom_reply=data.get('custom_reply', ''),
+            send_dm=data.get('send_dm', False),
+            dm_message=data.get('dm_message', ''),
+            post_caption_preview=data.get('post_caption_preview', '')
+        )
+        return jsonify({"status": "success", "rule": saved})
+        
+    if request.method == 'DELETE':
+        if not post_id:
+            return jsonify({"error": "Missing post_id"}), 400
+        delete_post_rule_db(post_id)
+        return jsonify({"status": "success", "message": f"Deleted rule for post {post_id}"})
 
 
 @app.route('/api/rules', methods=['GET', 'POST', 'DELETE'])
@@ -341,157 +560,134 @@ def api_publish():
     return jsonify(res)
 
 
-def get_app_setting(setting_key, default_val=""):
-    """Get setting value from Supabase app_settings table."""
-    if supabase_client:
-        try:
-            res = supabase_client.table("app_settings").select("value").eq("key", setting_key).execute()
-            if res.data:
-                return res.data[0]["value"]
-        except Exception:
-            pass
-    return default_val
-
-
-def generate_ai_reply(comment_text, username="", post_caption=""):
-    """Generate intelligent contextual reply using Google Gemini AI, considering both comment and post caption."""
-    gemini_key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY") or get_app_setting("gemini_api_key", "")
-    if not gemini_key:
-        return None
-        
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}"
-    
-    caption_context = f"\n- Konteks Konten Postingan yang sedang dikomentari:\n  \"{post_caption}\"" if post_caption else ""
-
-    system_prompt = f"""Kamu adalah Customer Service AI resmi dari @sarangestate (Akun Properti & Hunian).
-Tugasmu adalah membalas komentar prospek/audiens di Instagram secara ramah, santun, natural, bersahabat, dan profesional.
-
-KNOWLEDGE BASE & KONTEKS BISNIS:{caption_context}
-- Profil Umum: Menyediakan rumah hunian modern & strategis (seperti Rumah Ciracas 2 Lantai mulai 800Jt-an, DP 0%, promo free biaya-biaya, kerjasama bank KPR syariah/konvensional, dll).
-- Sikap: Jika ditanya hal santai/humor/di luar properti (misal: "lapar ga min", "lagi ngapain min"), tanggapi dengan ramah dan santai dengan nada humoris/sopan, lalu tetap selipkan sapaan hangat atau ajakan cek info rumah/WA di bio secara natural.
-- Call to Action: Arahkan ke link WhatsApp di Bio Instagram kami jika ingin tanya detail / survey.
-
-ATURAN MENJAWAB:
-1. Jawab dengan ringkas dan padat (maksimal 2 kalimat saja agar nyaman dibaca di kolom komentar).
-2. Gunakan sapaan ramah "Halo kak [username]!" atau "Halo kak!".
-3. Gunakan 1-2 emoji yang relevan (😊, 🏡, ✨).
-4. Jangan berhalusinasi nomor telepon, selalu arahkan ke "link WA di bio kami".
-5. Jawab HANYA teks balasan Instagram saja tanpa tanda kutip.
-
-Komentar dari @{username if username else 'user'}:
-"{comment_text}"
-
-Balasan Instagram:"""
-
-    try:
-        payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
-        res = requests.post(url, json=payload, timeout=25)
-        if res.status_code == 200:
-            data = res.json()
-            candidates = data.get("candidates", [])
-            if candidates and "content" in candidates[0]:
-                parts = candidates[0]["content"].get("parts", [])
-                if parts:
-                    return parts[0].get("text", "").strip()
-    except Exception as e:
-        print(f"[GEMINI AI ERROR] Failed to generate AI reply: {e}")
-        
-    return None
-
-
 @app.route('/api/auto-reply-scan', methods=['GET', 'POST'])
 def api_auto_reply_scan():
     rules = load_rules()
+    post_rules = load_post_rules()
     replied_ids = load_replied_comments()
-    posts_data = get_recent_posts(limit=10)
+    
+    # Fetch ALL posts across the account (up to 100 posts)
+    all_posts = get_all_posts(limit=100)
     
     total_replied = 0
+    total_dms_sent = 0
     details = []
     
-    if "data" in posts_data:
-        for post in posts_data["data"]:
-            if post.get("comments_count", 0) == 0:
-                continue
-            post_caption = post.get("caption", "")
-            comments_data = get_post_comments(post["id"])
-            if "data" in comments_data:
-                for comment in comments_data["data"]:
-                    c_id = comment["id"]
-                    c_user = comment.get("username", "").lower()
-                    
-                    # 1. Skip if own account
-                    if c_user in ["sarangestate", "sarang_estate"]:
-                        continue
+    for post in all_posts:
+        # Fast filter: Skip posts without comments
+        if post.get("comments_count", 0) == 0:
+            continue
+            
+        p_id = str(post["id"])
+        post_caption = post.get("caption", "")
+        
+        # Check if this specific post has custom rule / custom link / DM settings
+        post_rule = post_rules.get(p_id, {})
+        post_cta_link = post_rule.get("cta_link", "")
+        post_custom_reply = post_rule.get("custom_reply", "")
+        post_send_dm = post_rule.get("send_dm", False)
+        post_dm_message = post_rule.get("dm_message", "")
+        
+        comments_data = get_post_comments(post["id"])
+        if "data" in comments_data:
+            for comment in comments_data["data"]:
+                c_id = comment["id"]
+                c_user = comment.get("username", "").lower()
+                
+                # 1. Skip if own account
+                if c_user in ["sarangestate", "sarang_estate"]:
+                    continue
 
-                    # 2. Skip if already in replied database
-                    if c_id in replied_ids:
-                        continue
-                    
-                    # 3. Skip if comment already has existing replies on Instagram
-                    existing_replies = comment.get("replies", {}).get("data", []) if isinstance(comment.get("replies"), dict) else []
-                    if existing_replies:
-                        record_replied_comment(
-                            comment_id=c_id,
-                            post_id=post["id"],
-                            username=comment.get("username", ""),
-                            comment_text=comment.get("text", ""),
-                            reply_text="[Existing Instagram Reply]"
-                        )
-                        replied_ids.add(c_id)
-                        continue
+                # 2. Skip if already in replied database
+                if c_id in replied_ids:
+                    continue
+                
+                # 3. Skip if comment already has existing replies on Instagram
+                existing_replies = comment.get("replies", {}).get("data", []) if isinstance(comment.get("replies"), dict) else []
+                if existing_replies:
+                    record_replied_comment(
+                        comment_id=c_id,
+                        post_id=p_id,
+                        username=comment.get("username", ""),
+                        comment_text=comment.get("text", ""),
+                        reply_text="[Existing Instagram Reply]"
+                    )
+                    replied_ids.add(c_id)
+                    continue
 
-                    # 4. Check keyword match first
-                    raw_text = comment.get("text", "").strip()
-                    lower_text = raw_text.lower()
-                    matched_rule_reply = None
-                    matched_kw = None
+                # 4. Determine final reply
+                raw_text = comment.get("text", "").strip()
+                lower_text = raw_text.lower()
+                final_reply = None
+                reply_source = "Rule"
+                
+                # Priority A: Specific Post Custom Reply Override
+                if post_custom_reply:
+                    final_reply = post_custom_reply
+                    reply_source = "Post Custom Rule"
 
+                # Priority B: Global Keyword Rule
+                if not final_reply:
                     for kw, reply_msg in rules.items():
                         if kw.lower() in lower_text:
-                            matched_rule_reply = reply_msg
-                            matched_kw = kw
+                            final_reply = reply_msg
+                            reply_source = f"Rule ({kw})"
+                            # Append custom link if post has one
+                            if post_cta_link and "http" in post_cta_link:
+                                final_reply += f" Info detail & survey: {post_cta_link}"
                             break
-                    
-                    final_reply = matched_rule_reply
-                    reply_source = f"Rule ({matched_kw})" if matched_kw else "Gemini AI"
 
-                    # 5. If no keyword rule matched, fallback to Gemini AI Chatbot!
-                    if not final_reply and len(raw_text) >= 2:
-                        ai_generated = generate_ai_reply(
-                            comment_text=raw_text,
+                # Priority C: Intelligent Gemini AI Fallback
+                if not final_reply and len(raw_text) >= 2:
+                    ai_generated = generate_ai_reply(
+                        comment_text=raw_text,
+                        username=comment.get("username", ""),
+                        post_caption=post_caption,
+                        cta_link=post_cta_link
+                    )
+                    if ai_generated:
+                        final_reply = ai_generated
+                        reply_source = "Gemini AI"
+
+                # 5. Send public reply & optional private DM
+                if final_reply:
+                    res = reply_to_comment(c_id, final_reply)
+                    if "id" in res:
+                        dm_status = "Not Requested"
+                        # Send Direct Message if configured for this post
+                        if post_send_dm and post_dm_message:
+                            dm_text = post_dm_message
+                            if post_cta_link:
+                                dm_text += f"\n\nLink detail & survey: {post_cta_link}"
+                            dm_res = send_private_dm(c_id, dm_text)
+                            dm_status = dm_res.get("status", "sent")
+                            if dm_status == "success":
+                                total_dms_sent += 1
+
+                        record_replied_comment(
+                            comment_id=c_id,
+                            post_id=p_id,
                             username=comment.get("username", ""),
-                            post_caption=post_caption
+                            comment_text=raw_text,
+                            reply_text=f"[{reply_source}] {final_reply}"
                         )
-                        if ai_generated:
-                            final_reply = ai_generated
-                            reply_source = "Gemini AI"
-
-                    # 6. Send reply if matched or generated
-                    if final_reply:
-                        res = reply_to_comment(c_id, final_reply)
-                        if "id" in res:
-                            record_replied_comment(
-                                comment_id=c_id,
-                                post_id=post["id"],
-                                username=comment.get("username", ""),
-                                comment_text=raw_text,
-                                reply_text=f"[{reply_source}] {final_reply}"
-                            )
-                            replied_ids.add(c_id)
-                            total_replied += 1
-                            details.append({
-                                "comment_id": c_id,
-                                "username": comment.get("username", ""),
-                                "source": reply_source,
-                                "reply_text": final_reply,
-                                "reply_id": res["id"]
-                            })
-
+                        replied_ids.add(c_id)
+                        total_replied += 1
+                        details.append({
+                            "comment_id": c_id,
+                            "post_id": p_id,
+                            "username": comment.get("username", ""),
+                            "source": reply_source,
+                            "reply_text": final_reply,
+                            "dm_status": dm_status,
+                            "reply_id": res["id"]
+                        })
 
     return jsonify({
         "status": "success",
-        "total_scanned_posts": len(posts_data.get("data", [])),
+        "total_scanned_posts": len(all_posts),
         "total_new_replies": total_replied,
+        "total_dms_sent": total_dms_sent,
         "details": details
     })
 
@@ -501,7 +697,9 @@ def api_ai_reply_test():
     data = request.get_json() or {}
     test_comment = data.get('comment', 'Min, ada promo bebas biaya apa aja bulan ini?')
     test_user = data.get('username', 'calon_pembeli')
-    ai_reply = generate_ai_reply(test_comment, test_user)
+    test_caption = data.get('caption', 'Promo Rumah Ciracas 2 Lantai')
+    test_link = data.get('cta_link', 'https://wa.me/628123456789')
+    ai_reply = generate_ai_reply(test_comment, test_user, test_caption, test_link)
     return jsonify({
         "status": "success" if ai_reply else "error",
         "input_comment": test_comment,
@@ -517,20 +715,21 @@ def api_cron_scan():
 
 @app.route('/api/inbox-comments')
 def api_inbox_comments():
-    posts_data = get_recent_posts(limit=5)
+    all_posts = get_all_posts(limit=25)
     all_comments = []
     replied_ids = load_replied_comments()
     
-    if "data" in posts_data:
-        for post in posts_data["data"]:
-            c_data = get_post_comments(post["id"])
-            if "data" in c_data:
-                for c in c_data["data"]:
-                    c["is_replied"] = c["id"] in replied_ids
-                    c["post_id"] = post["id"]
-                    c["post_permalink"] = post.get("permalink", "#")
-                    all_comments.append(c)
-                    
+    for post in all_posts:
+        if post.get("comments_count", 0) == 0:
+            continue
+        c_data = get_post_comments(post["id"])
+        if "data" in c_data:
+            for c in c_data["data"]:
+                c["is_replied"] = c["id"] in replied_ids
+                c["post_id"] = post["id"]
+                c["post_permalink"] = post.get("permalink", "#")
+                all_comments.append(c)
+                
     return jsonify({"data": all_comments})
 
 
@@ -540,5 +739,6 @@ if __name__ == '__main__':
     print(f"📦 Workspace: D:\\Vibe Coding Application\\socmed_automation")
     print(f"🌐 Local Dashboard: http://localhost:5000")
     print(f"🗄️ Database: {'Supabase Active' if supabase_client else 'Local JSON Fallback'}")
+    print(f"🤖 Gemini AI: {'Configured' if bool(GEMINI_API_KEY or get_app_setting('gemini_api_key')) else 'Not Set'}")
     print("=" * 60)
     app.run(host='0.0.0.0', port=5000, debug=True)
