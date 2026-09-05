@@ -1,6 +1,14 @@
 // ==========================================
 // SOCMED AUTOMATION (SIMPLIFYER ENGINE) JS
+// 100% Lucide Icons (lucide.dev) & Clean URLs
 // ==========================================
+
+// Helper to trigger Lucide Icons render across dynamic elements
+function refreshIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
 
 // Switch Tab Navigation
 function switchTab(tabId) {
@@ -24,10 +32,13 @@ function switchTab(tabId) {
   if (tabId === 'postrules') loadPostRulesView();
   if (tabId === 'autoreply') loadRulesData();
   if (tabId === 'inbox') loadInboxComments();
+
+  setTimeout(refreshIcons, 50);
 }
 
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
+  refreshIcons();
   loadDashboardData();
   setupLivePreview();
 });
@@ -73,11 +84,11 @@ async function loadPostsFeed() {
             ${post.caption ? post.caption : 'No Caption'}
           </div>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-color);">
-            <span style="font-size: 12px; color: #93C5FD; font-weight: 600;">
-              <i class="ri-chat-1-line"></i> ${post.comments_count || 0} Komentar
+            <span style="font-size: 12px; color: #93C5FD; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> ${post.comments_count || 0} Komentar
             </span>
-            <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">
-              Lihat di IG <i class="ri-external-link-line"></i>
+            <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              Lihat di IG <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
             </a>
           </div>
         </div>
@@ -87,6 +98,8 @@ async function loadPostsFeed() {
     }
   } catch (err) {
     container.innerHTML = '<div style="color: var(--danger); font-size: 14px;">Gagal memuat postingan.</div>';
+  } finally {
+    refreshIcons();
   }
 }
 
@@ -132,11 +145,11 @@ async function loadPostRulesView() {
               ${captionText}
             </div>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
-              <span class="badge ${post.comments_count > 0 ? 'badge-blue' : 'badge-purple'}">
-                <i class="ri-chat-1-line"></i> ${post.comments_count || 0} Komentar
+              <span class="badge ${post.comments_count > 0 ? 'badge-blue' : 'badge-purple'}" style="display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="message-square" style="width: 14px; height: 14px;"></i> ${post.comments_count || 0} Komentar
               </span>
-              <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">
-                Buka Post <i class="ri-external-link-line"></i>
+              <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                Buka Post <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
               </a>
             </div>
           </div>
@@ -144,19 +157,19 @@ async function loadPostRulesView() {
           <!-- Configuration Form -->
           <div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <!-- Custom WhatsApp / Landing Page Link -->
+              <!-- Custom Destination URL Link -->
               <div class="form-group" style="margin-bottom: 12px;">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
-                  <i class="ri-whatsapp-line" style="color: #34D399;"></i> Custom Link (WhatsApp / URL Khusus Unit Ini)
+                  <i data-lucide="link" style="width: 15px; height: 15px; color: var(--accent-blue);"></i> Custom Link (URL Tujuan / Landing Page / Tautan Khusus)
                 </label>
-                <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://wa.me/62812xxx?text=Halo%20saya%20tertarik%20listing%20ini">
-                <span style="font-size: 11px; color: var(--text-dim); margin-top: 3px; display: block;">Link ini otomatis disisipkan AI / Bot saat membalas komentar postingan ini.</span>
+                <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://sarangestate.id/unit-promo atau https://linktr.ee/sarangestate">
+                <span style="font-size: 11px; color: var(--text-dim); margin-top: 3px; display: block;">Tautan tujuan ini akan dikirimkan langsung ke DM atau disiapkan bot secara otomatis.</span>
               </div>
 
               <!-- Custom Public Reply Template Override -->
               <div class="form-group" style="margin-bottom: 12px;">
-                <label class="form-label">
-                  <i class="ri-chat-voice-line" style="color: #60A5FA;"></i> Custom Comment Reply (Opsional)
+                <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="message-circle" style="width: 15px; height: 15px; color: #818CF8;"></i> Custom Comment Reply (Opsional)
                 </label>
                 <input type="text" id="custom-reply-${pId}" class="form-input" value="${customReply}" placeholder="Kosongkan jika ingin memakai AI Gemini otomatis">
                 <span style="font-size: 11px; color: var(--text-dim); margin-top: 3px; display: block;">Jika diisi, bot akan memakai teks tetap ini. Jika kosong, AI yang menjawab.</span>
@@ -168,19 +181,19 @@ async function loadPostRulesView() {
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                 <label style="font-size: 13px; font-weight: 600; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
                   <input type="checkbox" id="send-dm-${pId}" ${sendDm ? 'checked' : ''} style="accent-color: #F59E0B; cursor: pointer;">
-                  Kirim DM Otomatis ke Inbox Komentator (Private Reply)
+                  <i data-lucide="mail" style="width: 15px; height: 15px; color: #FBBF24;"></i> Kirim DM Otomatis ke Inbox Komentator (Private Reply)
                 </label>
                 <span style="font-size: 11px; color: var(--text-dim);">Instagram Direct Message</span>
               </div>
 
               <div class="form-group" style="margin-bottom: 0;">
-                <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Terima kasih sudah komentar. Ini pricelist & brosur lengkapnya ya kak...">
+                <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Terima kasih sudah komentar. Ini info detail & brosur lengkapnya ya kak...">
               </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-              <button class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}">
-                <i class="ri-save-line"></i> Simpan Pengaturan Post Ini
+              <button class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}" style="display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="save" style="width: 15px; height: 15px;"></i> Simpan Pengaturan Post Ini
               </button>
             </div>
           </div>
@@ -190,6 +203,8 @@ async function loadPostRulesView() {
 
   } catch (err) {
     container.innerHTML = '<div style="color: var(--danger); padding: 20px;">Gagal memuat aturan post: ' + err.message + '</div>';
+  } finally {
+    refreshIcons();
   }
 }
 
@@ -203,7 +218,8 @@ async function savePostRule(postId) {
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Menyimpan...';
+    btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 15px; height: 15px;"></i> Menyimpan...';
+    refreshIcons();
   }
 
   try {
@@ -230,7 +246,8 @@ async function savePostRule(postId) {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="ri-save-line"></i> Simpan Pengaturan Post Ini';
+      btn.innerHTML = '<i data-lucide="save" style="width: 15px; height: 15px;"></i> Simpan Pengaturan Post Ini';
+      refreshIcons();
     }
   }
 }
@@ -253,13 +270,15 @@ async function loadRulesData() {
           </div>
           <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">${reply}</p>
         </div>
-        <button class="btn-secondary" onclick="deleteRule('${keyword}')" style="color: var(--danger); padding: 6px 10px; border-color: rgba(239, 68, 68, 0.3);">
-          <i class="ri-delete-bin-line"></i>
+        <button class="btn-secondary" onclick="deleteRule('${keyword}')" style="color: var(--danger); padding: 6px 10px; border-color: rgba(239, 68, 68, 0.3); display: inline-flex; align-items: center;">
+          <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
         </button>
       </div>
     `).join('');
   } catch (err) {
     container.innerHTML = '<div style="color: var(--danger);">Gagal memuat aturan.</div>';
+  } finally {
+    refreshIcons();
   }
 }
 
@@ -326,7 +345,8 @@ async function testAIReply() {
   }
 
   output.style.display = 'block';
-  output.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Gemini 3.6 Flash sedang berpikir...';
+  output.innerHTML = '<div style="display: flex; align-items: center; gap: 8px;"><i data-lucide="loader-2" class="lucide-spin" style="width: 15px; height: 15px;"></i> Gemini 3.6 Flash sedang berpikir...</div>';
+  refreshIcons();
 
   try {
     const res = await fetch('/api/ai-reply-test', {
@@ -338,7 +358,9 @@ async function testAIReply() {
     const data = await res.json();
     if (data.status === 'success') {
       output.innerHTML = `
-        <div style="font-size: 11px; color: #FBBF24; font-weight: 700; margin-bottom: 4px;">RESPONS GEMINI AI:</div>
+        <div style="font-size: 11px; color: #FBBF24; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i> RESPONS GEMINI AI:
+        </div>
         <div style="color: #F8FAFC;">"${data.ai_reply}"</div>
       `;
     } else {
@@ -346,6 +368,8 @@ async function testAIReply() {
     }
   } catch (err) {
     output.innerHTML = '<span style="color: var(--danger);">Gagal menghubungi endpoint AI.</span>';
+  } finally {
+    refreshIcons();
   }
 }
 
@@ -361,7 +385,8 @@ async function publishPost() {
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Sedang Memproses & Mengunggah...';
+  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 16px; height: 16px;"></i> Sedang Memproses & Mengunggah...';
+  refreshIcons();
 
   try {
     const res = await fetch('/api/publish', {
@@ -384,7 +409,8 @@ async function publishPost() {
     showToast('Terjadi kesalahan saat mempublish.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="ri-send-plane-fill"></i> Publish ke Feed Instagram Sekarang';
+    btn.innerHTML = '<i data-lucide="send" style="width: 16px; height: 16px;"></i> Publish ke Feed Instagram Sekarang';
+    refreshIcons();
   }
 }
 
@@ -392,7 +418,8 @@ async function publishPost() {
 async function runAutoReplyScan() {
   const btn = document.getElementById('btn-scan');
   btn.disabled = true;
-  btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Memindai Seluruh Postingan...';
+  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 16px; height: 16px;"></i> Memindai Seluruh Postingan...';
+  refreshIcons();
 
   try {
     const res = await fetch('/api/auto-reply-scan', { method: 'POST' });
@@ -409,7 +436,8 @@ async function runAutoReplyScan() {
     showToast('Terjadi kesalahan saat scan.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="ri-scan-2-line"></i> Scan All Posts Now';
+    btn.innerHTML = '<i data-lucide="scan-line" style="width: 16px; height: 16px;"></i> Scan All Posts Now';
+    refreshIcons();
   }
 }
 
@@ -432,16 +460,18 @@ async function loadInboxComments() {
               <span style="font-weight: 700; color: #93C5FD; font-size: 14px;">@${comment.username || 'user'}</span>
               <span style="font-size: 11px; color: var(--text-dim);">${new Date(comment.timestamp).toLocaleString('id-ID')}</span>
             </div>
-            <span class="badge ${comment.is_replied ? 'badge-success' : 'badge-purple'}">
-              ${comment.is_replied ? '<i class="ri-check-line"></i> Sudah Dibalas' : '<i class="ri-time-line"></i> Belum Dibalas'}
+            <span class="badge ${comment.is_replied ? 'badge-success' : 'badge-purple'}" style="display: inline-flex; align-items: center; gap: 4px;">
+              ${comment.is_replied 
+                ? '<i data-lucide="check-circle-2" style="width: 13px; height: 13px;"></i> Sudah Dibalas' 
+                : '<i data-lucide="clock" style="width: 13px; height: 13px;"></i> Belum Dibalas'}
             </span>
           </div>
 
           <p style="font-size: 13px; color: #E2E8F0; margin-bottom: 12px; line-height: 1.5;">${comment.text}</p>
 
           <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 10px;">
-            <a href="${comment.post_permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">
-              Buka Postingan Terkait <i class="ri-external-link-line"></i>
+            <a href="${comment.post_permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              Buka Postingan Terkait <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
             </a>
           </div>
         </div>
@@ -451,6 +481,8 @@ async function loadInboxComments() {
     }
   } catch (err) {
     container.innerHTML = '<div style="color: var(--danger); font-size: 14px;">Gagal memuat inbox komentar.</div>';
+  } finally {
+    refreshIcons();
   }
 }
 
@@ -467,9 +499,11 @@ function setupLivePreview() {
       if (val.startsWith('http://') || val.startsWith('https://')) {
         imgBox.innerHTML = `<img src="${val}" style="width: 100%; height: 100%; object-fit: cover;">`;
       } else if (val) {
-        imgBox.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="ri-file-image-line" style="font-size: 32px; color: #818CF8;"></i><div style="font-size: 11px; margin-top: 6px; color: #94A3B8;">File Lokal: ${val.split('\\').pop()}</div></div>`;
+        imgBox.innerHTML = `<div style="text-align: center; padding: 20px;"><i data-lucide="file-image" style="width: 32px; height: 32px; color: #818CF8;"></i><div style="font-size: 11px; margin-top: 6px; color: #94A3B8;">File Lokal: ${val.split('\\').pop()}</div></div>`;
+        refreshIcons();
       } else {
-        imgBox.innerHTML = '<i class="ri-image-line" style="font-size: 32px;"></i>';
+        imgBox.innerHTML = '<i data-lucide="image" style="width: 32px; height: 32px; color: var(--text-dim);"></i>';
+        refreshIcons();
       }
     });
   }
@@ -508,17 +542,19 @@ function showToast(message, type = 'info') {
 
   if (type === 'success') {
     toast.style.background = '#10B981';
-    toast.innerHTML = `<i class="ri-checkbox-circle-fill"></i> ${message}`;
+    toast.innerHTML = `<i data-lucide="check-circle" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
   } else if (type === 'error') {
     toast.style.background = '#EF4444';
-    toast.innerHTML = `<i class="ri-error-warning-fill"></i> ${message}`;
+    toast.innerHTML = `<i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
   } else if (type === 'warning') {
     toast.style.background = '#F59E0B';
-    toast.innerHTML = `<i class="ri-alert-fill"></i> ${message}`;
+    toast.innerHTML = `<i data-lucide="alert-circle" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
   } else {
     toast.style.background = '#4F46E5';
-    toast.innerHTML = `<i class="ri-information-fill"></i> ${message}`;
+    toast.innerHTML = `<i data-lucide="info" style="width: 16px; height: 16px;"></i> <span>${message}</span>`;
   }
+
+  refreshIcons();
 
   toast.style.opacity = '1';
   toast.style.transform = 'translateY(0)';

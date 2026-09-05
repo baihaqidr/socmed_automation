@@ -488,3 +488,20 @@ h1, h2, h3, h4, .brand-title {
     padding: 20px;
   }
 }
+
+/* Lucide Icons Helper */
+svg.lucide, [data-lucide] {
+  display: inline-block;
+  vertical-align: middle;
+  stroke-width: 2px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.lucide-spin {
+  animation: spin 1s linear infinite;
+}
+

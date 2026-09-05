@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Socmed Automation - Simplifyer Hub</title>
   <link rel="stylesheet" href="/static/css/simplifyer.css">
-  <!-- Remix Icons for crisp UI icons -->
-  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <!-- Lucide Icons Official CDN (lucide.dev) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
@@ -16,7 +16,7 @@
     <aside class="sidebar">
       <div class="brand-header">
         <div class="brand-icon">
-          <i class="ri-share-forward-box-line"></i>
+          <i data-lucide="share-2"></i>
         </div>
         <div>
           <div class="brand-title">Socmed Automation</div>
@@ -27,37 +27,37 @@
       <ul class="nav-menu">
         <li class="nav-item">
           <button class="active" onclick="switchTab('dashboard')">
-            <i class="ri-dashboard-3-line"></i>
+            <i data-lucide="layout-dashboard"></i>
             <span>Dashboard</span>
           </button>
         </li>
         <li class="nav-item">
           <button onclick="switchTab('postrules')">
-            <i class="ri-links-line"></i>
+            <i data-lucide="link"></i>
             <span>Post Links & DMs</span>
           </button>
         </li>
         <li class="nav-item">
           <button onclick="switchTab('autoreply')">
-            <i class="ri-robot-line"></i>
+            <i data-lucide="bot"></i>
             <span>AI & Keyword Rules</span>
           </button>
         </li>
         <li class="nav-item">
           <button onclick="switchTab('publish')">
-            <i class="ri-add-box-line"></i>
+            <i data-lucide="plus-square"></i>
             <span>Content Publisher</span>
           </button>
         </li>
         <li class="nav-item">
           <button onclick="switchTab('inbox')">
-            <i class="ri-message-3-line"></i>
+            <i data-lucide="inbox"></i>
             <span>Comments Inbox</span>
           </button>
         </li>
         <li class="nav-item">
           <button onclick="switchTab('settings')">
-            <i class="ri-key-2-line"></i>
+            <i data-lucide="settings"></i>
             <span>Token & Settings</span>
           </button>
         </li>
@@ -65,7 +65,7 @@
 
       <div class="sidebar-footer">
         <div style="font-size: 12px; color: var(--text-dim); display: flex; align-items: center; justify-content: space-between;">
-          <span>Version 2.5 (AI & DMs)</span>
+          <span>Version 2.6 (Lucide UI)</span>
           <span class="badge badge-success">24/7 Cloud</span>
         </div>
       </div>
@@ -79,14 +79,15 @@
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="font-size: 14px; font-weight: 600; color: var(--text-muted);">Connected Account:</span>
           <span class="badge badge-blue" id="header-username">@sarangestate</span>
-          <span class="badge badge-success" style="display: flex; align-items: center; gap: 4px;">
+          <span class="badge badge-success" style="display: flex; align-items: center; gap: 6px;">
             <span style="width: 6px; height: 6px; border-radius: 50%; background: #10B981; display: inline-block;"></span> 24h Cron Active
           </span>
         </div>
 
         <div style="display: flex; gap: 12px;">
           <button class="btn-primary" onclick="runAutoReplyScan()" id="btn-scan">
-            <i class="ri-scan-2-line"></i> Scan All Posts Now
+            <i data-lucide="scan-line"></i>
+            <span>Scan All Posts Now</span>
           </button>
         </div>
       </header>
@@ -106,7 +107,7 @@
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-icon purple">
-                <i class="ri-instagram-line"></i>
+                <i data-lucide="at-sign"></i>
               </div>
               <div>
                 <div class="stat-label">Instagram Target</div>
@@ -116,7 +117,7 @@
 
             <div class="stat-card">
               <div class="stat-icon blue">
-                <i class="ri-gallery-line"></i>
+                <i data-lucide="image"></i>
               </div>
               <div>
                 <div class="stat-label">Total Posts Terpantau</div>
@@ -126,7 +127,7 @@
 
             <div class="stat-card">
               <div class="stat-icon emerald">
-                <i class="ri-database-2-line"></i>
+                <i data-lucide="database"></i>
               </div>
               <div>
                 <div class="stat-label">Supabase Database</div>
@@ -136,7 +137,7 @@
 
             <div class="stat-card">
               <div class="stat-icon amber">
-                <i class="ri-robot-2-line"></i>
+                <i data-lucide="sparkles"></i>
               </div>
               <div>
                 <div class="stat-label">AI Auto-Responder</div>
@@ -164,8 +165,8 @@
         <!-- TAB 2: POST CUSTOM RULES & DM LINKS -->
         <div id="tab-postrules" class="tab-view">
           <div class="section-header">
-            <h1 class="section-title">Post Custom Links & Direct Messages (DM)</h1>
-            <p class="section-desc">Atur link khusus (WhatsApp per unit/landing page), template balasan custom, dan pengiriman DM otomatis untuk masing-masing postingan.</p>
+            <h1 class="section-title">Post Links & Direct Messages (DM)</h1>
+            <p class="section-desc">Atur link tujuan (URL), template balasan custom, dan pengiriman pesan DM otomatis untuk masing-masing postingan.</p>
           </div>
 
           <div id="post-rules-cards-container" style="display: flex; flex-direction: column; gap: 20px;">
@@ -194,23 +195,25 @@
 
               <div class="form-group">
                 <label class="form-label">Template Pesan Balasan</label>
-                <textarea id="new-reply" class="form-textarea" rows="4" placeholder="Halo kak! Untuk info cicilan mulai 4jt-an per bulan, hubungi link WA di bio kami ya 😊"></textarea>
+                <textarea id="new-reply" class="form-textarea" rows="4" placeholder="Halo kak! Untuk info detail cicilan & brosur lengkap, sudah kami kirimkan ke DM kamu ya 😊"></textarea>
               </div>
 
               <button class="btn-primary" onclick="addRule()" style="width: 100%; justify-content: center;">
-                <i class="ri-add-line"></i> Simpan ke Supabase Database
+                <i data-lucide="plus"></i>
+                <span>Simpan ke Supabase Database</span>
               </button>
 
               <!-- AI Test Box -->
               <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-color);">
                 <h4 style="font-size: 14px; font-weight: 700; color: #FBBF24; display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">
-                  <i class="ri-robot-2-line"></i> Uji Coba Chatbot Gemini AI (Fallback)
+                  <i data-lucide="sparkles"></i> Uji Coba Chatbot Gemini AI (Fallback)
                 </h4>
                 <div class="form-group">
                   <input type="text" id="ai-test-input" class="form-input" placeholder="Ketik pertanyaan bebas (contoh: survey hari sabtu bisa?)">
                 </div>
                 <button class="btn-secondary" onclick="testAIReply()" style="width: 100%; justify-content: center;">
-                  <i class="ri-sparkling-fill"></i> Generate Test AI Reply
+                  <i data-lucide="sparkles"></i>
+                  <span>Generate Test AI Reply</span>
                 </button>
                 <div id="ai-test-output" style="margin-top: 12px; display: none; padding: 12px; background: rgba(17, 26, 54, 0.8); border: 1px solid #4F46E5; border-radius: var(--radius-md); font-size: 13px; line-height: 1.5; color: #E2E8F0;">
                 </div>
@@ -249,11 +252,12 @@
 
               <div class="form-group">
                 <label class="form-label">Caption Postingan</label>
-                <textarea id="publish-caption-input" class="form-textarea" rows="7" placeholder="Tulis caption menarik untuk listing properti Anda..."></textarea>
+                <textarea id="publish-caption-input" class="form-textarea" rows="7" placeholder="Tulis caption listing properti Anda..."></textarea>
               </div>
 
               <button class="btn-primary" onclick="publishPost()" id="btn-publish" style="width: 100%; justify-content: center;">
-                <i class="ri-send-plane-fill"></i> Publish ke Feed Instagram Sekarang
+                <i data-lucide="send"></i>
+                <span>Publish ke Feed Instagram Sekarang</span>
               </button>
             </div>
 
@@ -265,7 +269,7 @@
                   <span style="font-size: 12px; font-weight: 700;">sarangestate</span>
                 </div>
                 <div id="preview-image-box" style="height: 220px; background: #152042; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 13px;">
-                  <i class="ri-image-line" style="font-size: 32px;"></i>
+                  <i data-lucide="image" style="width: 36px; height: 36px;"></i>
                 </div>
                 <div id="preview-caption-box" style="padding: 12px; font-size: 12px; color: var(--text-muted); max-height: 100px; overflow-y: auto;">
                   Preview caption akan tampil di sini...
@@ -286,7 +290,8 @@
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
               <h3 style="font-size: 16px; font-weight: 700;">Daftar Komentar Masuk</h3>
               <button class="btn-secondary" onclick="loadInboxComments()">
-                <i class="ri-refresh-line"></i> Muat Ulang Komentar
+                <i data-lucide="refresh-cw"></i>
+                <span>Muat Ulang Komentar</span>
               </button>
             </div>
 

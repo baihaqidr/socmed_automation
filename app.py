@@ -81,9 +81,9 @@ def load_rules():
             pass
 
     return {
-        "harga": "Halo kak! Info harga & pricelist lengkap bisa DM kami atau klik link WA di bio ya 😊",
-        "lokasi": "Lokasinya sangat strategis di Ciracas kak, yuk survey minggu ini! Hubungi WA di bio untuk janji temu.",
-        "spesifikasi": "Rumah mewah 2 lantai, LT 65m2 LB 65m2 siap huni kak! Promo DP 0% & Free BPHTB."
+        "harga": "Halo kak! Info harga & pricelist lengkap sudah kami kirim ke DM ya atau bisa cek link di bio 😊",
+        "lokasi": "Lokasinya sangat strategis di Ciracas kak, detail lengkapnya sudah kami kirim ke DM ya! Yuk survey minggu ini!",
+        "spesifikasi": "Rumah mewah 2 lantai, LT 65m2 LB 65m2 siap huni kak! Info lengkapnya sudah kami kirimkan ke DM ya!"
     }
 
 
@@ -657,9 +657,9 @@ def api_auto_reply_scan():
                         # Send Clickable Link directly via DM (Private Reply)
                         dm_content = post_dm_message if (post_send_dm and post_dm_message) else ""
                         if not dm_content and post_cta_link:
-                            dm_content = f"Halo kak @{comment.get('username', '')}! Terima kasih sudah tertarik dengan properti ini. 😊\n\nUntuk info detail, brosur, & jadwal survey, silakan klik link WhatsApp kami di sini ya:\n{post_cta_link}"
+                            dm_content = f"Halo kak @{comment.get('username', '')}! Terima kasih sudah tertarik dengan listing ini. 😊\n\nUntuk info detail, brosur, & panduan lengkap, silakan buka link berikut:\n{post_cta_link}"
                         elif dm_content and post_cta_link and post_cta_link not in dm_content:
-                            dm_content += f"\n\nLink WhatsApp & Survey: {post_cta_link}"
+                            dm_content += f"\n\nLink Akses: {post_cta_link}"
 
                         if dm_content:
                             dm_res = send_private_dm(c_id, dm_content)
@@ -701,7 +701,7 @@ def api_ai_reply_test():
     test_comment = data.get('comment', 'Min, ada promo bebas biaya apa aja bulan ini?')
     test_user = data.get('username', 'calon_pembeli')
     test_caption = data.get('caption', 'Promo Rumah Ciracas 2 Lantai')
-    test_link = data.get('cta_link', 'https://wa.me/628123456789')
+    test_link = data.get('cta_link', 'https://sarangestate.id/link/promo-spesial')
     ai_reply = generate_ai_reply(test_comment, test_user, test_caption, test_link)
     return jsonify({
         "status": "success" if ai_reply else "error",
