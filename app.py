@@ -465,28 +465,34 @@ def create_and_publish_image_post(image_input, caption):
 # ==========================================
 # GEMINI AI SMART ENGINE
 # ==========================================
-def generate_ai_reply(comment_text, username="", post_caption="", cta_link=""):
+def generate_ai_reply(comment_text, username="", post_caption="", cta_link="", send_dm=False):
     """Generate intelligent contextual reply using Google Gemini AI, considering comment, post caption, and custom link."""
     gemini_key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY") or get_app_setting("gemini_api_key", "")
     if not gemini_key:
         return None
         
     caption_context = f"\n- Konteks Konten Postingan yang sedang dikomentari:\n  \"{post_caption}\"" if post_caption else ""
-    cta_direction = f"Beri tahu calon pembeli bahwa info detail & tautan lengkapnya sudah dikirimkan langsung ke DM mereka (atau bisa cek link di bio kami)." if cta_link else "Beri tahu pengguna bahwa info lengkap sudah dikirim ke DM mereka atau bisa cek link di bio kami."
+    
+    if send_dm or cta_link:
+        cta_direction = "Beri tahu pengguna bahwa info detail & tautan akses sudah dikirimkan langsung ke DM mereka (atau bisa cek link di bio)."
+        dm_instruction = "2. Informasikan secara ramah bahwa detail lengkapnya sudah dikirimkan ke DM / Inbox mereka."
+    else:
+        cta_direction = "Jawab pertanyaan audiens secara langsung, jelas, dan ramah sesuai konten postingan. Boleh sarankan untuk cek link di bio jika ingin melihat katalog/info lengkap."
+        dm_instruction = "2. Jawab informasinya secara langsung di komentar. JANGAN mengklaim sudah mengirim DM jika pengguna tidak meminta link khusus."
 
     system_prompt = f"""Kamu adalah Customer Service AI resmi dari akun Instagram bisnis.
 Tugasmu adalah membalas komentar prospek/audiens di Instagram secara ramah, santun, natural, bersahabat, dan profesional.
 
 KNOWLEDGE BASE & KONTEKS POSTINGAN:{caption_context}
 - Sikap: Jawab pertanyaan dengan ramah, antusias, dan informatif sesuai konteks postingan di atas. Jika ditanya hal santai/humor, tanggapi dengan nada ceria/sopan.
-- Call to Action: {cta_direction}
+- Arahan Call to Action: {cta_direction}
 
 ATURAN MENJAWAB DI KOMENTAR INSTAGRAM (PENTING):
 1. JANGAN PERNAH menaruh link URL mentah (seperti https://...) di dalam balasan komentar, karena link di kolom komentar Instagram TIDAK BISA DIKLIK oleh pengguna di aplikasi mobile.
-2. Selalu arahkan pengguna untuk "Cek DM / Inbox ya kak" atau "Cek link di bio kami".
+{dm_instruction}
 3. Jawab dengan ringkas dan padat (maksimal 2 kalimat saja agar nyaman dibaca di kolom komentar).
 4. Gunakan sapaan ramah "Halo kak @{username if username else 'user'}!" atau "Halo kak!".
-5. Gunakan 1-2 emoji yang relevan (😊, 📩, ✨).
+5. Gunakan 1-2 emoji yang relevan (😊, ✨, 👍).
 6. Jawab HANYA teks balasan Instagram saja tanpa tanda kutip.
 
 Komentar dari @{username if username else 'user'}:
@@ -768,7 +774,8 @@ def api_auto_reply_scan():
                             comment_text=raw_text,
                             username=comment.get("username", ""),
                             post_caption=post_caption,
-                            cta_link=post_cta_link
+                            cta_link=post_cta_link,
+                            send_dm=post_send_dm
                         )
                         if ai_generated:
                             final_reply = ai_generated
