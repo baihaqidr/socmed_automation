@@ -6,7 +6,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-:root {
+:root, [data-theme="dark"] {
   /* Supabase Emerald Brand Tokens */
   --primary: #3ECF8E;
   --primary-deep: #24B47E;
@@ -63,6 +63,47 @@
 
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --shadow-dropdown: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Supabase Studio Light / White Mode Design System */
+[data-theme="light"] {
+  /* Supabase Emerald Brand Tokens for Light Mode */
+  --primary: #10B981;
+  --primary-deep: #059669;
+  --primary-soft: #34D399;
+  --on-primary: #FFFFFF;
+  
+  /* Ink Palette for Light Mode */
+  --ink: #0F172A;
+  --ink-secondary: #334155;
+  --ink-mute: #64748B;
+  --ink-mute-2: #94A3B8;
+  --ink-faint: #CBD5E1;
+  --on-dark: #1E293B;
+  --on-dark-bright: #0F172A;
+
+  /* Surfaces & Canvas (Supabase Studio Clean White) */
+  --canvas-night: #F8FAFC;
+  --canvas-night-soft: #FFFFFF;
+  --card-bg: #FFFFFF;
+  --card-surface: #F1F5F9;
+  --card-hover: #F8FAFC;
+
+  /* Hairlines & Borders */
+  --border-color: #E2E8F0;
+  --border-subtle: #F1F5F9;
+  --border-focus: #10B981;
+
+  /* Accents adjusted for crisp light visibility */
+  --accent-blue: #0284C7;
+  --accent-purple: #6366F1;
+  --accent-amber: #D97706;
+  --accent-emerald: #059669;
+  --danger: #DC2626;
+
+  /* Crisp Light Mode Shadows */
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-dropdown: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -638,6 +679,7 @@ body {
   margin-bottom: 16px;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -714,3 +756,44 @@ svg.lucide, [data-lucide] {
     display: none;
   }
 }
+
+/* Theme Toggle Button Component */
+.theme-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-mute);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.theme-toggle-btn:hover {
+  color: var(--on-dark-bright);
+  background-color: var(--card-surface);
+  border-color: var(--border-color);
+}
+
+[data-theme="light"] .supa-branch-pill {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .supa-search-bar kbd {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ink-secondary);
+}
+
+[data-theme="light"] .modal-overlay {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+[data-theme="light"] .user-top-badge {
+  background: var(--card-surface) !important;
+  border-color: var(--border-color) !important;
+  color: var(--primary) !important;
+}
+

@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS rules (
 -- Insert initial default rules
 INSERT INTO rules (keyword, reply_message)
 VALUES 
-    ('harga', 'Halo kak! Info harga & pricelist lengkap bisa DM kami atau klik link WA di bio ya 😊'),
-    ('lokasi', 'Lokasinya sangat strategis di Ciracas kak, yuk survey minggu ini! Hubungi WA di bio untuk janji temu.'),
-    ('spesifikasi', 'Rumah mewah 2 lantai, LT 65m2 LB 65m2 siap huni kak! Promo DP 0% & Free BPHTB.')
+    ('harga', 'Halo kak! Detail daftar harga & pricelist lengkap sudah kami kirim via DM ya, atau silakan cek link di bio 😊'),
+    ('info', 'Halo kak! Terima kasih sudah bertanya. Informasi detail selengkapnya sudah kami kirimkan ke DM kamu ya!'),
+    ('promo', 'Halo kak! Promo spesial terbatas siap digunakan. Detail dan syaratnya sudah kami kirimkan via DM ya! 🎉')
 ON CONFLICT (keyword) DO NOTHING;
 
 -- 2. Table: replied_comments (Tracking replied comment IDs)

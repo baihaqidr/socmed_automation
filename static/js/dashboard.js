@@ -40,8 +40,43 @@ function switchTab(tabId) {
   setTimeout(refreshIcons, 50);
 }
 
+// Theme Switcher Logic (Supabase Light / Dark Mode)
+function initTheme() {
+  const savedTheme = localStorage.getItem('supabase_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.body.setAttribute('data-theme', savedTheme);
+  updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  document.body.setAttribute('data-theme', newTheme);
+  localStorage.setItem('supabase_theme', newTheme);
+  updateThemeIcon(newTheme);
+  refreshIcons();
+}
+
+function updateThemeIcon(theme) {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  const sunIcon = btn.querySelector('.sun-icon');
+  const moonIcon = btn.querySelector('.moon-icon');
+  if (sunIcon && moonIcon) {
+    if (theme === 'light') {
+      sunIcon.style.display = 'none';
+      moonIcon.style.display = 'inline-block';
+    } else {
+      sunIcon.style.display = 'inline-block';
+      moonIcon.style.display = 'none';
+    }
+  }
+}
+
 // Initial Load
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   refreshIcons();
   loadUserProfiles();
   loadInstagramAccounts();
@@ -449,6 +484,21 @@ async function loadRulesData() {
     container.innerHTML = '<div style="color: var(--danger);">Gagal memuat aturan.</div>';
   } finally {
     refreshIcons();
+  }
+}
+
+// Reset Rules to General Defaults
+async function resetGeneralRules() {
+  if (!confirm("Apakah Anda yakin ingin mereset aturan di Supabase ke Aturan General Universal?")) return;
+  try {
+    const res = await fetch('/api/reset-rules', { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast("Aturan di Supabase berhasil direset ke Aturan General Universal!", "success");
+      loadRulesData();
+    }
+  } catch (err) {
+    showToast("Gagal mereset aturan.", "error");
   }
 }
 

@@ -102,28 +102,62 @@ def get_active_user_email():
     return active_email or "baihaqidr@gmail.com"
 
 
+def reset_rules_to_default():
+    """Reset rules in Supabase database & local cache to general brand rules."""
+    default_rules = {
+        "harga": "Halo kak! Detail daftar harga & pricelist lengkap sudah kami kirim via DM ya, atau silakan cek link di bio 😊",
+        "info": "Halo kak! Terima kasih sudah bertanya. Informasi detail selengkapnya sudah kami kirimkan ke DM kamu ya!",
+        "promo": "Halo kak! Promo spesial terbatas siap digunakan. Detail dan syaratnya sudah kami kirimkan via DM ya! 🎉"
+    }
+    if supabase_client:
+        try:
+            # Clean up old property-specific rules
+            supabase_client.table("rules").delete().in_("keyword", ["lokasi", "spesifikasi"]).execute()
+            for kw, reply in default_rules.items():
+                supabase_client.table("rules").upsert({
+                    "keyword": kw.lower(),
+                    "reply_message": reply,
+                    "is_active": True
+                }, on_conflict="keyword").execute()
+        except Exception as e:
+            print(f"[SUPABASE ERROR] reset_rules_to_default failed: {e}")
+
+    try:
+        with open(RULES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(default_rules, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+    return default_rules
+
+
 def load_rules():
-    """Load auto-reply rules from Supabase (or fallback to local JSON)."""
+    """Load auto-reply rules from Supabase (or fallback to local JSON). Auto-cleans legacy property rules."""
     if supabase_client:
         try:
             res = supabase_client.table("rules").select("*").eq("is_active", True).execute()
             if res.data:
-                return {row["keyword"].lower(): row["reply_message"] for row in res.data}
+                rules_map = {row["keyword"].lower(): row["reply_message"] for row in res.data}
+                # Check if legacy property-specific rules are present
+                has_legacy = any("ciracas" in str(v).lower() or "2 lantai" in str(v).lower() for v in rules_map.values())
+                if has_legacy or "lokasi" in rules_map or "spesifikasi" in rules_map:
+                    return reset_rules_to_default()
+                return rules_map
         except Exception as e:
             print(f"[SUPABASE ERROR] load_rules failed: {e}")
 
     if os.path.exists(RULES_FILE):
         try:
             with open(RULES_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                has_legacy = any("ciracas" in str(v).lower() for v in data.values())
+                if has_legacy:
+                    return reset_rules_to_default()
+                return data
         except Exception:
             pass
 
-    return {
-        "harga": "Halo kak! Info harga & pricelist lengkap sudah kami kirim ke DM ya atau bisa cek link di bio 😊",
-        "lokasi": "Lokasinya sangat strategis di Ciracas kak, detail lengkapnya sudah kami kirim ke DM ya! Yuk survey minggu ini!",
-        "spesifikasi": "Rumah mewah 2 lantai, LT 65m2 LB 65m2 siap huni kak! Info lengkapnya sudah kami kirimkan ke DM ya!"
-    }
+    return reset_rules_to_default()
 
 
 def save_rules(rules):
@@ -679,6 +713,13 @@ def api_rules():
             delete_rule_db(keyword)
             return jsonify({"status": "success", "rules": rules})
         return jsonify({"error": "Keyword not found"}), 404
+
+
+@app.route('/api/reset-rules', methods=['POST'])
+def api_reset_rules():
+    """Reset all rules in Supabase to general universal brand defaults."""
+    rules = reset_rules_to_default()
+    return jsonify({"status": "success", "rules": rules})
 
 
 @app.route('/api/publish', methods=['POST'])

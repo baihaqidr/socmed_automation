@@ -133,16 +133,7 @@
             </div>
           </div>
 
-          <span class="supa-breadcrumb-sep">/</span>
-
-          <!-- 3. Git Branch & Production Badge -->
-          <div class="supa-branch-pill">
-            <i data-lucide="git-branch" style="width: 13px; height: 13px;"></i>
-            <span>main</span>
-          </div>
-          <span class="pill-badge pill-amber">PRODUCTION</span>
-
-          <!-- 4. Connect Button -->
+          <!-- Connect Button -->
           <button class="supa-btn-connect" onclick="showConnectModal()">
             <i data-lucide="link-2" style="width: 13px; height: 13px;"></i>
             <span>Connect</span>
@@ -165,11 +156,15 @@
           </div>
 
           <div style="display: flex; align-items: center; gap: 8px; color: var(--ink-mute);">
+            <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch Light / Dark Mode">
+              <i data-lucide="sun" class="sun-icon" style="width: 15px; height: 15px;"></i>
+              <i data-lucide="moon" class="moon-icon" style="width: 15px; height: 15px; display: none;"></i>
+            </button>
             <i data-lucide="help-circle" style="width: 16px; height: 16px; cursor: pointer;"></i>
             <i data-lucide="bell" style="width: 16px; height: 16px; cursor: pointer;"></i>
           </div>
 
-          <div style="width: 24px; height: 24px; border-radius: var(--radius-sm); background: #262626; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--primary);">
+          <div class="user-top-badge" style="width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--card-surface); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--primary);">
             B
           </div>
         </div>
@@ -279,13 +274,13 @@
               
               <div class="form-group">
                 <label class="form-label">Kata Kunci Pemicu (Trigger Keyword)</label>
-                <input type="text" id="new-keyword" class="form-input" placeholder="contoh: cicilan, survey, kpr">
+                <input type="text" id="new-keyword" class="form-input" placeholder="contoh: harga, promo, admin, info, katalog">
                 <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 4px; display: block;">Bot akan mencocokkan kata ini di komentar user.</span>
               </div>
 
               <div class="form-group">
                 <label class="form-label">Template Pesan Balasan</label>
-                <textarea id="new-reply" class="form-textarea" rows="4" placeholder="Halo kak! Untuk info detail & brosur lengkap, sudah kami kirimkan ke DM kamu ya 😊"></textarea>
+                <textarea id="new-reply" class="form-textarea" rows="4" placeholder="Halo kak! Informasi selengkapnya sudah kami kirimkan via DM ya, silakan di-cek 😊"></textarea>
               </div>
 
               <button class="btn-primary" onclick="addRule()" style="width: 100%; justify-content: center;">
@@ -299,7 +294,7 @@
                   <i data-lucide="sparkles"></i> Uji Coba Chatbot Gemini AI (Fallback)
                 </h4>
                 <div class="form-group">
-                  <input type="text" id="ai-test-input" class="form-input" placeholder="Ketik pertanyaan bebas (contoh: survey hari sabtu bisa?)">
+                  <input type="text" id="ai-test-input" class="form-input" placeholder="Ketik pertanyaan bebas (contoh: apakah ada promo menarik bulan ini?)">
                 </div>
                 <button class="btn-secondary" onclick="testAIReply()" style="width: 100%; justify-content: center;">
                   <i data-lucide="sparkles"></i>
@@ -314,7 +309,12 @@
             <div class="supa-card">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
                 <h3 style="font-size: 15px; font-weight: 600;">Daftar Aturan Aktif (Supabase)</h3>
-                <span class="pill-badge pill-green">Real-time</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button class="btn-secondary" onclick="resetGeneralRules()" style="padding: 3px 8px; font-size: 11px; gap: 4px;" title="Reset isi aturan ke Aturan General Universal">
+                    <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i> Reset Rules General
+                  </button>
+                  <span class="pill-badge pill-green">Real-time</span>
+                </div>
               </div>
 
               <div id="rules-container" style="display: flex; flex-direction: column; gap: 12px;">

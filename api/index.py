@@ -16,9 +16,9 @@ VERIFY_TOKEN = "sarangestate_webhook_secret_2026"
 GRAPH_URL = "https://graph.facebook.com/v20.0"
 
 DEFAULT_RULES = {
-    "harga": "Halo kak! Info harga & pricelist lengkap bisa DM kami ya 😊",
-    "lokasi": "Lokasinya sangat strategis di Ciracas kak, yuk survey minggu ini!",
-    "spesifikasi": "Rumah mewah 2 lantai, LT 65m2 LB 65m2 siap huni kak!"
+    "harga": "Halo kak! Detail daftar harga & pricelist lengkap sudah kami kirim via DM ya, atau silakan cek link di bio 😊",
+    "info": "Halo kak! Terima kasih sudah bertanya. Informasi detail selengkapnya sudah kami kirimkan ke DM kamu ya!",
+    "promo": "Halo kak! Promo spesial terbatas siap digunakan. Detail dan syaratnya sudah kami kirimkan via DM ya! 🎉"
 }
 
 
