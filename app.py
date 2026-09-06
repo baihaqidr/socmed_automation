@@ -471,25 +471,22 @@ def generate_ai_reply(comment_text, username="", post_caption="", cta_link=""):
     if not gemini_key:
         return None
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}"
-    
     caption_context = f"\n- Konteks Konten Postingan yang sedang dikomentari:\n  \"{post_caption}\"" if post_caption else ""
-    cta_direction = f"Beri tahu calon pembeli bahwa info detail & link lengkapnya sudah dikirimkan langsung ke DM mereka (atau bisa cek link di bio kami)." if cta_link else "Beri tahu calon pembeli bahwa info/pricelist lengkap sudah dikirim ke DM mereka atau bisa cek link di bio kami."
+    cta_direction = f"Beri tahu calon pembeli bahwa info detail & tautan lengkapnya sudah dikirimkan langsung ke DM mereka (atau bisa cek link di bio kami)." if cta_link else "Beri tahu pengguna bahwa info lengkap sudah dikirim ke DM mereka atau bisa cek link di bio kami."
 
-    system_prompt = f"""Kamu adalah Customer Service AI resmi dari @sarangestate (Akun Properti & Hunian).
+    system_prompt = f"""Kamu adalah Customer Service AI resmi dari akun Instagram bisnis.
 Tugasmu adalah membalas komentar prospek/audiens di Instagram secara ramah, santun, natural, bersahabat, dan profesional.
 
-KNOWLEDGE BASE & KONTEKS BISNIS:{caption_context}
-- Profil Umum: Menyediakan rumah hunian modern & strategis (seperti Rumah Ciracas 2 Lantai mulai 800Jt-an, DP 0%, promo free biaya-biaya, kerjasama bank KPR syariah/konvensional, dll).
-- Sikap: Jika ditanya hal santai/humor/di luar properti (misal: "lapar ga min", "lagi ngapain min"), tanggapi dengan ramah dan santai dengan nada humoris/sopan, lalu tetap selipkan sapaan hangat atau ajakan cek DM/bio secara natural.
+KNOWLEDGE BASE & KONTEKS POSTINGAN:{caption_context}
+- Sikap: Jawab pertanyaan dengan ramah, antusias, dan informatif sesuai konteks postingan di atas. Jika ditanya hal santai/humor, tanggapi dengan nada ceria/sopan.
 - Call to Action: {cta_direction}
 
 ATURAN MENJAWAB DI KOMENTAR INSTAGRAM (PENTING):
-1. JANGAN PERNAH menaruh link URL mentah (seperti https://...) di dalam balasan komentar, karena link di kolom komentar Instagram TIDAK BISA DIKLIK oleh pengguna.
+1. JANGAN PERNAH menaruh link URL mentah (seperti https://...) di dalam balasan komentar, karena link di kolom komentar Instagram TIDAK BISA DIKLIK oleh pengguna di aplikasi mobile.
 2. Selalu arahkan pengguna untuk "Cek DM / Inbox ya kak" atau "Cek link di bio kami".
 3. Jawab dengan ringkas dan padat (maksimal 2 kalimat saja agar nyaman dibaca di kolom komentar).
-4. Gunakan sapaan ramah "Halo kak [username]!" atau "Halo kak!".
-5. Gunakan 1-2 emoji yang relevan (😊, 🏡, 📩, ✨).
+4. Gunakan sapaan ramah "Halo kak @{username if username else 'user'}!" atau "Halo kak!".
+5. Gunakan 1-2 emoji yang relevan (😊, 📩, ✨).
 6. Jawab HANYA teks balasan Instagram saja tanpa tanda kutip.
 
 Komentar dari @{username if username else 'user'}:
@@ -497,19 +494,21 @@ Komentar dari @{username if username else 'user'}:
 
 Balasan Komentar Instagram:"""
 
-    try:
-        payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
-        res = requests.post(url, json=payload, timeout=25)
-        if res.status_code == 200:
-            data = res.json()
-            candidates = data.get("candidates", [])
-            if candidates and "content" in candidates[0]:
-                parts = candidates[0]["content"].get("parts", [])
-                if parts:
-                    return parts[0].get("text", "").strip()
-    except Exception as e:
-        print(f"[GEMINI AI ERROR] Failed to generate AI reply: {e}")
-        
+    for model_name in ["gemini-3.7-flash", "gemini-3.8-flash"]:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+            payload = {"contents": [{"parts": [{"text": system_prompt}]}]}
+            res = requests.post(url, json=payload, timeout=15)
+            if res.status_code == 200:
+                data = res.json()
+                candidates = data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    if parts:
+                        return parts[0].get("text", "").strip()
+        except Exception as e:
+            print(f"[GEMINI AI ERROR] Failed with model {model_name}: {e}")
+            
     return None
 
 
@@ -691,127 +690,132 @@ def api_auto_reply_scan():
     post_rules = load_post_rules()
     replied_ids = load_replied_comments()
     
-    # Fetch ALL posts across the account (up to 100 posts)
-    all_posts = get_all_posts(limit=100)
-    
     total_replied = 0
     total_dms_sent = 0
+    total_scanned_posts = 0
     details = []
     
-    for post in all_posts:
-        # Fast filter: Skip posts without comments
-        if post.get("comments_count", 0) == 0:
-            continue
+    # Scan across ALL connected Instagram accounts
+    for acc in KNOWN_INSTAGRAM_ACCOUNTS:
+        acc_id = acc["id"]
+        acc_username = acc["username"].lower()
+        
+        # Fetch posts for this account
+        posts = get_all_posts(limit=50, target_id=acc_id)
+        total_scanned_posts += len(posts)
+        
+        for post in posts:
+            if post.get("comments_count", 0) == 0:
+                continue
+                
+            p_id = str(post["id"])
+            post_caption = post.get("caption", "")
+            post_rule = post_rules.get(p_id, {})
+            post_cta_link = post_rule.get("cta_link", "")
+            post_custom_reply = post_rule.get("custom_reply", "")
+            post_send_dm = post_rule.get("send_dm", False)
+            post_dm_message = post_rule.get("dm_message", "")
             
-        p_id = str(post["id"])
-        post_caption = post.get("caption", "")
-        
-        # Check if this specific post has custom rule / custom link / DM settings
-        post_rule = post_rules.get(p_id, {})
-        post_cta_link = post_rule.get("cta_link", "")
-        post_custom_reply = post_rule.get("custom_reply", "")
-        post_send_dm = post_rule.get("send_dm", False)
-        post_dm_message = post_rule.get("dm_message", "")
-        
-        comments_data = get_post_comments(post["id"])
-        if "data" in comments_data:
-            for comment in comments_data["data"]:
-                c_id = comment["id"]
-                c_user = comment.get("username", "").lower()
-                
-                # 1. Skip if own account
-                if c_user in ["sarangestate", "sarang_estate"]:
-                    continue
+            comments_data = get_post_comments(post["id"])
+            if "data" in comments_data:
+                for comment in comments_data["data"]:
+                    c_id = comment["id"]
+                    c_user = comment.get("username", "").lower()
+                    
+                    # 1. Skip if own account (dynamic based on current scanned account)
+                    if c_user == acc_username:
+                        continue
 
-                # 2. Skip if already in replied database
-                if c_id in replied_ids:
-                    continue
-                
-                # 3. Skip if comment already has existing replies on Instagram
-                existing_replies = comment.get("replies", {}).get("data", []) if isinstance(comment.get("replies"), dict) else []
-                if existing_replies:
-                    record_replied_comment(
-                        comment_id=c_id,
-                        post_id=p_id,
-                        username=comment.get("username", ""),
-                        comment_text=comment.get("text", ""),
-                        reply_text="[Existing Instagram Reply]"
-                    )
-                    replied_ids.add(c_id)
-                    continue
-
-                # 4. Determine final reply
-                raw_text = comment.get("text", "").strip()
-                lower_text = raw_text.lower()
-                final_reply = None
-                reply_source = "Rule"
-                
-                # Priority A: Specific Post Custom Reply Override
-                if post_custom_reply:
-                    final_reply = post_custom_reply
-                    reply_source = "Post Custom Rule"
-
-                # Priority B: Global Keyword Rule
-                if not final_reply:
-                    for kw, reply_msg in rules.items():
-                        if kw.lower() in lower_text:
-                            final_reply = reply_msg
-                            reply_source = f"Rule ({kw})"
-                            break
-
-                # Priority C: Intelligent Gemini AI Fallback
-                if not final_reply and len(raw_text) >= 2:
-                    ai_generated = generate_ai_reply(
-                        comment_text=raw_text,
-                        username=comment.get("username", ""),
-                        post_caption=post_caption,
-                        cta_link=post_cta_link
-                    )
-                    if ai_generated:
-                        final_reply = ai_generated
-                        reply_source = "Gemini AI"
-
-                # 5. Send public reply & Send Clickable Link via Direct Message (DM)
-                if final_reply:
-                    res = reply_to_comment(c_id, final_reply)
-                    if "id" in res:
-                        dm_status = "Not Sent"
-                        
-                        # Send Clickable Link directly via DM (Private Reply)
-                        dm_content = post_dm_message if (post_send_dm and post_dm_message) else ""
-                        if not dm_content and post_cta_link:
-                            dm_content = f"Halo kak @{comment.get('username', '')}! Terima kasih sudah tertarik dengan listing ini. 😊\n\nUntuk info detail, brosur, & panduan lengkap, silakan buka link berikut:\n{post_cta_link}"
-                        elif dm_content and post_cta_link and post_cta_link not in dm_content:
-                            dm_content += f"\n\nLink Akses: {post_cta_link}"
-
-                        if dm_content:
-                            dm_res = send_private_dm(c_id, dm_content)
-                            dm_status = dm_res.get("status", "sent")
-                            if dm_status == "success":
-                                total_dms_sent += 1
-
+                    # 2. Skip if already in replied database
+                    if c_id in replied_ids:
+                        continue
+                    
+                    # 3. Skip if comment already has existing replies on Instagram
+                    existing_replies = comment.get("replies", {}).get("data", []) if isinstance(comment.get("replies"), dict) else []
+                    if existing_replies:
                         record_replied_comment(
                             comment_id=c_id,
                             post_id=p_id,
                             username=comment.get("username", ""),
-                            comment_text=raw_text,
-                            reply_text=f"[{reply_source}] {final_reply}"
+                            comment_text=comment.get("text", ""),
+                            reply_text="[Existing Instagram Reply]"
                         )
                         replied_ids.add(c_id)
-                        total_replied += 1
-                        details.append({
-                            "comment_id": c_id,
-                            "post_id": p_id,
-                            "username": comment.get("username", ""),
-                            "source": reply_source,
-                            "reply_text": final_reply,
-                            "dm_status": dm_status,
-                            "reply_id": res["id"]
-                        })
+                        continue
+
+                    # 4. Determine final reply
+                    raw_text = comment.get("text", "").strip()
+                    lower_text = raw_text.lower()
+                    final_reply = None
+                    reply_source = "Rule"
+                    
+                    # Priority A: Specific Post Custom Reply Override
+                    if post_custom_reply:
+                        final_reply = post_custom_reply
+                        reply_source = "Post Custom Rule"
+
+                    # Priority B: Global Keyword Rule
+                    if not final_reply:
+                        for kw, reply_msg in rules.items():
+                            if kw.lower() in lower_text:
+                                final_reply = reply_msg
+                                reply_source = f"Rule ({kw})"
+                                break
+
+                    # Priority C: Intelligent Gemini AI Fallback
+                    if not final_reply and len(raw_text) >= 2:
+                        ai_generated = generate_ai_reply(
+                            comment_text=raw_text,
+                            username=comment.get("username", ""),
+                            post_caption=post_caption,
+                            cta_link=post_cta_link
+                        )
+                        if ai_generated:
+                            final_reply = ai_generated
+                            reply_source = "Gemini AI"
+
+                    # 5. Send public reply & Send Clickable Link via Direct Message (DM)
+                    if final_reply:
+                        res = reply_to_comment(c_id, final_reply)
+                        if "id" in res:
+                            dm_status = "Not Sent"
+                            
+                            # Send Clickable Link directly via DM (Private Reply)
+                            dm_content = post_dm_message if (post_send_dm and post_dm_message) else ""
+                            if not dm_content and post_cta_link:
+                                dm_content = f"Halo kak @{comment.get('username', '')}! Terima kasih sudah tertarik dengan listing ini. 😊\n\nUntuk info detail & panduan lengkap, silakan buka tautan berikut:\n{post_cta_link}"
+                            elif dm_content and post_cta_link and post_cta_link not in dm_content:
+                                dm_content += f"\n\nTautan Akses: {post_cta_link}"
+
+                            if dm_content:
+                                dm_res = send_private_dm(c_id, dm_content)
+                                dm_status = dm_res.get("status", "sent")
+                                if dm_status == "success":
+                                    total_dms_sent += 1
+
+                            record_replied_comment(
+                                comment_id=c_id,
+                                post_id=p_id,
+                                username=comment.get("username", ""),
+                                comment_text=raw_text,
+                                reply_text=f"[{reply_source}] {final_reply}"
+                            )
+                            replied_ids.add(c_id)
+                            total_replied += 1
+                            details.append({
+                                "target_account": acc_username,
+                                "comment_id": c_id,
+                                "post_id": p_id,
+                                "username": comment.get("username", ""),
+                                "source": reply_source,
+                                "reply_text": final_reply,
+                                "dm_status": dm_status,
+                                "reply_id": res["id"]
+                            })
 
     return jsonify({
         "status": "success",
-        "total_scanned_posts": len(all_posts),
+        "total_scanned_posts": total_scanned_posts,
         "total_new_replies": total_replied,
         "total_dms_sent": total_dms_sent,
         "details": details
