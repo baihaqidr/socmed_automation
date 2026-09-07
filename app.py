@@ -572,6 +572,40 @@ def home():
     return render_template('index.html')
 
 
+@app.route('/privacy')
+def privacy_policy():
+    return """
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <title>Privacy Policy - Socmed Studio Automation</title>
+        <style>
+            body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #171717; }
+            h1 { color: #10B981; }
+            h2 { margin-top: 24px; }
+        </style>
+    </head>
+    <body>
+        <h1>Privacy Policy for Socmed Studio Automation</h1>
+        <p>Last updated: September 2026</p>
+        
+        <h2>1. Overview</h2>
+        <p>Socmed Studio Automation ("we", "our", or "us") respects your privacy and is committed to protecting the data of Instagram users who interact with connected business accounts.</p>
+        
+        <h2>2. Data Collection & Usage</h2>
+        <p>Our application uses Meta Graph API permissions (including <code>instagram_manage_comments</code> and <code>instagram_manage_messages</code>) solely to provide automated comment replies, send requested direct messages containing access links, and display account analytics.</p>
+        
+        <h2>3. Data Protection & Sharing</h2>
+        <p>We do not sell, share, or store personal user information beyond what is necessary to fulfill comment responses and Direct Message requests.</p>
+        
+        <h2>4. Contact Us</h2>
+        <p>If you have any questions regarding this Privacy Policy, please contact us at <strong>support@simplifyer.site</strong>.</p>
+    </body>
+    </html>
+    """
+
+
 @app.route('/api/health')
 def api_health():
     return jsonify({
