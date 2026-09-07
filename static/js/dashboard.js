@@ -36,6 +36,9 @@ function switchTab(tabId) {
   if (tabId === 'postrules') loadPostRulesView();
   if (tabId === 'autoreply') loadRulesData();
   if (tabId === 'inbox') loadInboxComments();
+  if (tabId === 'insights') loadInsightsData();
+  if (tabId === 'storyrules') loadStoryRules();
+  if (tabId === 'scheduler') loadScheduledPosts();
 
   setTimeout(refreshIcons, 50);
 }
@@ -818,4 +821,316 @@ function showToast(message, type = 'info') {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(10px)';
   }, 3500);
+}
+
+// ==========================================
+// NEW MODULE 1: INSIGHTS & ANALYTICS
+// ==========================================
+async function loadInsightsData() {
+  const reachEl = document.getElementById('insight-reach');
+  const impEl = document.getElementById('insight-impressions');
+  const viewsEl = document.getElementById('insight-views');
+  const engEl = document.getElementById('insight-engagement');
+  const container = document.getElementById('insights-top-posts-container');
+
+  if (!container) return;
+  container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Memuat data analitik postingan...</div>';
+
+  try {
+    const res = await fetch('/api/insights');
+    const data = await res.json();
+
+    if (reachEl) reachEl.innerText = Number(data.reach || 0).toLocaleString();
+    if (impEl) impEl.innerText = Number(data.impressions || 0).toLocaleString();
+    if (viewsEl) viewsEl.innerText = Number(data.profile_views || 0).toLocaleString();
+    if (engEl) engEl.innerText = (data.total_likes + data.total_comments).toLocaleString();
+
+    if (data.top_posts && data.top_posts.length > 0) {
+      container.innerHTML = data.top_posts.map((post, idx) => `
+        <div style="padding: 12px 16px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+            <div style="width: 26px; height: 26px; border-radius: var(--radius-full); background: var(--card-surface); color: var(--primary); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
+              #${idx + 1}
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; font-weight: 500; color: var(--on-dark); display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">
+                ${post.caption || 'Postingan Tanpa Caption'}
+              </div>
+              <div style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;">Post ID: ${post.id}</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <span style="font-size: 12px; color: var(--accent-amber); display: inline-flex; align-items: center; gap: 4px;">
+              <i data-lucide="heart" style="width: 13px; height: 13px;"></i> ${post.like_count || 0}
+            </span>
+            <span style="font-size: 12px; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">
+              <i data-lucide="message-square" style="width: 13px; height: 13px;"></i> ${post.comments_count || 0}
+            </span>
+            <a href="${post.permalink || '#'}" target="_blank" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;">
+              Buka <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+            </a>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Belum ada postingan untuk dianalisis.</div>';
+    }
+  } catch (err) {
+    container.innerHTML = '<div style="color: var(--danger); font-size: 13px;">Gagal memuat analitik.</div>';
+  } finally {
+    refreshIcons();
+  }
+}
+
+// ==========================================
+// NEW MODULE 2: COMPETITOR SPY & HASHTAG SCRAPER
+// ==========================================
+async function searchHashtag() {
+  const input = document.getElementById('scraper-hashtag-input');
+  const container = document.getElementById('scraper-results-container');
+  const title = document.getElementById('scraper-results-title');
+
+  if (!input || !container) return;
+  const q = input.value.trim().replace('#', '');
+  if (!q) {
+    showToast('Ketik kata kunci hashtag terlebih dahulu.', 'warning');
+    return;
+  }
+
+  container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Me-scrape postingan viral hashtag #' + q + '...</div>';
+
+  try {
+    const res = await fetch(`/api/scraper/hashtag?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+
+    if (title) title.innerText = `Hasil Scraping Hashtag #${data.hashtag}`;
+
+    if (data.data && data.data.length > 0) {
+      container.innerHTML = data.data.map(p => `
+        <div class="supa-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            ${p.media_url ? `<img src="${p.media_url}" style="width: 100%; height: 160px; object-fit: cover; border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid var(--border-color);">` : ''}
+            <div style="font-size: 12px; color: var(--on-dark); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px;">
+              ${p.caption || 'Tanpa Caption'}
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+            <div style="display: flex; gap: 10px; font-size: 11px; color: var(--ink-mute);">
+              <span>❤️ ${p.like_count || 0}</span>
+              <span>💬 ${p.comments_count || 0}</span>
+            </div>
+            <a href="${p.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none; font-weight: 600;">Lihat Post ↗</a>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Tidak ada postingan ditemukan untuk hashtag ini.</div>';
+    }
+  } catch (err) {
+    container.innerHTML = '<div style="color: var(--danger); font-size: 13px; grid-column: 1 / -1;">Gagal melakukan scraping hashtag.</div>';
+  } finally {
+    refreshIcons();
+  }
+}
+
+async function spyCompetitor() {
+  const input = document.getElementById('scraper-competitor-input');
+  const container = document.getElementById('scraper-results-container');
+  const title = document.getElementById('scraper-results-title');
+
+  if (!input || !container) return;
+  const username = input.value.trim().replace('@', '');
+  if (!username) {
+    showToast('Ketik username kompetitor terlebih dahulu.', 'warning');
+    return;
+  }
+
+  container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Mengintip data akun @' + username + '...</div>';
+
+  try {
+    const res = await fetch(`/api/scraper/competitor?username=${encodeURIComponent(username)}`);
+    const data = await res.json();
+
+    if (title) title.innerText = `Hasil Riset Kompetitor @${data.username} (${Number(data.followers_count || 0).toLocaleString()} Followers)`;
+
+    if (data.posts && data.posts.length > 0) {
+      container.innerHTML = data.posts.map(p => `
+        <div class="supa-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            ${p.media_url ? `<img src="${p.media_url}" style="width: 100%; height: 160px; object-fit: cover; border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid var(--border-color);">` : ''}
+            <div style="font-size: 12px; color: var(--on-dark); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px;">
+              ${p.caption || 'Tanpa Caption'}
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+            <div style="display: flex; gap: 10px; font-size: 11px; color: var(--ink-mute);">
+              <span>❤️ ${p.like_count || 0}</span>
+              <span>💬 ${p.comments_count || 0}</span>
+            </div>
+            <a href="${p.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--accent-blue); text-decoration: none; font-weight: 600;">Lihat Post ↗</a>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Tidak ada postingan ditemukan untuk akun ini.</div>';
+    }
+  } catch (err) {
+    container.innerHTML = '<div style="color: var(--danger); font-size: 13px; grid-column: 1 / -1;">Gagal mengintip data kompetitor.</div>';
+  } finally {
+    refreshIcons();
+  }
+}
+
+// ==========================================
+// NEW MODULE 3: STORY MENTIONS AUTO-DM
+// ==========================================
+async function loadStoryRules() {
+  try {
+    const res = await fetch('/api/story-rules');
+    const rule = await res.json();
+
+    const activeCheck = document.getElementById('story-rule-active');
+    const msgInput = document.getElementById('story-rule-message');
+    const voucherInput = document.getElementById('story-rule-voucher');
+    const linkInput = document.getElementById('story-rule-link');
+
+    if (activeCheck) activeCheck.checked = rule.is_active !== false;
+    if (msgInput) msgInput.value = rule.dm_message || '';
+    if (voucherInput) voucherInput.value = rule.voucher_code || '';
+    if (linkInput) linkInput.value = rule.cta_link || '';
+  } catch (err) {
+    console.error('Error loading story rules:', err);
+  }
+}
+
+async function saveStoryRules() {
+  const activeCheck = document.getElementById('story-rule-active')?.checked || false;
+  const msgInput = document.getElementById('story-rule-message')?.value.trim() || '';
+  const voucherInput = document.getElementById('story-rule-voucher')?.value.trim() || '';
+  const linkInput = document.getElementById('story-rule-link')?.value.trim() || '';
+
+  if (!msgInput) {
+    showToast('Harap isi pesan DM terima kasih.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/story-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        is_active: activeCheck,
+        dm_message: msgInput,
+        voucher_code: voucherInput,
+        cta_link: linkInput
+      })
+    });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast('Pengaturan Story Mention Auto-DM berhasil disimpan!', 'success');
+    }
+  } catch (err) {
+    showToast('Gagal menyimpan aturan Story Mention.', 'error');
+  }
+}
+
+// ==========================================
+// NEW MODULE 4: BULK CONTENT SCHEDULER & REELS
+// ==========================================
+async function loadScheduledPosts() {
+  const container = document.getElementById('sched-queue-container');
+  const countBadge = document.getElementById('sched-queue-count');
+
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/scheduled-posts');
+    const data = await res.json();
+    const posts = data.data || [];
+
+    if (countBadge) countBadge.innerText = `${posts.length} Terjadwal`;
+
+    if (posts.length > 0) {
+      container.innerHTML = posts.map(p => `
+        <div style="padding: 12px 14px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="pill-badge pill-blue">${p.media_type || 'IMAGE'}</span>
+              <span style="font-size: 11px; color: var(--accent-amber); font-weight: 600;">📅 ${p.scheduled_at}</span>
+            </div>
+            <p style="font-size: 13px; color: var(--on-dark); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 2px;">
+              ${p.caption || 'Tanpa Caption'}
+            </p>
+            <div style="font-size: 11px; color: var(--ink-mute); word-break: break-all;">URL: ${p.image_url}</div>
+          </div>
+          <button class="btn-secondary" onclick="cancelScheduledPost('${p.id}')" style="color: var(--danger); padding: 6px 10px;">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
+      `).join('');
+    } else {
+      container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Belum ada postingan yang dijadwalkan dalam antrean.</div>';
+    }
+  } catch (err) {
+    container.innerHTML = '<div style="color: var(--danger); font-size: 13px;">Gagal memuat antrean jadwal.</div>';
+  } finally {
+    refreshIcons();
+  }
+}
+
+async function submitSchedulePost() {
+  const mediaType = document.getElementById('sched-media-type')?.value || 'IMAGE';
+  const imageUrl = document.getElementById('sched-image-url')?.value.trim() || '';
+  const caption = document.getElementById('sched-caption')?.value.trim() || '';
+  const schedTime = document.getElementById('sched-time')?.value || '';
+
+  if (!imageUrl || !schedTime) {
+    showToast('Harap isi URL foto/video dan waktu tayang postingan.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/scheduled-posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        media_type: mediaType,
+        image_url: imageUrl,
+        caption: caption,
+        scheduled_at: schedTime
+      })
+    });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast('Postingan berhasil ditambahkan ke antrean jadwal!', 'success');
+      document.getElementById('sched-image-url').value = '';
+      document.getElementById('sched-caption').value = '';
+      document.getElementById('sched-time').value = '';
+      loadScheduledPosts();
+    }
+  } catch (err) {
+    showToast('Gagal menjadwalkan postingan.', 'error');
+  }
+}
+
+async function cancelScheduledPost(postId) {
+  if (!confirm('Hapus postingan dari antrean jadwal?')) return;
+
+  try {
+    const res = await fetch('/api/scheduled-posts', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: postId })
+    });
+
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast('Postingan berhasil dihapus dari antrean.', 'success');
+      loadScheduledPosts();
+    }
+  } catch (err) {
+    showToast('Gagal menghapus postingan terjadwal.', 'error');
+  }
 }

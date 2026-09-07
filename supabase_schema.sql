@@ -71,12 +71,37 @@ CREATE TABLE IF NOT EXISTS post_rules (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 6. Table: story_rules (Story Mentions Auto-DM triggers)
+CREATE TABLE IF NOT EXISTS story_rules (
+    account_id TEXT PRIMARY KEY,
+    is_active BOOLEAN DEFAULT TRUE,
+    dm_message TEXT NOT NULL,
+    voucher_code TEXT,
+    cta_link TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. Table: scheduled_posts (Bulk Scheduler & Reels queue)
+CREATE TABLE IF NOT EXISTS scheduled_posts (
+    id BIGSERIAL PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    caption TEXT,
+    media_type TEXT DEFAULT 'IMAGE',
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    status TEXT DEFAULT 'PENDING',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Row Level Security (RLS) & Policies
 ALTER TABLE rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE replied_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE story_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scheduled_posts ENABLE ROW LEVEL SECURITY;
 
 DO $$ 
 BEGIN
@@ -94,5 +119,11 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public full access to post_rules') THEN
         CREATE POLICY "Allow public full access to post_rules" ON post_rules FOR ALL USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public full access to story_rules') THEN
+        CREATE POLICY "Allow public full access to story_rules" ON story_rules FOR ALL USING (true);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow public full access to scheduled_posts') THEN
+        CREATE POLICY "Allow public full access to scheduled_posts" ON scheduled_posts FOR ALL USING (true);
     END IF;
 END $$;

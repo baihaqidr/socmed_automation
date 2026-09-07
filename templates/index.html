@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Socmed Automation - Supabase Studio</title>
-  <link rel="stylesheet" href="/static/css/simplifyer.css?v=3.1">
+  <link rel="stylesheet" href="/static/css/simplifyer.css?v=4.0">
   <!-- Lucide Icons Official CDN (lucide.dev) -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -53,6 +53,30 @@
           <button onclick="switchTab('inbox')">
             <i data-lucide="inbox"></i>
             <span>Comments Inbox</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('insights')">
+            <i data-lucide="bar-chart-2"></i>
+            <span>Analytics & Insights</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('scraper')">
+            <i data-lucide="search"></i>
+            <span>Competitor & Hashtags</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('storyrules')">
+            <i data-lucide="award"></i>
+            <span>Story Mentions Auto-DM</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button onclick="switchTab('scheduler')">
+            <i data-lucide="calendar"></i>
+            <span>Content Scheduler</span>
           </button>
         </li>
         <li class="nav-item">
@@ -431,6 +455,194 @@
           </div>
         </div>
 
+        <!-- TAB: ANALYTICS & INSIGHTS -->
+        <div id="tab-insights" class="tab-view">
+          <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <h1 class="section-title">Instagram Performance Analytics</h1>
+              <p class="section-desc">Grafik jangkauan audiens, total tayangan, serta rangkuman performa postingan terbaik Anda.</p>
+            </div>
+            <button class="btn-secondary" onclick="loadInsightsData()">
+              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Refresh Insights
+            </button>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon emerald"><i data-lucide="eye"></i></div>
+              <div>
+                <div class="stat-label">Total Reach</div>
+                <div class="stat-value" id="insight-reach">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue"><i data-lucide="trending-up"></i></div>
+              <div>
+                <div class="stat-label">Impressions</div>
+                <div class="stat-value" id="insight-impressions">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon purple"><i data-lucide="users"></i></div>
+              <div>
+                <div class="stat-label">Profile Views</div>
+                <div class="stat-value" id="insight-views">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon amber"><i data-lucide="heart"></i></div>
+              <div>
+                <div class="stat-label">Total Likes & Komen</div>
+                <div class="stat-value" id="insight-engagement">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="supa-card" style="margin-top: 24px;">
+            <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">🔥 Top 5 Postingan Paling Viral & Banyak Interaksi</h3>
+            <div id="insights-top-posts-container" style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="color: var(--ink-mute); font-size: 13px;">Memuat data analitik postingan...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: COMPETITOR & HASHTAG SCRAPER -->
+        <div id="tab-scraper" class="tab-view">
+          <div class="section-header">
+            <h1 class="section-title">Competitor Spy & Hashtag Scraper</h1>
+            <p class="section-desc">Cari postingan terpopuler dari hashtag tertentu atau intip performa postingan kompetitor secara real-time.</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            <!-- Hashtag Scraper Form -->
+            <div class="supa-card">
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="hash" style="color: var(--primary);"></i> Riset Hashtag Tren & Viral
+              </h3>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="scraper-hashtag-input" class="form-input" placeholder="contoh: marketing, skincare, properti">
+                <button class="btn-primary" onclick="searchHashtag()">
+                  <i data-lucide="search" style="width: 14px; height: 14px;"></i> Scrape
+                </button>
+              </div>
+            </div>
+
+            <!-- Competitor Spy Form -->
+            <div class="supa-card">
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="user-check" style="color: var(--accent-blue);"></i> Intip Performa Akun Kompetitor
+              </h3>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="scraper-competitor-input" class="form-input" placeholder="contoh: sarangestate atau akun_lain">
+                <button class="btn-primary" onclick="spyCompetitor()" style="background: var(--accent-blue);">
+                  <i data-lucide="eye" style="width: 14px; height: 14px;"></i> Spy Akun
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="supa-card">
+            <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;" id="scraper-results-title">Hasil Scraping</h3>
+            <div id="scraper-results-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+              <div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Masukkan kata kunci hashtag atau username kompetitor di atas untuk mulai me-scrape data.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: STORY MENTIONS AUTO-DM -->
+        <div id="tab-storyrules" class="tab-view">
+          <div class="section-header">
+            <h1 class="section-title">Story Mentions Auto-Voucher DM</h1>
+            <p class="section-desc">Kirimkan DM ucapan terima kasih + kode voucher promo secara otomatis saat ada audiens yang meng-tag akun Anda di IG Story.</p>
+          </div>
+
+          <div class="supa-card" style="max-width: 680px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle);">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 600;">Status Auto-DM Story Mention</h3>
+                <span style="font-size: 12px; color: var(--ink-mute);">Pemicu otomatis berjalan 24/7 di akun aktif</span>
+              </div>
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--primary); cursor: pointer;">
+                <input type="checkbox" id="story-rule-active" checked style="accent-color: var(--primary); cursor: pointer;"> Aktifkan Trigger
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Teks Pesan DM Terima Kasih</label>
+              <textarea id="story-rule-message" class="form-textarea" rows="4" placeholder="Terima kasih banyak sudah mention kami di IG Story kamu! 🎉"></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-group">
+                <label class="form-label">Kode Voucher Promo (Opsional)</label>
+                <input type="text" id="story-rule-voucher" class="form-input" placeholder="contoh: STORYPROMO15">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tautan Link Landing Page / Katalog</label>
+                <input type="text" id="story-rule-link" class="form-input" placeholder="contoh: https://www.simplifyer.site/">
+              </div>
+            </div>
+
+            <button class="btn-primary" onclick="saveStoryRules()" style="margin-top: 12px;">
+              <i data-lucide="save"></i> Simpan Pengaturan Story Mention
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB: CONTENT SCHEDULER -->
+        <div id="tab-scheduler" class="tab-view">
+          <div class="section-header">
+            <h1 class="section-title">Bulk Content Scheduler & Reels</h1>
+            <p class="section-desc">Jadwalkan postingan foto, carousel, atau Reels untuk diunggah secara otomatis pada tanggal & jam tertentu.</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <!-- Scheduler Form -->
+            <div class="supa-card">
+              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Jadwalkan Postingan Baru</h3>
+              
+              <div class="form-group">
+                <label class="form-label">Tipe Media</label>
+                <select id="sched-media-type" class="form-input">
+                  <option value="IMAGE">Postingan Foto (Single Feed)</option>
+                  <option value="REELS">Instagram Reels (Video Feed)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">URL Foto / File Video</label>
+                <input type="text" id="sched-image-url" class="form-input" placeholder="contoh: https://images.unsplash.com/... atau URL media publik">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Caption Postingan</label>
+                <textarea id="sched-caption" class="form-textarea" rows="3" placeholder="Tuliskan caption postingan lengkap dengan hashtag..."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Waktu Tayang (Tanggal & Jam)</label>
+                <input type="datetime-local" id="sched-time" class="form-input">
+              </div>
+
+              <button class="btn-primary" onclick="submitSchedulePost()" style="width: 100%; justify-content: center;">
+                <i data-lucide="calendar"></i> Masukkan ke Antrean Jadwal
+              </button>
+            </div>
+
+            <!-- Schedule Queue List -->
+            <div class="supa-card">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <h3 style="font-size: 15px; font-weight: 600;">Daftar Antrean Penjadwalan</h3>
+                <span class="pill-badge pill-green" id="sched-queue-count">0 Terjadwal</span>
+              </div>
+
+              <div id="sched-queue-container" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="color: var(--ink-mute); font-size: 13px;">Belum ada postingan yang dijadwalkan.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
 
@@ -467,6 +679,6 @@
     </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=3.1"></script>
+  <script src="/static/js/dashboard.js?v=4.0"></script>
 </body>
 </html>
