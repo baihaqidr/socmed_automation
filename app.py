@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 import requests
 import json
 import time
@@ -379,7 +379,7 @@ def get_all_posts(limit=100, target_id=None):
     all_posts = []
     url = f"{GRAPH_URL}/{acc_id}/media"
     params = {
-        "fields": "id,caption,media_type,media_url,permalink,timestamp,comments_count",
+        "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,comments_count",
         "limit": min(limit, 50),
         "access_token": ACCESS_TOKEN
     }
@@ -1024,7 +1024,7 @@ def api_scraper_hashtag():
             media_url = f"{GRAPH_URL}/{hashtag_id}/recent_media"
             media_params = {
                 "user_id": acc_id,
-                "fields": "id,caption,media_type,media_url,permalink,comments_count,like_count",
+                "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,comments_count,like_count",
                 "limit": 15,
                 "access_token": ACCESS_TOKEN
             }
@@ -1049,7 +1049,7 @@ def api_scraper_competitor():
     
     try:
         url = f"{GRAPH_URL}/{acc_id}"
-        fields = f"business_discovery.username({username}){{username,website,profile_picture_url,followers_count,media_count,media{{id,caption,like_count,comments_count,permalink,media_url,media_type,timestamp}}}}"
+        fields = f"business_discovery.username({username}){{username,website,profile_picture_url,followers_count,media_count,media{{id,caption,like_count,comments_count,permalink,media_url,thumbnail_url,media_type,timestamp}}}}"
         params = {"fields": fields, "access_token": ACCESS_TOKEN}
         res = requests.get(url, params=params, timeout=12).json()
         
@@ -1077,6 +1077,21 @@ def api_scraper_competitor():
             {"id": "c2", "caption": f"Bantu jawab di komentar ya gaes! Solusi mudah pakai @{username} 💡", "like_count": 310, "comments_count": 52, "permalink": "https://instagram.com"}
         ]
     })
+
+
+@app.route('/api/proxy-image')
+def api_proxy_image():
+    """Proxy Instagram CDN images to bypass CORS and referer hotlink blocks."""
+    img_url = request.args.get('url', '')
+    if not img_url:
+        return jsonify({"error": "Missing image URL"}), 400
+    try:
+        r = requests.get(img_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        if r.status_code == 200:
+            return Response(r.content, mimetype=r.headers.get('content-type', 'image/jpeg'))
+    except Exception as e:
+        print(f"[IMAGE PROXY ERROR] {e}")
+    return jsonify({"error": "Unable to fetch image"}), 502
 
 
 # ==========================================

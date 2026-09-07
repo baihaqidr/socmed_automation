@@ -906,10 +906,25 @@ async function searchHashtag() {
     if (title) title.innerText = `Hasil Scraping Hashtag #${data.hashtag}`;
 
     if (data.data && data.data.length > 0) {
-      container.innerHTML = data.data.map(p => `
+      container.innerHTML = data.data.map(p => {
+        const rawImg = p.thumbnail_url || p.media_url || '';
+        const proxiedImg = rawImg ? `/api/proxy-image?url=${encodeURIComponent(rawImg)}` : '';
+        return `
         <div class="supa-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
           <div>
-            ${p.media_url ? `<img src="${p.media_url}" style="width: 100%; height: 160px; object-fit: cover; border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid var(--border-color);">` : ''}
+            ${rawImg ? `
+              <div style="width: 100%; height: 160px; border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden; background: var(--bg-tertiary); position: relative; border: 1px solid var(--border-color);">
+                <img src="${rawImg}" 
+                     referrerpolicy="no-referrer" 
+                     loading="lazy" 
+                     onerror="if(!this.dataset.proxied){this.dataset.proxied='true'; this.src='${proxiedImg}';}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}" 
+                     style="width: 100%; height: 100%; object-fit: cover;">
+                <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1)); flex-direction: column; gap: 6px;">
+                  <i data-lucide="instagram" style="width: 24px; height: 24px; color: var(--primary);"></i>
+                  <span style="font-size: 10px; color: var(--ink-mute);">Post Instagram</span>
+                </div>
+              </div>
+            ` : ''}
             <div style="font-size: 12px; color: var(--on-dark); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px;">
               ${p.caption || 'Tanpa Caption'}
             </div>
@@ -922,7 +937,8 @@ async function searchHashtag() {
             <a href="${p.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none; font-weight: 600;">Lihat Post ↗</a>
           </div>
         </div>
-      `).join('');
+        `;
+      }).join('');
     } else {
       container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Tidak ada postingan ditemukan untuk hashtag ini.</div>';
     }
@@ -954,10 +970,25 @@ async function spyCompetitor() {
     if (title) title.innerText = `Hasil Riset Kompetitor @${data.username} (${Number(data.followers_count || 0).toLocaleString()} Followers)`;
 
     if (data.posts && data.posts.length > 0) {
-      container.innerHTML = data.posts.map(p => `
+      container.innerHTML = data.posts.map(p => {
+        const rawImg = p.thumbnail_url || p.media_url || '';
+        const proxiedImg = rawImg ? `/api/proxy-image?url=${encodeURIComponent(rawImg)}` : '';
+        return `
         <div class="supa-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
           <div>
-            ${p.media_url ? `<img src="${p.media_url}" style="width: 100%; height: 160px; object-fit: cover; border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid var(--border-color);">` : ''}
+            ${rawImg ? `
+              <div style="width: 100%; height: 160px; border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden; background: var(--bg-tertiary); position: relative; border: 1px solid var(--border-color);">
+                <img src="${rawImg}" 
+                     referrerpolicy="no-referrer" 
+                     loading="lazy" 
+                     onerror="if(!this.dataset.proxied){this.dataset.proxied='true'; this.src='${proxiedImg}';}else{this.style.display='none'; this.nextElementSibling.style.display='flex';}" 
+                     style="width: 100%; height: 100%; object-fit: cover;">
+                <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1)); flex-direction: column; gap: 6px;">
+                  <i data-lucide="instagram" style="width: 24px; height: 24px; color: var(--primary);"></i>
+                  <span style="font-size: 10px; color: var(--ink-mute);">Post Instagram</span>
+                </div>
+              </div>
+            ` : ''}
             <div style="font-size: 12px; color: var(--on-dark); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px;">
               ${p.caption || 'Tanpa Caption'}
             </div>
@@ -970,7 +1001,8 @@ async function spyCompetitor() {
             <a href="${p.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--accent-blue); text-decoration: none; font-weight: 600;">Lihat Post ↗</a>
           </div>
         </div>
-      `).join('');
+        `;
+      }).join('');
     } else {
       container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Tidak ada postingan ditemukan untuk akun ini.</div>';
     }
