@@ -542,7 +542,35 @@
           </div>
 
           <div class="supa-card">
-            <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;" id="scraper-results-title">Hasil Scraping</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle);">
+              <h3 style="font-size: 15px; font-weight: 600;" id="scraper-results-title">Hasil Scraping</h3>
+
+              <!-- SORT & FILTER CONTROLS -->
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-mute);">
+                  <i data-lucide="filter" style="width: 14px; height: 14px;"></i>
+                  <span>Format:</span>
+                  <select id="scraper-filter-type" onchange="applyScraperSortFilter()" style="padding: 6px 10px; font-size: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--on-dark); border-radius: var(--radius-sm); outline: none;">
+                    <option value="ALL">🌐 Semua Tipe Konten</option>
+                    <option value="VIDEO">📹 REELS / Video</option>
+                    <option value="CAROUSEL_ALBUM">🖼️ Carousel</option>
+                    <option value="IMAGE">📸 Single Post</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-mute);">
+                  <i data-lucide="arrow-up-down" style="width: 14px; height: 14px;"></i>
+                  <span>Urutkan:</span>
+                  <select id="scraper-sort-by" onchange="applyScraperSortFilter()" style="padding: 6px 10px; font-size: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--on-dark); border-radius: var(--radius-sm); outline: none;">
+                    <option value="ENGAGEMENT">🔥 Interaksi / Engagement Terbanyak</option>
+                    <option value="LIKES">❤️ Likes Terbanyak</option>
+                    <option value="COMMENTS">💬 Komentar Terbanyak</option>
+                    <option value="NEWEST">📅 Postingan Terbaru</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div id="scraper-results-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
               <div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Masukkan kata kunci hashtag atau username kompetitor di atas untuk mulai me-scrape data.</div>
             </div>
@@ -679,6 +707,6 @@
     </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=5.0"></script>
+  <script src="/static/js/dashboard.js?v=6.0"></script>
 </body>
 </html>
