@@ -937,7 +937,8 @@ function applyScraperSortFilter() {
       if (authorUsername && authorUsername !== 'instagram_creator') {
         targetLink = `https://www.instagram.com/${authorUsername}/`;
       } else if (window.currentScraperHashtag) {
-        targetLink = `https://www.instagram.com/explore/tags/${encodeURIComponent(window.currentScraperHashtag)}/`;
+        const cleanTag = (window.currentScraperHashtag || '').replace(/#/g, '').replace(/\s+/g, '').toLowerCase();
+        targetLink = `https://www.instagram.com/explore/tags/${cleanTag}/`;
       } else {
         targetLink = `https://www.instagram.com/explore/`;
       }

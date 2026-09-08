@@ -1008,6 +1008,8 @@ def api_insights():
 def api_scraper_hashtag():
     query = request.args.get('q', 'marketing').strip().lstrip('#')
     acc_id = get_active_account_id()
+    clean_tag = query.replace('#', '').replace(' ', '').lower()
+    tag_permalink = f"https://www.instagram.com/explore/tags/{clean_tag}/" if clean_tag else "https://www.instagram.com/explore/"
     
     if query:
         try:
@@ -1040,7 +1042,7 @@ def api_scraper_hashtag():
                             p["like_count"] = p.get("like_count", 0)
                             p["comments_count"] = p.get("comments_count", 0)
                             if not p.get("permalink") or p.get("permalink") in ["https://instagram.com", "https://instagram.com/"]:
-                                p["permalink"] = f"https://www.instagram.com/explore/tags/{query}/"
+                                p["permalink"] = tag_permalink
                         return jsonify({"status": "success", "hashtag": query, "data": posts})
         except Exception as e:
             print(f"[SCRAPER ERROR] Hashtag search error: {e}")
@@ -1056,7 +1058,7 @@ def api_scraper_hashtag():
             "comments_count": 418,
             "media_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
             "thumbnail_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
-            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "permalink": tag_permalink,
             "timestamp": "2026-09-07T10:00:00Z"
         },
         {
@@ -1067,7 +1069,7 @@ def api_scraper_hashtag():
             "like_count": 2150,
             "comments_count": 630,
             "media_url": "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600",
-            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "permalink": tag_permalink,
             "timestamp": "2026-09-06T15:30:00Z"
         },
         {
@@ -1078,7 +1080,7 @@ def api_scraper_hashtag():
             "like_count": 1890,
             "comments_count": 230,
             "media_url": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600",
-            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "permalink": tag_permalink,
             "timestamp": "2026-09-05T12:00:00Z"
         },
         {
@@ -1090,7 +1092,7 @@ def api_scraper_hashtag():
             "comments_count": 284,
             "media_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
             "thumbnail_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
-            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "permalink": tag_permalink,
             "timestamp": "2026-09-04T18:45:00Z"
         },
         {
@@ -1101,7 +1103,7 @@ def api_scraper_hashtag():
             "like_count": 980,
             "comments_count": 142,
             "media_url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600",
-            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "permalink": tag_permalink,
             "timestamp": "2026-09-03T09:15:00Z"
         },
         {
@@ -1112,7 +1114,7 @@ def api_scraper_hashtag():
             "like_count": 750,
             "comments_count": 95,
             "media_url": "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600",
-            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "permalink": tag_permalink,
             "timestamp": "2026-09-02T14:10:00Z"
         }
     ]
