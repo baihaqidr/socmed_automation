@@ -333,7 +333,33 @@ async function loadPostRulesView() {
       return;
     }
 
-    container.innerHTML = posts.map(post => {
+    const savedCount = posts.filter(p => {
+      const r = rulesData[String(p.id)];
+      return Boolean(r && (r.cta_link || r.send_dm || r.custom_reply || r.require_follow));
+    }).length;
+    const unsavedCount = posts.length - savedCount;
+
+    // Header Status Filter Bar
+    const filterBarHtml = `
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 12px 18px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 13px; font-weight: 600; color: var(--on-dark);">Total: ${posts.length} Post</span>
+          <span class="pill-badge pill-green" style="font-size: 11px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.35);">
+            <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> ${savedCount} Postingan Aktif
+          </span>
+          <span class="pill-badge" style="font-size: 11px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; color: var(--ink-mute); border: 1px solid var(--border-subtle); background: var(--canvas-night);">
+            <i data-lucide="circle-dashed" style="width: 12px; height: 12px;"></i> ${unsavedCount} Belum Diatur
+          </span>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" class="btn-ghost filter-btn-post active" id="btn-filter-all" onclick="filterPostCards('all')" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--on-dark);">Semua (${posts.length})</button>
+          <button type="button" class="btn-ghost filter-btn-post" id="btn-filter-saved" onclick="filterPostCards('saved')" style="font-size: 11px; padding: 4px 10px; border: 1px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-sm); color: #10B981;">🟢 Hanya Aktif (${savedCount})</button>
+          <button type="button" class="btn-ghost filter-btn-post" id="btn-filter-unsaved" onclick="filterPostCards('unsaved')" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--ink-mute);">⚪ Belum Diatur (${unsavedCount})</button>
+        </div>
+      </div>
+    `;
+
+    const cardsHtml = posts.map(post => {
       const pId = String(post.id);
       const rule = rulesData[pId] || {};
       const ctaLink = rule.cta_link || '';
@@ -348,12 +374,55 @@ async function loadPostRulesView() {
       const notFollowingMsg = rule.not_following_msg || '';
       const captionText = post.caption || 'Tanpa Caption';
 
+      // Distinguish saved vs unsaved
+      const isSaved = Boolean(rule && (rule.cta_link || rule.send_dm || rule.custom_reply || rule.require_follow));
+
+      const cardBorder = isSaved
+        ? 'border: 1.5px solid rgba(16, 185, 129, 0.45); border-left: 6px solid #10B981; background: rgba(16, 185, 129, 0.015); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.06);'
+        : 'border: 1px dashed var(--border-color); border-left: 4px solid var(--border-color); opacity: 0.92;';
+
+      const statusBadgeHtml = isSaved
+        ? `<span class="pill-badge pill-green" style="font-size: 11px; font-weight: 700; padding: 3px 10px; background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.35); display: inline-flex; align-items: center; gap: 5px;">
+             <i data-lucide="check-circle-2" style="width: 13px; height: 13px;"></i> AKTIF & TERSIMPAN
+           </span>`
+        : `<span class="pill-badge" style="font-size: 11px; font-weight: 500; color: var(--ink-mute); background: var(--canvas-night-soft); border: 1px solid var(--border-subtle); padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px;">
+             <i data-lucide="circle-dashed" style="width: 13px; height: 13px;"></i> Belum Diatur
+           </span>`;
+
+      const bottomBarHtml = isSaved
+        ? `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(16, 185, 129, 0.2);">
+            <div style="font-size: 12px; color: #10B981; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="check-check" style="width: 15px; height: 15px;"></i> Aturan postingan ini aktif tersimpan di Supabase
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn-ghost" onclick="deletePostRule('${pId}')" style="color: var(--danger); font-size: 12px; padding: 6px 12px; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;" title="Reset dan hapus aturan post ini">
+                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Hapus Aturan
+              </button>
+              <button type="button" class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}" style="display: inline-flex; align-items: center; gap: 6px; background: #10B981; border-color: #10B981;">
+                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Update Pengaturan Post
+              </button>
+            </div>
+          </div>
+        `
+        : `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+            <div style="font-size: 12px; color: var(--ink-mute); display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="info" style="width: 14px; height: 14px;"></i> Belum ada aturan khusus (menggunakan balasan AI umum)
+            </div>
+            <button type="button" class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}" style="display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="save" style="width: 14px; height: 14px;"></i> Simpan Pengaturan Post Ini
+            </button>
+          </div>
+        `;
+
       return `
-        <div class="supa-card" style="display: grid; grid-template-columns: 260px 1fr; gap: 24px; border-left: 3px solid ${ctaLink ? 'var(--primary)' : 'var(--border-color)'};">
+        <div class="supa-card post-card-item" data-saved="${isSaved ? 'true' : 'false'}" style="display: grid; grid-template-columns: 260px 1fr; gap: 24px; margin-bottom: 20px; ${cardBorder}">
           <!-- Post Summary -->
           <div>
-            <div style="font-size: 11px; font-family: var(--font-mono); color: var(--ink-mute); margin-bottom: 6px;">
-              Post ID: ${pId}
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              ${statusBadgeHtml}
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--ink-mute-2);">ID: ${pId}</span>
             </div>
             <div style="font-size: 13px; font-weight: 500; color: var(--on-dark); margin-bottom: 10px; line-height: 1.4; max-height: 110px; overflow-y: auto; padding: 10px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
               ${captionText}
@@ -474,20 +543,59 @@ async function loadPostRulesView() {
               </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
-              <button class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}" style="display: inline-flex; align-items: center; gap: 6px;">
-                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Simpan Pengaturan Post Ini
-              </button>
-            </div>
+            <!-- Card Bottom Bar (Saved vs Unsaved) -->
+            ${bottomBarHtml}
           </div>
         </div>
       `;
     }).join('');
 
+    container.innerHTML = filterBarHtml + cardsHtml;
+
   } catch (err) {
     container.innerHTML = '<div style="color: var(--danger); padding: 20px;">Gagal memuat aturan post: ' + err.message + '</div>';
   } finally {
     refreshIcons();
+  }
+}
+
+// Filter post cards by saved/unsaved state
+function filterPostCards(type) {
+  const cards = document.querySelectorAll('.post-card-item');
+  document.querySelectorAll('.filter-btn-post').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById(`btn-filter-${type}`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  cards.forEach(card => {
+    const isSaved = card.getAttribute('data-saved') === 'true';
+    if (type === 'all') {
+      card.style.display = 'grid';
+    } else if (type === 'saved') {
+      card.style.display = isSaved ? 'grid' : 'none';
+    } else if (type === 'unsaved') {
+      card.style.display = !isSaved ? 'grid' : 'none';
+    }
+  });
+}
+
+// Delete / Reset Single Post Rule
+async function deletePostRule(postId) {
+  if (!confirm('Apakah kamu yakin ingin mereset dan menghapus pengaturan kustom untuk postingan ini?')) return;
+  try {
+    const res = await fetch('/api/post-rules', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post_id: postId })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast('Pengaturan postingan berhasil direset ke default!', 'success');
+      await loadPostRulesView();
+    } else {
+      showToast('Gagal mereset: ' + (data.error || 'Terjadi kesalahan'), 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan jaringan.', 'error');
   }
 }
 
@@ -544,6 +652,7 @@ async function savePostRule(postId) {
     const data = await res.json();
     if (data.status === 'success') {
       showToast('Pengaturan postingan berhasil disimpan ke Supabase!', 'success');
+      await loadPostRulesView();
     } else {
       showToast('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'), 'error');
     }

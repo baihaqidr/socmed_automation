@@ -335,6 +335,9 @@ def load_replied_comments():
     return set()
 
 
+_LAST_DM_TIME_PER_USER = {}  # key: (username.lower(), post_id) -> timestamp of last DM sent
+
+
 def load_dmed_users_per_post():
     """Load set of (username.lower(), post_id) that already received a DM to prevent duplicate DMs."""
     pairs = set()
@@ -873,16 +876,29 @@ def check_is_following_business(scoped_user_id, target_acc_id):
         return {}
 
 
-def set_pending_follow(user_handle, post_id, acc_id):
+def set_pending_follow(user_handle, post_id, acc_id, user_id=None):
     """Record that this user must follow before receiving the link for post_id."""
-    key = f"PENDING_FOLLOW_{str(user_handle).strip().lower()}"
-    data = {"post_id": str(post_id), "acc_id": str(acc_id), "time": time.time()}
-    set_app_setting(key, json.dumps(data))
+    data = {
+        "post_id": str(post_id),
+        "acc_id": str(acc_id),
+        "time": time.time(),
+        "user_handle": str(user_handle or "").strip().lower(),
+        "user_id": str(user_id or "").strip()
+    }
+    encoded = json.dumps(data)
+    if user_handle:
+        key = f"PENDING_FOLLOW_{str(user_handle).strip().lower()}"
+        set_app_setting(key, encoded)
+    if user_id:
+        key_id = f"PENDING_FOLLOW_{str(user_id).strip()}"
+        set_app_setting(key_id, encoded)
 
 
-def get_pending_follow(user_handle):
-    """Get pending follow task for user_handle if any."""
-    key = f"PENDING_FOLLOW_{str(user_handle).strip().lower()}"
+def get_pending_follow(identifier):
+    """Get pending follow task for user_handle or user_id if any."""
+    if not identifier:
+        return None
+    key = f"PENDING_FOLLOW_{str(identifier).strip().lower()}"
     val = get_app_setting(key)
     if val:
         try:
@@ -892,10 +908,11 @@ def get_pending_follow(user_handle):
     return None
 
 
-def clear_pending_follow(user_handle):
+def clear_pending_follow(identifier):
     """Clear pending follow task once verified."""
-    key = f"PENDING_FOLLOW_{str(user_handle).strip().lower()}"
-    set_app_setting(key, "")
+    if identifier:
+        key = f"PENDING_FOLLOW_{str(identifier).strip().lower()}"
+        set_app_setting(key, "")
 
 
 def create_and_publish_image_post(image_input, caption):
@@ -1609,8 +1626,13 @@ def run_auto_reply_scan():
                             post_use_smart_link = post_rule.get("use_smart_link", True)
                             effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
 
-                            already_dmed = (user_handle.lower(), p_id) in dmed_users
-                            if (post_send_dm or post_cta_link) and not already_dmed:
+                            now_ts = time.time()
+                            last_dm_ts = _LAST_DM_TIME_PER_USER.get((user_handle.lower(), p_id), 0)
+                            is_burst_duplicate = (now_ts - last_dm_ts < 15)
+                            from_id = str(comment.get("from", {}).get("id", ""))
+
+                            if (post_send_dm or post_cta_link) and not is_burst_duplicate:
+                                _LAST_DM_TIME_PER_USER[(user_handle.lower(), p_id)] = now_ts
                                 require_follow = bool(post_rule.get("require_follow", False))
                                 if require_follow:
                                     # WORKFLOW PRE-STEP: Gate delivery until user follows
@@ -1625,8 +1647,7 @@ def run_auto_reply_scan():
                                         target_acc_id=acc_id,
                                         use_smart_link=False
                                     )
-                                    set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id)
-                                    dmed_users.add((user_handle.lower(), p_id))
+                                    set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=from_id)
                                     dm_status = dm_res.get("status", "sent")
                                     if dm_status == "success":
                                         total_dms_sent += 1
@@ -1654,7 +1675,6 @@ def run_auto_reply_scan():
                                         dm_status = dm_res.get("status", "sent")
                                         if dm_status == "success":
                                             total_dms_sent += 1
-                                        dmed_users.add((user_handle.lower(), p_id))
 
                             record_replied_comment(
                                 comment_id=c_id,
@@ -1780,9 +1800,14 @@ def process_webhook_event(payload):
                     reply_res = reply_to_comment(c_id, final_reply)
                     print(f"[WEBHOOK BOT] Public reply sent to @{user_handle}: {reply_res}")
 
-                    # 2. Send Private DM if configured and user hasn't received one for this post
-                    already_dmed = (user_handle.lower(), p_id) in dmed_users
-                    if (post_send_dm or post_cta_link) and not already_dmed:
+                    # 2. Send Private DM if configured and not within 15s burst spam
+                    now_ts = time.time()
+                    last_dm_ts = _LAST_DM_TIME_PER_USER.get((user_handle.lower(), p_id), 0)
+                    is_burst_duplicate = (now_ts - last_dm_ts < 15)
+                    from_id = str(user_data.get("id", ""))
+
+                    if (post_send_dm or post_cta_link) and not is_burst_duplicate:
+                        _LAST_DM_TIME_PER_USER[(user_handle.lower(), p_id)] = now_ts
                         require_follow = bool(post_rule.get("require_follow", False))
                         if require_follow:
                             # WORKFLOW PRE-STEP: Gate delivery until user follows
@@ -1797,8 +1822,7 @@ def process_webhook_event(payload):
                                 target_acc_id=entry_id,
                                 use_smart_link=False
                             )
-                            set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id)
-                            dmed_users.add((user_handle.lower(), p_id))
+                            set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id, user_id=from_id)
                         else:
                             # NORMAL DELIVERY
                             post_use_smart_link = post_rule.get("use_smart_link", True)
@@ -1823,7 +1847,6 @@ def process_webhook_event(payload):
                                 post_id=p_id
                             )
                             print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
-                            dmed_users.add((user_handle.lower(), p_id))
 
                     record_replied_comment(
                         comment_id=c_id,
@@ -1855,10 +1878,11 @@ def handle_incoming_dm_follow_check(payload):
             user_info = check_is_following_business(scoped_user_id=sender_id, target_acc_id=entry_id)
             user_handle = user_info.get("username", "").lower()
             is_following = bool(user_info.get("is_user_follow_business", False))
+            has_meta_err = bool(user_info.get("error"))
 
-            pending = get_pending_follow(user_handle) if user_handle else None
-            if not pending:
-                pending = get_pending_follow(sender_id)
+            pending = get_pending_follow(sender_id)
+            if not pending and user_handle:
+                pending = get_pending_follow(user_handle)
 
             if pending:
                 p_id = pending.get("post_id")
@@ -1866,11 +1890,12 @@ def handle_incoming_dm_follow_check(payload):
                 post_rule = post_rules.get(str(p_id), {})
                 acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(target_acc_id)), None)
                 acc_name = acc_info["username"] if acc_info else "kami"
+                display_user = user_handle or pending.get("user_handle") or ""
 
-                if not is_following:
+                if not is_following and not has_meta_err:
                     # User has NOT followed! Catch them!
-                    not_f_template = post_rule.get("not_following_msg") or f"Yah kak @{user_handle or ''}, sistem mendeteksi kamu belum follow @{acc_name} nih 😢\n\nYuk follow akun @{acc_name} dulu ya, kalau sudah follow balas pesan ini 'SUDAH' lagi!"
-                    not_f_msg = not_f_template.replace("{username}", user_handle or "").replace("{account}", acc_name)
+                    not_f_template = post_rule.get("not_following_msg") or f"Yah kak @{display_user}, sistem mendeteksi kamu belum follow @{acc_name} nih 😢\n\nYuk follow akun @{acc_name} dulu ya, kalau sudah follow balas pesan ini 'SUDAH' lagi!"
+                    not_f_msg = not_f_template.replace("{username}", display_user).replace("{account}", acc_name)
                     send_private_dm(
                         recipient_id=sender_id,
                         message=not_f_msg,
@@ -1878,10 +1903,12 @@ def handle_incoming_dm_follow_check(payload):
                         use_smart_link=False
                     )
                 else:
-                    # User is confirmed following! Unlock & deliver the link!
-                    clear_pending_follow(user_handle)
-                    if sender_id != user_handle:
-                        clear_pending_follow(sender_id)
+                    # User is confirmed following (or fallback approved)! Unlock & deliver the link!
+                    clear_pending_follow(sender_id)
+                    if user_handle:
+                        clear_pending_follow(user_handle)
+                    if pending.get("user_handle"):
+                        clear_pending_follow(pending.get("user_handle"))
 
                     post_cta_link = str(post_rule.get("cta_link", "")).strip()
                     post_dm_format = str(post_rule.get("dm_format", "card")).strip()
@@ -1891,7 +1918,7 @@ def handle_incoming_dm_follow_check(payload):
 
                     success_text = f"Keren banget, terima kasih sudah follow @{acc_name}! 🎉\n\nIni dia link akses resminya ya:"
                     if post_rule.get("dm_message"):
-                        success_text = post_rule.get("dm_message").replace("{username}", user_handle).replace("{link}", effective_link)
+                        success_text = post_rule.get("dm_message").replace("{username}", display_user).replace("{link}", effective_link)
 
                     send_private_dm(
                         recipient_id=sender_id,
