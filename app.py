@@ -4,6 +4,7 @@ import json
 import time
 import sys
 import os
+import threading
 from dotenv import load_dotenv
 
 # Load environment variables from .env if present
@@ -812,8 +813,8 @@ def api_publish():
     return jsonify(res)
 
 
-@app.route('/api/auto-reply-scan', methods=['GET', 'POST'])
-def api_auto_reply_scan():
+def run_auto_reply_scan():
+    """Core logic to scan posts for new comments and send public reply + DM."""
     rules = load_rules()
     post_rules = load_post_rules()
     replied_ids = load_replied_comments()
@@ -823,13 +824,13 @@ def api_auto_reply_scan():
     total_scanned_posts = 0
     details = []
     
-    # Scan across ALL connected Instagram accounts
+    # Scan across connected Instagram accounts (limit 25 posts each for optimal speed)
     for acc in KNOWN_INSTAGRAM_ACCOUNTS:
         acc_id = acc["id"]
         acc_username = acc["username"].lower()
         
         # Fetch posts for this account
-        posts = get_all_posts(limit=50, target_id=acc_id)
+        posts = get_all_posts(limit=25, target_id=acc_id)
         total_scanned_posts += len(posts)
         
         for post in posts:
@@ -839,7 +840,10 @@ def api_auto_reply_scan():
             p_id = str(post["id"])
             post_caption = post.get("caption", "")
             post_rule = post_rules.get(p_id, {})
-            post_cta_link = post_rule.get("cta_link", "")
+            post_cta_link = str(post_rule.get("cta_link", "")).strip()
+            if post_cta_link and not post_cta_link.startswith("http://") and not post_cta_link.startswith("https://"):
+                post_cta_link = f"https://{post_cta_link}"
+                
             post_custom_reply = post_rule.get("custom_reply", "")
             post_send_dm = post_rule.get("send_dm", False)
             post_dm_message = post_rule.get("dm_message", "")
@@ -951,13 +955,43 @@ def api_auto_reply_scan():
                                 "reply_id": res["id"]
                             })
 
-    return jsonify({
+    return {
         "status": "success",
         "total_scanned_posts": total_scanned_posts,
         "total_new_replies": total_replied,
         "total_dms_sent": total_dms_sent,
         "details": details
-    })
+    }
+
+
+@app.route('/api/auto-reply-scan', methods=['GET', 'POST'])
+def api_auto_reply_scan():
+    result = run_auto_reply_scan()
+    return jsonify(result)
+
+
+def start_background_watcher():
+    """Background daemon thread to automatically scan and reply to comments every 30 seconds."""
+    def watcher_loop():
+        time.sleep(8)
+        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 30s)...")
+        while True:
+            try:
+                res = run_auto_reply_scan()
+                if res.get("total_new_replies", 0) > 0:
+                    print(f"[AUTO-BOT] ⚡ Replied to {res['total_new_replies']} comment(s), {res['total_dms_sent']} DM(s) sent!")
+            except Exception as e:
+                print(f"[AUTO-BOT ERROR] {e}")
+            time.sleep(30)
+
+    t = threading.Thread(target=watcher_loop, daemon=True)
+    t.start()
+
+
+# Start background watcher automatically
+if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+    start_background_watcher()
+
 
 
 @app.route('/api/ai-reply-test', methods=['POST'])
