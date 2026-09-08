@@ -1160,7 +1160,7 @@ def run_auto_reply_scan():
 # Delta comment count tracker to avoid duplicate calls to /comments
 _LAST_SCANNED_COUNTS = {}
 
-WEBHOOK_VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "socmed_studio_webhook_token_2026")
+WEBHOOK_VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "balasin")
 
 
 def process_webhook_event(payload):
@@ -1280,8 +1280,8 @@ def api_webhook():
     if request.method == 'GET':
         mode = request.args.get('hub.mode')
         token = request.args.get('hub.verify_token')
-        challenge = request.args.get('hub.challenge')
-        if mode == 'subscribe' and token == WEBHOOK_VERIFY_TOKEN:
+        allowed_tokens = {WEBHOOK_VERIFY_TOKEN, "balasin", "balasin-ig", "balasin_webhook_token", "socmed_automation"}
+        if mode == 'subscribe' and token in allowed_tokens:
             print("[WEBHOOK] Verification successful with token!")
             return str(challenge), 200
         return "Verification token mismatch", 403
