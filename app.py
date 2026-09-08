@@ -432,41 +432,76 @@ def reply_to_comment(comment_id, message):
     return requests.post(url, data=data).json()
 
 
+def get_page_for_ig_account(acc_id):
+    """Find the linked Facebook Page ID and Page Token for an Instagram Account."""
+    hardcoded_pages = {
+        "17841466987503898": "332005543337534",   # Sarang Estate
+        "17841448570126268": "1057733957412512",  # Produkly
+        "17841474608292986": "652421317951477",   # Murahnesia Store
+    }
+    page_id = hardcoded_pages.get(str(acc_id))
+    page_token = None
+    try:
+        url = f"{GRAPH_URL}/me/accounts"
+        params = {"fields": "id,name,access_token,instagram_business_account", "access_token": ACCESS_TOKEN}
+        r = requests.get(url, params=params, timeout=8).json()
+        for p in r.get("data", []):
+            ig = p.get("instagram_business_account", {})
+            if str(ig.get("id")) == str(acc_id):
+                return p.get("id"), p.get("access_token")
+            if page_id and str(p.get("id")) == str(page_id):
+                page_token = p.get("access_token")
+        if page_id and page_token:
+            return page_id, page_token
+    except Exception as e:
+        print(f"[PAGE LOOKUP ERROR] {e}")
+
+    if page_id:
+        try:
+            pt_res = requests.get(f"{GRAPH_URL}/{page_id}", params={"fields": "access_token", "access_token": ACCESS_TOKEN}, timeout=6).json()
+            if "access_token" in pt_res:
+                return page_id, pt_res["access_token"]
+        except Exception:
+            pass
+        return page_id, ACCESS_TOKEN
+    return str(acc_id), ACCESS_TOKEN
+
+
 def send_private_dm(comment_id, message, target_acc_id=None):
-    """Send Direct Message (Private Reply) to commenter."""
+    """Send Direct Message (Private Reply) to commenter via linked Page endpoint."""
     acc_id = target_acc_id or get_active_account_id()
-    print(f"[DM LOG] Attempting Private DM for comment_id {comment_id} on acc_id {acc_id}...")
+    page_id, page_token = get_page_for_ig_account(acc_id)
+    print(f"[DM LOG] Attempting Private DM for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
     
-    # Attempt 1: Instagram Messaging Send API
+    # Attempt 1: Page Messages Endpoint with comment_id recipient (Official Meta Private Replies)
+    try:
+        url = f"{GRAPH_URL}/{page_id}/messages"
+        payload = {
+            "recipient": {"comment_id": comment_id},
+            "message": {"text": message}
+        }
+        res = requests.post(url, json=payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
+        print(f"[DM LOG] Page Private Reply Response: {res}")
+        if "message_id" in res or "recipient_id" in res or "id" in res:
+            return {"status": "success", "result": res}
+    except Exception as e:
+        print(f"[DM LOG] Page Private Reply Exception: {e}")
+        
+    # Attempt 2: Direct IG messages endpoint
     try:
         url = f"{GRAPH_URL}/{acc_id}/messages"
         payload = {
             "recipient": {"comment_id": comment_id},
-            "message": {"text": message},
-            "access_token": ACCESS_TOKEN
+            "message": {"text": message}
         }
-        res = requests.post(url, json=payload, timeout=10).json()
-        print(f"[DM LOG] Attempt 1 Response: {res}")
+        res = requests.post(url, json=payload, params={"access_token": ACCESS_TOKEN}, timeout=10).json()
+        print(f"[DM LOG] Direct IG Response: {res}")
         if "message_id" in res or "recipient_id" in res:
             return {"status": "success", "result": res}
     except Exception as e:
-        print(f"[DM LOG] Attempt 1 Exception: {e}")
+        print(f"[DM LOG] Direct IG Exception: {e}")
 
-    # Attempt 2: Comment Messages Endpoint
-    try:
-        url = f"{GRAPH_URL}/{comment_id}/messages"
-        data = {
-            "message": message,
-            "access_token": ACCESS_TOKEN
-        }
-        res = requests.post(url, data=data, timeout=10).json()
-        print(f"[DM LOG] Attempt 2 Response: {res}")
-        if "id" in res or "success" in res:
-            return {"status": "success", "result": res}
-    except Exception as e:
-        print(f"[DM LOG] Attempt 2 Exception: {e}")
-
-    return {"status": "failed", "note": "Private reply requires instagram_manage_messages permission"}
+    return {"status": "failed", "note": "Private reply requires instagram_manage_messages and pages_messaging permission"}
 
 
 def create_and_publish_image_post(image_input, caption):
@@ -874,12 +909,21 @@ def api_auto_reply_scan():
                         if "id" in res:
                             dm_status = "Not Sent"
                             
-                            # Send Clickable Link directly via DM (Private Reply)
-                            dm_content = post_dm_message if (post_send_dm and post_dm_message) else ""
-                            if not dm_content and post_cta_link:
-                                dm_content = f"Halo kak @{comment.get('username', '')}! Terima kasih sudah tertarik dengan listing ini. 😊\n\nUntuk info detail & panduan lengkap, silakan buka tautan berikut:\n{post_cta_link}"
-                            elif dm_content and post_cta_link and post_cta_link not in dm_content:
-                                dm_content += f"\n\nTautan Akses: {post_cta_link}"
+                            # Send Clickable Link directly via DM (Private Reply - Hybrid Mobile & Desktop)
+                            user_handle = comment.get('username', '')
+                            dm_content = ""
+                            if post_send_dm or post_cta_link:
+                                if post_dm_message:
+                                    dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", post_cta_link)
+                                    if post_cta_link and post_cta_link not in dm_content:
+                                        dm_content += f"\n\n👉 {post_cta_link}"
+                                elif post_cta_link:
+                                    dm_content = (
+                                        f"Halo kak @{user_handle}! 👋\n\n"
+                                        f"Terima kasih atas antusiasmenya. Ini tautan akses resmi yang kakak cari:\n"
+                                        f"👉 {post_cta_link}\n\n"
+                                        f"(Bisa langsung diklik baik di HP maupun Laptop/Desktop)"
+                                    )
 
                             if dm_content:
                                 dm_res = send_private_dm(c_id, dm_content, target_acc_id=acc_id)
