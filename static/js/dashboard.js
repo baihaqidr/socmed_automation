@@ -343,6 +343,9 @@ async function loadPostRulesView() {
       const buttonText = rule.button_text || 'Ini link aksesnya';
       const dmFormat = rule.dm_format || 'card';
       const useSmartLink = rule.use_smart_link !== false;
+      const requireFollow = rule.require_follow === true;
+      const followPrompt = rule.follow_prompt || '';
+      const notFollowingMsg = rule.not_following_msg || '';
       const captionText = post.caption || 'Tanpa Caption';
 
       return `
@@ -398,7 +401,28 @@ async function loadPostRulesView() {
               </div>
             </div>
 
-            <!-- Direct Message (DM) Automation Section -->
+            <!-- Workflow Pre-Step: Follow Gatekeeper (Optional) -->
+            <div style="padding: 12px 14px; background: rgba(59, 130, 246, 0.04); border: 1px dashed var(--primary); border-radius: var(--radius-sm); margin-top: 6px; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" id="require-follow-${pId}" ${requireFollow ? 'checked' : ''} onchange="document.getElementById('follow-settings-${pId}').style.display = this.checked ? 'grid' : 'none'" style="accent-color: var(--primary); cursor: pointer;">
+                  <i data-lucide="user-check" style="width: 15px; height: 15px;"></i> 🛡️ Pre-Step: Wajib Cek Follow (Follow Gatekeeper)
+                </label>
+                <span class="pill-badge pill-purple" style="font-size: 10px;">Tahap Verifikasi Awal</span>
+              </div>
+              <div id="follow-settings-${pId}" style="display: ${requireFollow ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Pesan Minta Follow (DM Pertama)</label>
+                  <input type="text" id="follow-prompt-${pId}" class="form-input" value="${followPrompt}" placeholder="Halo kak @{username}! Follow @{account} dulu, lalu balas 'SUDAH' untuk klaim linknya!">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Pesan Jika Belum Follow (Tertangkap)</label>
+                  <input type="text" id="not-following-msg-${pId}" class="form-input" value="${notFollowingMsg}" placeholder="Yah kak @{username}, sistem mendeteksi kamu belum follow nih 😢 Follow dulu ya!">
+                </div>
+              </div>
+            </div>
+
+            <!-- Direct Message (DM) Delivery Automation Section -->
             <div style="padding: 12px 14px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-top: 6px;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                 <label style="font-size: 13px; font-weight: 500; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
@@ -469,6 +493,9 @@ async function savePostRule(postId) {
   const buttonText = document.getElementById(`btn-text-${postId}`)?.value.trim() || 'Ini link aksesnya';
   const dmFormat = document.getElementById(`dm-format-${postId}`)?.value || 'card';
   const useSmartLink = document.getElementById(`smart-link-${postId}`) ? document.getElementById(`smart-link-${postId}`).checked : true;
+  const requireFollow = document.getElementById(`require-follow-${postId}`) ? document.getElementById(`require-follow-${postId}`).checked : false;
+  const followPrompt = document.getElementById(`follow-prompt-${postId}`)?.value.trim() || '';
+  const notFollowingMsg = document.getElementById(`not-following-msg-${postId}`)?.value.trim() || '';
 
   if (btn) {
     btn.disabled = true;
@@ -488,7 +515,10 @@ async function savePostRule(postId) {
         dm_message: dmMessage,
         button_text: buttonText,
         dm_format: dmFormat,
-        use_smart_link: useSmartLink
+        use_smart_link: useSmartLink,
+        require_follow: requireFollow,
+        follow_prompt: followPrompt,
+        not_following_msg: notFollowingMsg
       })
     });
 
