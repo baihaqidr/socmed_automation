@@ -315,6 +315,23 @@ def load_replied_comments():
     return set()
 
 
+def load_dmed_users_per_post():
+    """Load set of (username.lower(), post_id) that already received a DM to prevent duplicate DMs."""
+    pairs = set()
+    if supabase_client:
+        try:
+            res = supabase_client.table("replied_comments").select("username,post_id").execute()
+            if res.data:
+                for row in res.data:
+                    u = str(row.get("username", "")).strip().lower()
+                    p = str(row.get("post_id", "")).strip()
+                    if u and p:
+                        pairs.add((u, p))
+        except Exception:
+            pass
+    return pairs
+
+
 def record_replied_comment(comment_id, post_id="", username="", comment_text="", reply_text=""):
     """Record a newly replied comment to Supabase and local file."""
     if supabase_client:
@@ -1382,6 +1399,7 @@ def run_auto_reply_scan():
     rules = load_rules()
     post_rules = load_post_rules()
     replied_ids = load_replied_comments()
+    dmed_users = load_dmed_users_per_post()
     
     total_replied = 0
     total_dms_sent = 0
@@ -1525,7 +1543,8 @@ def run_auto_reply_scan():
                             post_use_smart_link = post_rule.get("use_smart_link", True)
                             effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
 
-                            if post_send_dm or post_cta_link:
+                            already_dmed = (user_handle.lower(), p_id) in dmed_users
+                            if (post_send_dm or post_cta_link) and not already_dmed:
                                 if post_dm_message:
                                     dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", effective_link)
                                 else:
@@ -1534,20 +1553,21 @@ def run_auto_reply_scan():
                                     else:
                                         dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Ini tautan aksesnya ya:"
 
-                            if dm_content:
-                                dm_res = send_private_dm(
-                                    comment_id=c_id,
-                                    message=dm_content,
-                                    target_acc_id=acc_id,
-                                    button_url=post_cta_link if post_cta_link else None,
-                                    button_title=button_label,
-                                    dm_format=post_dm_format,
-                                    use_smart_link=post_use_smart_link,
-                                    post_id=p_id
-                                )
-                                dm_status = dm_res.get("status", "sent")
-                                if dm_status == "success":
-                                    total_dms_sent += 1
+                                if dm_content:
+                                    dm_res = send_private_dm(
+                                        comment_id=c_id,
+                                        message=dm_content,
+                                        target_acc_id=acc_id,
+                                        button_url=post_cta_link if post_cta_link else None,
+                                        button_title=button_label,
+                                        dm_format=post_dm_format,
+                                        use_smart_link=post_use_smart_link,
+                                        post_id=p_id
+                                    )
+                                    dm_status = dm_res.get("status", "sent")
+                                    if dm_status == "success":
+                                        total_dms_sent += 1
+                                    dmed_users.add((user_handle.lower(), p_id))
 
                             record_replied_comment(
                                 comment_id=c_id,
@@ -1590,6 +1610,7 @@ def process_webhook_event(payload):
         rules = load_rules()
         post_rules = load_post_rules()
         replied_ids = load_replied_comments()
+        dmed_users = load_dmed_users_per_post()
 
         entries = payload.get("entry", [])
         if not entries and "field" in payload:
@@ -1672,8 +1693,9 @@ def process_webhook_event(payload):
                     reply_res = reply_to_comment(c_id, final_reply)
                     print(f"[WEBHOOK BOT] Public reply sent to @{user_handle}: {reply_res}")
 
-                    # 2. Send Private DM if configured
-                    if post_send_dm or post_cta_link:
+                    # 2. Send Private DM if configured and user hasn't received one for this post
+                    already_dmed = (user_handle.lower(), p_id) in dmed_users
+                    if (post_send_dm or post_cta_link) and not already_dmed:
                         post_use_smart_link = post_rule.get("use_smart_link", True)
                         effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
 
@@ -1696,6 +1718,7 @@ def process_webhook_event(payload):
                             post_id=p_id
                         )
                         print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
+                        dmed_users.add((user_handle.lower(), p_id))
 
                     record_replied_comment(
                         comment_id=c_id,
