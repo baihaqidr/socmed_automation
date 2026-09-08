@@ -395,6 +395,7 @@ def load_replied_comments():
 
 
 _LAST_DM_TIME_PER_USER = {}  # key: (username.lower(), post_id) -> timestamp of last DM sent
+_PROCESSING_COMMENTS = {}     # key: comment_id -> timestamp (prevents race condition duplicate replies)
 
 
 def load_dmed_users_per_post():
@@ -665,26 +666,46 @@ def reply_to_comment(comment_id, message):
     return requests.post(url, data=data).json()
 
 
+_PAGE_TOKEN_CACHE = {}  # key: acc_id or page_id -> (page_id, page_token)
+
 def get_page_for_ig_account(acc_id):
-    """Find the linked Facebook Page ID and Page Token for an Instagram Account."""
+    """Find the linked Facebook Page ID and Page Access Token for an Instagram Account or Page ID."""
     hardcoded_pages = {
         "17841466987503898": "332005543337534",   # Sarang Estate
         "17841448570126268": "1057733957412512",  # Produkly
         "17841474608292986": "652421317951477",   # Murahnesia Store
     }
-    page_id = hardcoded_pages.get(str(acc_id))
+    for ig_aid, pid in list(hardcoded_pages.items()):
+        hardcoded_pages[pid] = pid
+
+    acc_str = str(acc_id or "").strip()
+    if acc_str in _PAGE_TOKEN_CACHE:
+        return _PAGE_TOKEN_CACHE[acc_str]
+
+    page_id = hardcoded_pages.get(acc_str) or acc_str
     page_token = None
+
     try:
         url = f"{GRAPH_URL}/me/accounts"
         params = {"fields": "id,name,access_token,instagram_business_account", "access_token": ACCESS_TOKEN}
         r = requests.get(url, params=params, timeout=8).json()
         for p in r.get("data", []):
+            pid = str(p.get("id", ""))
+            ptok = p.get("access_token")
             ig = p.get("instagram_business_account", {})
-            if str(ig.get("id")) == str(acc_id):
-                return p.get("id"), p.get("access_token")
-            if page_id and str(p.get("id")) == str(page_id):
-                page_token = p.get("access_token")
+            ig_aid = str(ig.get("id", "")) if ig else ""
+
+            if pid and ptok:
+                _PAGE_TOKEN_CACHE[pid] = (pid, ptok)
+            if ig_aid and ptok:
+                _PAGE_TOKEN_CACHE[ig_aid] = (pid, ptok)
+
+            if (acc_str and (acc_str == ig_aid or acc_str == pid)) or (page_id and page_id == pid):
+                page_token = ptok
+                page_id = pid
+
         if page_id and page_token:
+            _PAGE_TOKEN_CACHE[acc_str] = (page_id, page_token)
             return page_id, page_token
     except Exception as e:
         print(f"[PAGE LOOKUP ERROR] {e}")
@@ -693,6 +714,7 @@ def get_page_for_ig_account(acc_id):
         try:
             pt_res = requests.get(f"{GRAPH_URL}/{page_id}", params={"fields": "access_token", "access_token": ACCESS_TOKEN}, timeout=6).json()
             if "access_token" in pt_res:
+                _PAGE_TOKEN_CACHE[acc_str] = (page_id, pt_res["access_token"])
                 return page_id, pt_res["access_token"]
         except Exception:
             pass
@@ -1707,9 +1729,15 @@ def run_auto_reply_scan():
                     if c_user == acc_username:
                         continue
 
-                    # 2. Skip if already in replied database
+                    # 2. Skip if already in replied database or currently being processed
                     if c_id in replied_ids:
                         continue
+
+                    now_check = time.time()
+                    if c_id in _PROCESSING_COMMENTS and (now_check - _PROCESSING_COMMENTS[c_id]) < 300:
+                        print(f"[SCAN BOT] Comment {c_id} already being processed, skipping duplicate.")
+                        continue
+                    _PROCESSING_COMMENTS[c_id] = now_check
                     
                     # 3. Skip if comment already has existing replies on Instagram
                     existing_replies = comment.get("replies", {}).get("data", []) if isinstance(comment.get("replies"), dict) else []
@@ -1766,6 +1794,16 @@ def run_auto_reply_scan():
                     if final_reply:
                         res = reply_to_comment(c_id, final_reply)
                         if "id" in res:
+                            # IMMEDIATELY record comment in database so no duplicate reply can ever happen!
+                            record_replied_comment(
+                                comment_id=c_id,
+                                post_id=p_id,
+                                username=comment.get("username", ""),
+                                comment_text=raw_text,
+                                reply_text=f"[{reply_source}] {final_reply}"
+                            )
+                            replied_ids.add(c_id)
+                            total_replied += 1
                             dm_status = "Not Sent"
                             
                             # Send Clickable Link directly via DM (Private Reply - Native Meta Button Template)
@@ -1834,15 +1872,6 @@ def run_auto_reply_scan():
                                     if dm_status == "success":
                                         total_dms_sent += 1
 
-                            record_replied_comment(
-                                comment_id=c_id,
-                                post_id=p_id,
-                                username=comment.get("username", ""),
-                                comment_text=raw_text,
-                                reply_text=f"[{reply_source}] {final_reply}"
-                            )
-                            replied_ids.add(c_id)
-                            total_replied += 1
                             details.append({
                                 "target_account": acc_username,
                                 "comment_id": c_id,
@@ -1892,6 +1921,12 @@ def process_webhook_event(payload):
                     c_id = str(val.get("id", ""))
                     if not c_id or c_id in replied_ids:
                         continue
+
+                    now_check = time.time()
+                    if c_id in _PROCESSING_COMMENTS and (now_check - _PROCESSING_COMMENTS[c_id]) < 300:
+                        print(f"[WEBHOOK BOT] Comment {c_id} already being processed, skipping duplicate.")
+                        continue
+                    _PROCESSING_COMMENTS[c_id] = now_check
                         
                     raw_text = val.get("text", "").strip()
                     user_data = val.get("from", {})
@@ -1959,6 +1994,16 @@ def process_webhook_event(payload):
                     reply_res = reply_to_comment(c_id, final_reply)
                     print(f"[WEBHOOK BOT] Public reply sent to @{user_handle}: {reply_res}")
 
+                    # IMMEDIATELY record comment in database so no duplicate reply can ever happen!
+                    record_replied_comment(
+                        comment_id=c_id,
+                        post_id=p_id,
+                        username=user_handle,
+                        comment_text=raw_text,
+                        reply_text=f"[{reply_source}] {final_reply}"
+                    )
+                    replied_ids.add(c_id)
+
                     # 2. Send Private DM if configured and not within 15s burst spam
                     now_ts = time.time()
                     last_dm_ts = _LAST_DM_TIME_PER_USER.get((user_handle.lower(), p_id), 0)
@@ -2016,15 +2061,6 @@ def process_webhook_event(payload):
                                 post_id=p_id
                             )
                             print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
-
-                    record_replied_comment(
-                        comment_id=c_id,
-                        post_id=p_id,
-                        username=user_handle,
-                        comment_text=raw_text,
-                        reply_text=f"[{reply_source}] {final_reply}"
-                    )
-                    replied_ids.add(c_id)
     except Exception as e:
         print(f"[WEBHOOK PROCESS ERROR] {e}")
 
