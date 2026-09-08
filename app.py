@@ -862,6 +862,7 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
         message = wrap_text_urls(message, button_title, post_id=post_id)
 
     # Mode 0: Interactive Quick Replies (Native Instagram Tappable Buttons as shown in AI Ads example)
+    # Mode 0: Interactive Buttons / Quick Replies
     if quick_replies and isinstance(quick_replies, list):
         qr_formatted = []
         for item in quick_replies:
@@ -872,24 +873,7 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
                     "payload": str(item.get("payload", ""))[:1000]
                 })
         if qr_formatted:
-            # 1. Try Quick Replies (Native Instagram pill buttons)
-            qr_payload = {
-                "recipient": recipient_payload,
-                "message": {
-                    "text": message.strip()[:640],
-                    "quick_replies": qr_formatted
-                }
-            }
-            try:
-                res = requests.post(url, json=qr_payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
-                print(f"[DM LOG] Quick Replies Response: {res}")
-                if "message_id" in res or "recipient_id" in res or "id" in res:
-                    return {"status": "success", "result": res}
-                print(f"[DM LOG] Quick replies rejected ({res}), attempting Postback Button...")
-            except Exception as e:
-                print(f"[DM LOG] Quick replies exception: {e}")
-
-            # 2. Try Button Template with postback (Dark button container inside bubble)
+            # 1. Try Button Template with postback (Dark button container docked INSIDE the message bubble)
             pb_payload = {
                 "recipient": recipient_payload,
                 "message": {
@@ -911,11 +895,28 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
             }
             try:
                 res_pb = requests.post(url, json=pb_payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
-                print(f"[DM LOG] Postback Button Response: {res_pb}")
+                print(f"[DM LOG] Button Template Postback Response: {res_pb}")
                 if "message_id" in res_pb or "recipient_id" in res_pb or "id" in res_pb:
                     return {"status": "success", "result": res_pb}
+                print(f"[DM LOG] Button Template with postback not supported ({res_pb}), falling back to Quick Replies...")
             except Exception as e:
-                print(f"[DM LOG] Postback button exception: {e}")
+                print(f"[DM LOG] Button Template postback exception: {e}")
+
+            # 2. Fallback to Quick Replies (Native Instagram pill buttons)
+            qr_payload = {
+                "recipient": recipient_payload,
+                "message": {
+                    "text": message.strip()[:640],
+                    "quick_replies": qr_formatted
+                }
+            }
+            try:
+                res = requests.post(url, json=qr_payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
+                print(f"[DM LOG] Quick Replies Response: {res}")
+                if "message_id" in res or "recipient_id" in res or "id" in res:
+                    return {"status": "success", "result": res}
+            except Exception as e:
+                print(f"[DM LOG] Quick replies exception: {e}")
 
     # Mode 1: Button Template (Only if explicitly requested and clean_url is provided)
     if dm_format == "button" and smart_link_url:
@@ -1788,10 +1789,8 @@ def run_auto_reply_scan():
                                 if require_follow:
                                     # Follow Gatekeeper: Ask user to follow with [Sudah Follow] button
                                     follow_prompt_template = post_rule.get("follow_prompt") or (
-                                        f"Halo kak @{user_handle}! Terima kasih sudah tertarik dengan postingan @{acc_name} 😊\n\n"
-                                        f"Link akses ini spesial kami bagikan khusus untuk followers @{acc_name}. "
-                                        f"Yuk follow akun @{acc_name} dulu ya!\n\n"
-                                        f"Setelah follow, silakan klik tombol 'Sudah Follow' di bawah (atau balas chat ini ketik 'Sudah') untuk konfirmasi! 👇"
+                                        f"Halo kak! Yuk follow @{acc_name} dulu ya 😊\n"
+                                        f"Setelah follow, silakan klik tombol di bawah untuk konfirmasi:"
                                     )
                                     follow_prompt = follow_prompt_template.replace("{username}", user_handle).replace("{account}", acc_name)
                                     follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
@@ -1977,10 +1976,8 @@ def process_webhook_event(payload):
                         if require_follow:
                             # Follow Gatekeeper: Ask user to follow with [Sudah Follow] button
                             follow_prompt_template = post_rule.get("follow_prompt") or (
-                                f"Halo kak @{user_handle}! Terima kasih sudah tertarik dengan postingan @{acc_name} 😊\n\n"
-                                f"Link akses ini spesial kami bagikan khusus untuk followers @{acc_name}. "
-                                f"Yuk follow akun @{acc_name} dulu ya!\n\n"
-                                f"Setelah follow, silakan klik tombol 'Sudah Follow' di bawah (atau balas chat ini ketik 'Sudah') untuk konfirmasi! 👇"
+                                f"Halo kak! Yuk follow @{acc_name} dulu ya 😊\n"
+                                f"Setelah follow, silakan klik tombol di bawah untuk konfirmasi:"
                             )
                             follow_prompt = follow_prompt_template.replace("{username}", user_handle).replace("{account}", acc_name)
                             follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
@@ -2116,10 +2113,8 @@ def handle_incoming_dm_follow_check(payload):
             if is_req_link:
                 # STAGE 1: User requested link -> Send Gatekeeper Prompt with [Sudah Follow] button
                 follow_prompt = post_rule.get("follow_prompt") or (
-                    f"Halo kak @{display_user}! Terima kasih sudah tertarik dengan postingan @{acc_name} 😊\n\n"
-                    f"Link akses ini spesial kami bagikan khusus untuk followers @{acc_name}. "
-                    f"Yuk follow akun @{acc_name} dulu ya!\n\n"
-                    f"Setelah follow, silakan klik tombol 'Sudah Follow' di bawah (atau balas chat ini ketik 'Sudah') untuk konfirmasi! 👇"
+                    f"Halo kak! Yuk follow @{acc_name} dulu ya 😊\n"
+                    f"Setelah follow, silakan klik tombol di bawah untuk konfirmasi:"
                 )
                 follow_prompt = follow_prompt.replace("{username}", display_user).replace("{account}", acc_name)
                 follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
@@ -2145,8 +2140,8 @@ def handle_incoming_dm_follow_check(payload):
                 if not is_following and not has_meta_err:
                     # User has NOT followed yet! Catch them with friendly Indonesian message + [Sudah Follow] button again
                     not_f_template = post_rule.get("not_following_msg") or (
-                        f"Sedikit lagi kak @{display_user}! Sistem mendeteksi kamu belum follow @{acc_name} nih 😢\n\n"
-                        f"Yuk klik follow akun @{acc_name} dulu ya, setelah itu langsung klik tombol 'Sudah Follow' di bawah ini lagi! 👇"
+                        f"Kamu belum follow @{acc_name} nih kak 🥺\n"
+                        f"Yuk follow @{acc_name} dulu ya, lalu klik tombol di bawah lagi:"
                     )
                     not_f_msg = not_f_template.replace("{username}", display_user).replace("{account}", acc_name)
                     follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
