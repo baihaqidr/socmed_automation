@@ -1170,7 +1170,11 @@ def process_webhook_event(payload):
         post_rules = load_post_rules()
         replied_ids = load_replied_comments()
 
-        for entry in payload.get("entry", []):
+        entries = payload.get("entry", [])
+        if not entries and "field" in payload:
+            entries = [{"id": "test_account", "changes": [{"field": payload.get("field"), "value": payload.get("value", {})}]}]
+
+        for entry in entries:
             entry_id = str(entry.get("id", ""))  # IG account or page id
             for change in entry.get("changes", []):
                 field = change.get("field", "")
