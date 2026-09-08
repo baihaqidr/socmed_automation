@@ -699,42 +699,40 @@ def get_fitted_og_bytes(img_url='', title='', domain=''):
     return img_data
 
 
-def make_smart_link(original_url, title=None):
-    """Wraps any 3rd-party or custom URL into an uncropped anti-crop Smart Link."""
+def make_smart_link(original_url, title=None, post_id=None):
+    """Wraps any 3rd-party or custom URL into an ultra-clean anti-crop Smart Link."""
     if not original_url:
         return ""
     clean = original_url.strip()
     if not clean.startswith("http://") and not clean.startswith("https://"):
         clean = f"https://{clean}"
-    if "/l?" in clean or "/r?" in clean:
+    if "/l?" in clean or "/r?" in clean or "/to/" in clean or "/go?" in clean:
         return clean
 
     base = "https://socmedautomation.vercel.app"
-    encoded_u = urllib.parse.quote(clean, safe="")
-    smart_url = f"{base}/l?u={encoded_u}"
-    if title:
-        smart_url += f"&t={urllib.parse.quote(str(title).strip(), safe='')}"
-    return smart_url
+    if post_id:
+        return f"{base}/to/{post_id}"
+    return f"{base}/go?url={clean}"
 
 
-def wrap_text_urls(text, title=None):
+def wrap_text_urls(text, title=None, post_id=None):
     """Find all external http/https URLs in text and replace them with uncropped smart link wrappers."""
     if not text:
         return text
     def _rep(m):
         raw = m.group(0)
-        if "socmedautomation.vercel.app/l?" in raw or "socmedautomation.vercel.app/r?" in raw:
+        if "socmedautomation.vercel.app/" in raw:
             return raw
         trailing = ""
         while raw and raw[-1] in ".,!?;:)":
             trailing = raw[-1] + trailing
             raw = raw[:-1]
-        return make_smart_link(raw, title) + trailing
+        return make_smart_link(raw, title, post_id=post_id) + trailing
     url_pattern = re.compile(r'https?://[^\s<>"]+')
     return url_pattern.sub(_rep, text)
 
 
-def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None, dm_format="card", use_smart_link=True):
+def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None, dm_format="card", use_smart_link=True, post_id=None):
     """Send Direct Message (Private Reply) to commenter via linked Page endpoint.
     dm_format: 'card' (Universal Rich Link Card, 100% clickable on Desktop & Mobile)
                or 'button' (Meta Button Template, interactive button on Mobile).
@@ -742,7 +740,7 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
     """
     acc_id = target_acc_id or get_active_account_id()
     page_id, page_token = get_page_for_ig_account(acc_id)
-    print(f"[DM LOG] Attempting Private DM ({dm_format}, smart_link={use_smart_link}) for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
+    print(f"[DM LOG] Attempting Private DM ({dm_format}, smart_link={use_smart_link}, post_id={post_id}) for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
     
     url = f"{GRAPH_URL}/{page_id}/messages"
     
@@ -754,10 +752,10 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
 
     smart_link_url = clean_url
     if clean_url and use_smart_link:
-        smart_link_url = make_smart_link(clean_url, button_title)
+        smart_link_url = make_smart_link(clean_url, button_title, post_id=post_id)
 
     if use_smart_link:
-        message = wrap_text_urls(message, button_title)
+        message = wrap_text_urls(message, button_title, post_id=post_id)
 
     # Mode 1: Button Template (Only if explicitly requested and clean_url is provided)
     if dm_format == "button" and smart_link_url:
@@ -1065,14 +1063,10 @@ def api_og_image():
     return response
 
 
-@app.route('/l')
-@app.route('/r')
-def smart_link_redirect():
-    """Smart Link Wrapper: serves anti-crop OG tags to crawlers and instantly redirects human visitors."""
-    target_url = request.args.get('u', '').strip()
-    custom_title = request.args.get('t', '').strip()
-    custom_img = request.args.get('img', '').strip()
-
+def render_smart_page(target_url, custom_title="", custom_img="", canonical_url=None):
+    """Core renderer: dynamically scrapes target website OG metadata, generates fitted 1200x630 card,
+    and handles crawler vs human separation.
+    """
     if not target_url:
         return "Tautan tidak valid.", 400
 
@@ -1082,71 +1076,72 @@ def smart_link_redirect():
     parsed = urllib.parse.urlparse(target_url)
     domain = parsed.netloc or "website"
 
-    title = custom_title
+    scraped_title = ""
     description = f"Klik untuk membuka tautan resmi dari {domain}."
     image_url = custom_img
 
-    # Scrape target URL if title or image missing
-    if not title or not image_url:
-        now = time.time()
-        cached = _URL_META_CACHE.get(target_url)
-        if cached and (now - cached.get("time", 0)) < 3600:
-            if not title:
-                title = cached.get("title", "")
-            if not image_url:
-                image_url = cached.get("image", "")
-            description = cached.get("desc", description)
-        else:
-            try:
-                headers = {
-                    'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
-                }
-                resp = requests.get(target_url, headers=headers, timeout=5)
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.text, 'html.parser')
+    # Always dynamically scrape destination website for real OG metadata unless cached
+    now = time.time()
+    cached = _URL_META_CACHE.get(target_url)
+    if cached and (now - cached.get("time", 0)) < 3600:
+        scraped_title = cached.get("title", "")
+        if not image_url:
+            image_url = cached.get("image", "")
+        description = cached.get("desc", description)
+    else:
+        try:
+            headers = {
+                'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+            }
+            resp = requests.get(target_url, headers=headers, timeout=5)
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, 'html.parser')
 
-                    # Extract title
-                    if not title:
-                        og_t = soup.find('meta', property='og:title')
-                        if og_t and og_t.get('content'):
-                            title = og_t.get('content').strip()
-                        elif soup.title and soup.title.string:
-                            title = soup.title.string.strip()
+                # Dynamic title extraction from real website
+                og_t = soup.find('meta', property='og:title')
+                if og_t and og_t.get('content'):
+                    scraped_title = og_t.get('content').strip()
+                elif soup.title and soup.title.string:
+                    scraped_title = soup.title.string.strip()
 
-                    # Extract description
-                    og_d = soup.find('meta', property='og:description')
-                    if og_d and og_d.get('content'):
-                        description = og_d.get('content').strip()
+                # Dynamic description extraction
+                og_d = soup.find('meta', property='og:description')
+                if og_d and og_d.get('content'):
+                    description = og_d.get('content').strip()
+                else:
+                    meta_d = soup.find('meta', attrs={'name': 'description'})
+                    if meta_d and meta_d.get('content'):
+                        description = meta_d.get('content').strip()
+
+                # Dynamic image extraction (og:image, twitter:image, apple-touch-icon, favicon)
+                if not image_url:
+                    og_i = soup.find('meta', property='og:image')
+                    if og_i and og_i.get('content'):
+                        image_url = og_i.get('content').strip()
                     else:
-                        meta_d = soup.find('meta', attrs={'name': 'description'})
-                        if meta_d and meta_d.get('content'):
-                            description = meta_d.get('content').strip()
-
-                    # Extract image
-                    if not image_url:
-                        og_i = soup.find('meta', property='og:image')
-                        if og_i and og_i.get('content'):
-                            image_url = og_i.get('content').strip()
-                        elif soup.find('link', rel=lambda r: r and 'icon' in r.lower()):
-                            ico = soup.find('link', rel=lambda r: r and 'icon' in r.lower())
+                        tw_i = soup.find('meta', attrs={'name': 'twitter:image'})
+                        if tw_i and tw_i.get('content'):
+                            image_url = tw_i.get('content').strip()
+                        elif soup.find('link', rel=lambda r: r and ('icon' in r.lower() or 'apple-touch-icon' in r.lower())):
+                            ico = soup.find('link', rel=lambda r: r and ('icon' in r.lower() or 'apple-touch-icon' in r.lower()))
                             if ico and ico.get('href'):
                                 image_url = ico.get('href').strip()
 
-                    if image_url and not image_url.startswith('http://') and not image_url.startswith('https://'):
-                        image_url = urllib.parse.urljoin(target_url, image_url)
+                if image_url and not image_url.startswith('http://') and not image_url.startswith('https://'):
+                    image_url = urllib.parse.urljoin(target_url, image_url)
 
-                    _URL_META_CACHE[target_url] = {
-                        "title": title,
-                        "desc": description,
-                        "image": image_url,
-                        "domain": domain,
-                        "time": now
-                    }
-            except Exception as e:
-                print(f"[META SCRAPE ERROR] {e}")
+                _URL_META_CACHE[target_url] = {
+                    "title": scraped_title,
+                    "desc": description,
+                    "image": image_url,
+                    "domain": domain,
+                    "time": now
+                }
+        except Exception as e:
+            print(f"[META SCRAPE ERROR] {e}")
 
-    if not title:
-        title = f"Kunjungi {domain}"
+    # Prioritize real scraped title from destination website, fallback to custom title or domain
+    title = scraped_title or custom_title or f"Kunjungi {domain}"
 
     # Build fitted OG image URL on our server
     host = "https://socmedautomation.vercel.app"
@@ -1160,11 +1155,9 @@ def smart_link_redirect():
         og_image_param += f"&t={urllib.parse.quote(title[:80], safe='')}"
 
     fitted_og_image = f"{host}/api/og-image?{og_image_param}"
-    wrapper_url = f"{host}/l?u={urllib.parse.quote(target_url, safe='')}"
+    wrapper_url = canonical_url or f"{host}/go?url={target_url}"
 
     # Detect crawler vs human visitor:
-    # Crawlers must NOT receive the http-equiv refresh or location.replace,
-    # otherwise Facebook/Instagram crawler follows the redirect to destination URL and bypasses the card!
     ua = (request.headers.get('User-Agent') or '').lower()
     crawler_bots = [
         'facebookexternalhit', 'facebot', 'meta-externalagent',
@@ -1267,6 +1260,42 @@ def smart_link_redirect():
 </body>
 </html>"""
     return Response(html_content, mimetype='text/html')
+
+
+@app.route('/to/<post_id>')
+def smart_link_by_post(post_id):
+    """Clean branded shortlink: https://socmedautomation.vercel.app/to/<post_id>.
+    Dynamically loads the post's configured cta_link from Supabase, scrapes its OG image/title,
+    and redirects the user.
+    """
+    post_rules = load_post_rules()
+    post_rule = post_rules.get(str(post_id), {})
+    target_url = post_rule.get("cta_link", "").strip()
+    if not target_url:
+        return redirect("https://instagram.com")
+
+    host = "https://socmedautomation.vercel.app"
+    if request.host and ("localhost" in request.host or "127.0.0.1" in request.host):
+        host = request.host_url.rstrip('/')
+    return render_smart_page(target_url, canonical_url=f"{host}/to/{post_id}")
+
+
+@app.route('/go')
+@app.route('/l')
+@app.route('/r')
+def smart_link_redirect():
+    """Smart Link Wrapper: accepts /go?url=https://... as well as legacy /l?u=..."""
+    target_url = (request.args.get('url') or request.args.get('u') or '').strip()
+    custom_title = request.args.get('t', '').strip()
+    custom_img = request.args.get('img', '').strip()
+
+    if not target_url:
+        return "Tautan tidak valid.", 400
+
+    host = "https://socmedautomation.vercel.app"
+    if request.host and ("localhost" in request.host or "127.0.0.1" in request.host):
+        host = request.host_url.rstrip('/')
+    return render_smart_page(target_url, custom_title=custom_title, custom_img=custom_img, canonical_url=f"{host}/go?url={target_url}")
 
 
 @app.route('/api/posts')
@@ -1494,7 +1523,7 @@ def run_auto_reply_scan():
                             button_label = str(post_rule.get("button_text", "")).strip() or "Ini link aksesnya"
                             post_dm_format = str(post_rule.get("dm_format", "card")).strip()
                             post_use_smart_link = post_rule.get("use_smart_link", True)
-                            effective_link = make_smart_link(post_cta_link, button_label) if (post_use_smart_link and post_cta_link) else post_cta_link
+                            effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
 
                             if post_send_dm or post_cta_link:
                                 if post_dm_message:
@@ -1513,7 +1542,8 @@ def run_auto_reply_scan():
                                     button_url=post_cta_link if post_cta_link else None,
                                     button_title=button_label,
                                     dm_format=post_dm_format,
-                                    use_smart_link=post_use_smart_link
+                                    use_smart_link=post_use_smart_link,
+                                    post_id=p_id
                                 )
                                 dm_status = dm_res.get("status", "sent")
                                 if dm_status == "success":
@@ -1645,7 +1675,7 @@ def process_webhook_event(payload):
                     # 2. Send Private DM if configured
                     if post_send_dm or post_cta_link:
                         post_use_smart_link = post_rule.get("use_smart_link", True)
-                        effective_link = make_smart_link(post_cta_link, button_label) if (post_use_smart_link and post_cta_link) else post_cta_link
+                        effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
 
                         if post_dm_message:
                             dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", effective_link)
@@ -1662,7 +1692,8 @@ def process_webhook_event(payload):
                             button_url=post_cta_link if post_cta_link else None,
                             button_title=button_label,
                             dm_format=post_dm_format,
-                            use_smart_link=post_use_smart_link
+                            use_smart_link=post_use_smart_link,
+                            post_id=p_id
                         )
                         print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
 
