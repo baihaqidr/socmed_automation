@@ -496,8 +496,15 @@ def get_all_posts(limit=100, target_id=None):
         try:
             cache_data = load_posts_from_file_cache() or {}
             cache_data[acc_id] = merged_posts
-            with open(POSTS_CACHE_FILE, 'w', encoding='utf-8') as f:
-                json.dump(cache_data, f, indent=2, ensure_ascii=False)
+            
+            # Only write to disk if post IDs or count actually changed (avoids constant CDN token churn in git)
+            existing_ids = [str(p.get("id")) for p in existing]
+            new_ids = [str(p.get("id")) for p in merged_posts]
+            if existing_ids != new_ids or not os.path.exists(POSTS_CACHE_FILE):
+                with open(POSTS_CACHE_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(cache_data, f, indent=2, ensure_ascii=False)
+            
+            # Keep Supabase cloud synchronized
             set_app_setting("POSTS_CACHE", json.dumps(cache_data))
         except Exception as e:
             print(f"[CACHE WRITE ERROR] {e}")
