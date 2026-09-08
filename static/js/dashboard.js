@@ -340,6 +340,7 @@ async function loadPostRulesView() {
       const customReply = rule.custom_reply || '';
       const sendDm = rule.send_dm || false;
       const dmMessage = rule.dm_message || '';
+      const buttonText = rule.button_text || 'Ini link aksesnya';
       const captionText = post.caption || 'Tanpa Caption';
 
       return `
@@ -371,7 +372,7 @@ async function loadPostRulesView() {
                   <i data-lucide="link" style="width: 14px; height: 14px; color: var(--primary);"></i> Custom Link (URL Tujuan / Landing Page / Tautan Khusus)
                 </label>
                 <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://domainanda.com/promo atau https://linktr.ee/...">
-                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 3px; display: block;">Tautan tujuan ini akan disisipkan bot ke DM / balasan secara otomatis.</span>
+                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 3px; display: block;">Tautan tujuan ini akan dibuka saat tombol DM diklik.</span>
               </div>
 
               <!-- Custom Public Reply Template Override -->
@@ -389,13 +390,22 @@ async function loadPostRulesView() {
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                 <label style="font-size: 13px; font-weight: 500; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
                   <input type="checkbox" id="send-dm-${pId}" ${sendDm ? 'checked' : ''} style="accent-color: #F59E0B; cursor: pointer;">
-                  <i data-lucide="mail" style="width: 14px; height: 14px; color: #FBBF24;"></i> Kirim DM Otomatis ke Inbox Komentator (Private Reply)
+                  <i data-lucide="mail" style="width: 14px; height: 14px; color: #FBBF24;"></i> Kirim DM Otomatis (Meta Button Template)
                 </label>
-                <span style="font-size: 11px; color: var(--ink-mute);">Instagram Direct Message</span>
+                <span style="font-size: 11px; color: var(--ink-mute);">Instagram Button DM</span>
               </div>
 
-              <div class="form-group" style="margin-bottom: 0;">
-                <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Terima kasih sudah komentar. Ini info detail & tautan lengkapnya ya kak...">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks Pesan DM</label>
+                  <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Silakan klik tombol di bawah ini...">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 11px; color: var(--primary); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                    <i data-lucide="mouse-pointer-click" style="width: 12px; height: 12px;"></i> Teks Tombol Link (Button Title)
+                  </label>
+                  <input type="text" id="btn-text-${pId}" class="form-input" value="${buttonText}" placeholder="contoh: Ini link aksesnya">
+                </div>
               </div>
             </div>
 
@@ -423,6 +433,7 @@ async function savePostRule(postId) {
   const customReply = document.getElementById(`custom-reply-${postId}`)?.value.trim() || '';
   const sendDm = document.getElementById(`send-dm-${postId}`)?.checked || false;
   const dmMessage = document.getElementById(`dm-message-${postId}`)?.value.trim() || '';
+  const buttonText = document.getElementById(`btn-text-${postId}`)?.value.trim() || 'Ini link aksesnya';
 
   if (btn) {
     btn.disabled = true;
@@ -439,7 +450,8 @@ async function savePostRule(postId) {
         cta_link: ctaLink,
         custom_reply: customReply,
         send_dm: sendDm,
-        dm_message: dmMessage
+        dm_message: dmMessage,
+        button_text: buttonText
       })
     });
 

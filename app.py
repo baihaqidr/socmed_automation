@@ -200,37 +200,49 @@ def delete_rule_db(keyword):
 
 def load_post_rules():
     """Load per-post custom rules & CTA links from Supabase or fallback JSON."""
+    local_data = {}
+    if os.path.exists(POST_RULES_FILE):
+        try:
+            with open(POST_RULES_FILE, 'r', encoding='utf-8') as f:
+                local_data = json.load(f)
+        except Exception:
+            pass
+
     if supabase_client:
         try:
             res = supabase_client.table("post_rules").select("*").eq("is_active", True).execute()
             if res.data:
-                return {row["post_id"]: row for row in res.data}
+                result = {}
+                for row in res.data:
+                    p_id = str(row["post_id"])
+                    btn_txt = get_app_setting(f"BUTTON_TEXT_{p_id}") or local_data.get(p_id, {}).get("button_text") or "Ini link aksesnya"
+                    row["button_text"] = btn_txt
+                    result[p_id] = row
+                return result
         except Exception as e:
             print(f"[SUPABASE ERROR] load_post_rules failed: {e}")
 
-    if os.path.exists(POST_RULES_FILE):
-        try:
-            with open(POST_RULES_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+    return local_data
 
 
-def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview=""):
+def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya"):
     """Save custom automation rule for a specific post."""
+    btn_text = (button_text or "Ini link aksesnya").strip()
     data = {
         "post_id": str(post_id),
         "cta_link": cta_link,
         "custom_reply": custom_reply,
         "send_dm": bool(send_dm),
         "dm_message": dm_message,
+        "button_text": btn_text,
         "post_caption_preview": post_caption_preview,
         "is_active": True
     }
     if supabase_client:
         try:
-            supabase_client.table("post_rules").upsert(data, on_conflict="post_id").execute()
+            supa_data = {k: v for k, v in data.items() if k != "button_text"}
+            supabase_client.table("post_rules").upsert(supa_data, on_conflict="post_id").execute()
+            set_app_setting(f"BUTTON_TEXT_{post_id}", btn_text)
         except Exception as e:
             print(f"[SUPABASE ERROR] save_post_rule_db failed: {e}")
 
@@ -468,18 +480,61 @@ def get_page_for_ig_account(acc_id):
     return str(acc_id), ACCESS_TOKEN
 
 
-def send_private_dm(comment_id, message, target_acc_id=None):
-    """Send Direct Message (Private Reply) to commenter via linked Page endpoint."""
+def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None):
+    """Send Direct Message (Private Reply) to commenter via linked Page endpoint.
+    Supports native Meta Button Template with web_url if button_url is provided.
+    """
     acc_id = target_acc_id or get_active_account_id()
     page_id, page_token = get_page_for_ig_account(acc_id)
     print(f"[DM LOG] Attempting Private DM for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
     
-    # Attempt 1: Page Messages Endpoint with comment_id recipient (Official Meta Private Replies)
-    try:
-        url = f"{GRAPH_URL}/{page_id}/messages"
+    url = f"{GRAPH_URL}/{page_id}/messages"
+    
+    # Priority 1: If button_url is provided, send official Meta Button Template
+    if button_url:
+        btn_text = (button_title or "Ini link aksesnya").strip()[:80]
+        # Clean URL
+        clean_url = button_url.strip()
+        if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+            clean_url = f"https://{clean_url}"
+            
         payload = {
             "recipient": {"comment_id": comment_id},
-            "message": {"text": message}
+            "message": {
+                "attachment": {
+                    "type": "template",
+                    "payload": {
+                        "template_type": "button",
+                        "text": message[:640],
+                        "buttons": [
+                            {
+                                "type": "web_url",
+                                "url": clean_url,
+                                "title": btn_text
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        try:
+            res = requests.post(url, json=payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
+            print(f"[DM LOG] Button Template Response: {res}")
+            if "message_id" in res or "recipient_id" in res or "id" in res:
+                return {"status": "success", "result": res}
+            print(f"[DM LOG] Button template failed ({res}), falling back to text format...")
+        except Exception as e:
+            print(f"[DM LOG] Button template exception: {e}")
+
+    # Priority 2: Text format fallback
+    try:
+        text_message = message
+        if button_url and button_url not in text_message:
+            text_message += f"\n\n👉 {button_url}"
+            
+        payload = {
+            "recipient": {"comment_id": comment_id},
+            "message": {"text": text_message}
         }
         res = requests.post(url, json=payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
         print(f"[DM LOG] Page Private Reply Response: {res}")
@@ -487,20 +542,6 @@ def send_private_dm(comment_id, message, target_acc_id=None):
             return {"status": "success", "result": res}
     except Exception as e:
         print(f"[DM LOG] Page Private Reply Exception: {e}")
-        
-    # Attempt 2: Direct IG messages endpoint
-    try:
-        url = f"{GRAPH_URL}/{acc_id}/messages"
-        payload = {
-            "recipient": {"comment_id": comment_id},
-            "message": {"text": message}
-        }
-        res = requests.post(url, json=payload, params={"access_token": ACCESS_TOKEN}, timeout=10).json()
-        print(f"[DM LOG] Direct IG Response: {res}")
-        if "message_id" in res or "recipient_id" in res:
-            return {"status": "success", "result": res}
-    except Exception as e:
-        print(f"[DM LOG] Direct IG Exception: {e}")
 
     return {"status": "failed", "note": "Private reply requires instagram_manage_messages and pages_messaging permission"}
 
@@ -761,7 +802,8 @@ def api_post_rules():
             custom_reply=data.get('custom_reply', ''),
             send_dm=data.get('send_dm', False),
             dm_message=data.get('dm_message', ''),
-            post_caption_preview=data.get('post_caption_preview', '')
+            post_caption_preview=data.get('post_caption_preview', ''),
+            button_text=data.get('button_text', 'Ini link aksesnya')
         )
         return jsonify({"status": "success", "rule": saved})
         
@@ -913,24 +955,25 @@ def run_auto_reply_scan():
                         if "id" in res:
                             dm_status = "Not Sent"
                             
-                            # Send Clickable Link directly via DM (Private Reply - Hybrid Mobile & Desktop)
+                            # Send Clickable Link directly via DM (Private Reply - Native Meta Button Template)
                             user_handle = comment.get('username', '')
                             dm_content = ""
+                            button_label = str(post_rule.get("button_text", "")).strip() or "Ini link aksesnya"
+                            
                             if post_send_dm or post_cta_link:
                                 if post_dm_message:
                                     dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", post_cta_link)
-                                    if post_cta_link and post_cta_link not in dm_content:
-                                        dm_content += f"\n\n👉 {post_cta_link}"
-                                elif post_cta_link:
-                                    dm_content = (
-                                        f"Halo kak @{user_handle}! 👋\n\n"
-                                        f"Terima kasih atas antusiasmenya. Ini tautan akses resmi yang kakak cari:\n"
-                                        f"👉 {post_cta_link}\n\n"
-                                        f"(Bisa langsung diklik baik di HP maupun Laptop/Desktop)"
-                                    )
+                                else:
+                                    dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Silakan klik tombol di bawah ini untuk mengakses tautan resmi:"
 
                             if dm_content:
-                                dm_res = send_private_dm(c_id, dm_content, target_acc_id=acc_id)
+                                dm_res = send_private_dm(
+                                    comment_id=c_id,
+                                    message=dm_content,
+                                    target_acc_id=acc_id,
+                                    button_url=post_cta_link if post_cta_link else None,
+                                    button_title=button_label
+                                )
                                 dm_status = dm_res.get("status", "sent")
                                 if dm_status == "success":
                                     total_dms_sent += 1
