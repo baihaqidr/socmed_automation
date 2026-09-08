@@ -1476,6 +1476,12 @@ def run_auto_reply_scan():
                             final_reply = ai_generated
                             reply_source = "Gemini AI"
 
+                    user_handle = comment.get('username', '')
+                    # Reliable fallback if keyword rule & AI both didn't return a reply
+                    if not final_reply and (post_send_dm or post_cta_link or len(raw_text) >= 2):
+                        final_reply = f"Halo kak @{user_handle}! Terima kasih sudah berkomentar, detail selengkapnya sudah kami kirimkan via DM ya! 🙌"
+                        reply_source = "Auto Fallback"
+
                     # 5. Send public reply & Send Clickable Link via Direct Message (DM)
                     if final_reply:
                         res = reply_to_comment(c_id, final_reply)
@@ -1600,16 +1606,21 @@ def process_webhook_event(payload):
                         final_reply = post_custom_reply
                         reply_source = "Post Custom Rule"
                     else:
-                        for r in rules:
-                            if not r.get("is_active", True):
-                                continue
-                            kw = r.get("keyword", "").lower()
-                            m_type = r.get("match_type", "exact")
-                            lower_text = raw_text.lower()
-                            if (m_type == "exact" and lower_text == kw) or (m_type == "contains" and kw in lower_text):
-                                final_reply = r.get("reply_text")
-                                reply_source = f"Rule ({kw})"
-                                break
+                        lower_text = raw_text.lower()
+                        if isinstance(rules, dict):
+                            for kw, reply_msg in rules.items():
+                                if kw.lower() in lower_text:
+                                    final_reply = reply_msg
+                                    reply_source = f"Rule ({kw})"
+                                    break
+                        elif isinstance(rules, list):
+                            for r in rules:
+                                if isinstance(r, dict):
+                                    kw = r.get("keyword", "").lower()
+                                    if kw and kw in lower_text:
+                                        final_reply = r.get("reply_message") or r.get("reply_text")
+                                        reply_source = f"Rule ({kw})"
+                                        break
 
                     # AI Fallback if configured
                     if not final_reply and len(raw_text) >= 2:
@@ -1683,7 +1694,10 @@ def api_webhook():
     if request.method == 'POST':
         data = request.get_json() or {}
         print(f"[WEBHOOK EVENT RECEIVED] {json.dumps(data)[:300]}")
-        threading.Thread(target=process_webhook_event, args=(data,), daemon=True).start()
+        try:
+            process_webhook_event(data)
+        except Exception as e:
+            print(f"[WEBHOOK PROCESS ERROR] {e}")
         return jsonify({"status": "received"}), 200
 
 
