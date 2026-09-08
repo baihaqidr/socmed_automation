@@ -498,6 +498,11 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
         if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
             clean_url = f"https://{clean_url}"
             
+        # Ensure text includes link for desktop fallback while preserving native button for mobile
+        btn_body = message.strip()
+        if clean_url not in btn_body:
+            btn_body = f"{btn_body}\n👉 {clean_url}"
+            
         payload = {
             "recipient": {"comment_id": comment_id},
             "message": {
@@ -505,7 +510,7 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
                     "type": "template",
                     "payload": {
                         "template_type": "button",
-                        "text": message[:640],
+                        "text": btn_body[:640],
                         "buttons": [
                             {
                                 "type": "web_url",
