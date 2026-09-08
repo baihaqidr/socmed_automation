@@ -2160,8 +2160,12 @@ def api_webhook():
         data = request.get_json() or {}
         print(f"[WEBHOOK EVENT RECEIVED] {json.dumps(data)[:300]}")
         try:
-            process_webhook_event(data)
-            handle_incoming_dm_follow_check(data)
+            has_changes = any("changes" in e for e in data.get("entry", []))
+            has_messaging = any("messaging" in e for e in data.get("entry", []))
+            if has_changes:
+                process_webhook_event(data)
+            if has_messaging:
+                handle_incoming_dm_follow_check(data)
         except Exception as e:
             print(f"[WEBHOOK PROCESS ERROR] {e}")
         return jsonify({"status": "received"}), 200
