@@ -386,18 +386,51 @@ def get_account_info(target_id=None):
     return requests.get(url, params=params).json()
 
 
-POSTS_CACHE_FILE = "posts_cache.json"
+POSTS_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "posts_cache.json")
 _POSTS_CACHE = {}
 _POSTS_CACHE_TIME = {}
 
 
+def load_posts_from_file_cache(target_acc_id=None):
+    """Load cached posts safely from posts_cache.json with UTF-8 encoding."""
+    try:
+        if os.path.exists(POSTS_CACHE_FILE):
+            with open(POSTS_CACHE_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if target_acc_id:
+                    return data.get(str(target_acc_id), [])
+                return data
+    except Exception as e:
+        print(f"[CACHE READ WARNING] {e}")
+    return [] if target_acc_id else {}
+
+
+# Pre-populate in-memory cache on startup from file
+try:
+    _init_cache = load_posts_from_file_cache()
+    if isinstance(_init_cache, dict):
+        for _aid, _plist in _init_cache.items():
+            if isinstance(_plist, list) and len(_plist) > 0:
+                _POSTS_CACHE[str(_aid)] = _plist
+                _POSTS_CACHE_TIME[str(_aid)] = time.time()
+                print(f"[POSTS CACHE] Pre-loaded {len(_plist)} posts for account {_aid}")
+except Exception as _e:
+    print(f"[POSTS CACHE INIT ERROR] {_e}")
+
+
 def get_all_posts(limit=100, target_id=None):
-    """Fetch all posts from active Instagram account with pagination and smart rate-limit fallback cache."""
+    """Fetch all posts from active Instagram account with pagination, auto-merge, and smart rate-limit fallback cache."""
     acc_id = str(target_id or get_active_account_id())
     now = time.time()
+
+    # Always ensure in-memory cache has at least as many posts as file cache
+    file_cached = load_posts_from_file_cache(acc_id)
+    if acc_id not in _POSTS_CACHE or len(_POSTS_CACHE.get(acc_id, [])) < len(file_cached):
+        _POSTS_CACHE[acc_id] = file_cached
+        _POSTS_CACHE_TIME[acc_id] = now
     
-    # Check in-memory cache first if recent (< 90s)
-    if acc_id in _POSTS_CACHE and (now - _POSTS_CACHE_TIME.get(acc_id, 0)) < 90:
+    # Return cache early if freshly verified within 90s and has posts
+    if acc_id in _POSTS_CACHE and len(_POSTS_CACHE[acc_id]) > 0 and (now - _POSTS_CACHE_TIME.get(acc_id, 0)) < 90:
         return _POSTS_CACHE[acc_id][:limit]
 
     all_posts = []
@@ -433,40 +466,37 @@ def get_all_posts(limit=100, target_id=None):
             print(f"[GRAPH API ERROR] get_all_posts exception: {e}")
             break
 
-    # If fresh posts were fetched, update memory and file cache
+    # If fresh posts were fetched from Meta API
     if all_posts:
-        _POSTS_CACHE[acc_id] = all_posts
+        # Merge with existing file/memory cache so older posts are never accidentally wiped
+        existing = _POSTS_CACHE.get(acc_id) or file_cached or []
+        posts_map = {p["id"]: p for p in existing}
+        for p in all_posts:
+            posts_map[p["id"]] = p  # Update or add
+        
+        merged_posts = list(posts_map.values())
+        # Sort descending by timestamp
+        merged_posts.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+        
+        _POSTS_CACHE[acc_id] = merged_posts
         _POSTS_CACHE_TIME[acc_id] = now
         try:
-            cache_data = {}
-            if os.path.exists(POSTS_CACHE_FILE):
-                with open(POSTS_CACHE_FILE, 'r', encoding='utf-8') as f:
-                    cache_data = json.load(f)
-            cache_data[acc_id] = all_posts
+            cache_data = load_posts_from_file_cache() or {}
+            cache_data[acc_id] = merged_posts
             with open(POSTS_CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, indent=2, ensure_ascii=False)
-        except Exception:
-            pass
-        return all_posts[:limit]
+        except Exception as e:
+            print(f"[CACHE WRITE ERROR] {e}")
+        return merged_posts[:limit]
 
-    # Fallback 1: in-memory cache
-    if acc_id in _POSTS_CACHE:
-        return _POSTS_CACHE[acc_id][:limit]
+    # Fallback to cache (use whichever has the most posts)
+    cached = _POSTS_CACHE.get(acc_id) or file_cached or []
+    if len(file_cached) > len(cached):
+        cached = file_cached
+        _POSTS_CACHE[acc_id] = cached
+        _POSTS_CACHE_TIME[acc_id] = now
 
-    # Fallback 2: file-based cache (safe against Meta rate limit #80002)
-    if os.path.exists(POSTS_CACHE_FILE):
-        try:
-            with open(POSTS_CACHE_FILE, 'r', encoding='utf-8') as f:
-                cache_data = json.load(f)
-                cached = cache_data.get(acc_id, [])
-                if cached:
-                    _POSTS_CACHE[acc_id] = cached
-                    _POSTS_CACHE_TIME[acc_id] = now
-                    return cached[:limit]
-        except Exception:
-            pass
-
-    return []
+    return cached[:limit]
 
 
 def get_recent_posts(limit=25):
