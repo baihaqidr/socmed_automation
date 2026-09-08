@@ -7,6 +7,7 @@ import os
 import threading
 import hashlib
 import urllib.parse
+import re
 from io import BytesIO
 from PIL import Image, ImageFilter, ImageDraw, ImageStat
 from bs4 import BeautifulSoup
@@ -222,9 +223,9 @@ def load_post_rules():
                     p_id = str(row["post_id"])
                     btn_txt = get_app_setting(f"BUTTON_TEXT_{p_id}") or local_data.get(p_id, {}).get("button_text") or "Ini link aksesnya"
                     dm_fmt = get_app_setting(f"DM_FORMAT_{p_id}") or local_data.get(p_id, {}).get("dm_format") or "card"
-                    smart_val = get_app_setting(f"SMART_LINK_{p_id}")
-                    if smart_val is not None:
-                        use_smart = (str(smart_val).lower() == "true")
+                    smart_val = get_app_setting(f"SMART_LINK_{p_id}", None)
+                    if smart_val is not None and str(smart_val).strip() != "":
+                        use_smart = (str(smart_val).strip().lower() != "false")
                     else:
                         use_smart = local_data.get(p_id, {}).get("use_smart_link", True)
                     row["button_text"] = btn_txt
@@ -716,6 +717,23 @@ def make_smart_link(original_url, title=None):
     return smart_url
 
 
+def wrap_text_urls(text, title=None):
+    """Find all external http/https URLs in text and replace them with uncropped smart link wrappers."""
+    if not text:
+        return text
+    def _rep(m):
+        raw = m.group(0)
+        if "socmedautomation.vercel.app/l?" in raw or "socmedautomation.vercel.app/r?" in raw:
+            return raw
+        trailing = ""
+        while raw and raw[-1] in ".,!?;:)":
+            trailing = raw[-1] + trailing
+            raw = raw[:-1]
+        return make_smart_link(raw, title) + trailing
+    url_pattern = re.compile(r'https?://[^\s<>"]+')
+    return url_pattern.sub(_rep, text)
+
+
 def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None, dm_format="card", use_smart_link=True):
     """Send Direct Message (Private Reply) to commenter via linked Page endpoint.
     dm_format: 'card' (Universal Rich Link Card, 100% clickable on Desktop & Mobile)
@@ -737,6 +755,9 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
     smart_link_url = clean_url
     if clean_url and use_smart_link:
         smart_link_url = make_smart_link(clean_url, button_title)
+
+    if use_smart_link:
+        message = wrap_text_urls(message, button_title)
 
     # Mode 1: Button Template (Only if explicitly requested and clean_url is provided)
     if dm_format == "button" and smart_link_url:
@@ -778,6 +799,8 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
     # Mode 2: Universal Rich Link Card (100% clickable on Desktop Web & Mobile + Auto OG Preview Card)
     try:
         text_message = message.strip()
+        if use_smart_link:
+            text_message = wrap_text_urls(text_message, button_title)
         if clean_url in text_message and use_smart_link:
             text_message = text_message.replace(clean_url, smart_link_url)
         elif smart_link_url and smart_link_url not in text_message:
@@ -1137,6 +1160,25 @@ def smart_link_redirect():
         og_image_param += f"&t={urllib.parse.quote(title[:80], safe='')}"
 
     fitted_og_image = f"{host}/api/og-image?{og_image_param}"
+    wrapper_url = f"{host}/l?u={urllib.parse.quote(target_url, safe='')}"
+
+    # Detect crawler vs human visitor:
+    # Crawlers must NOT receive the http-equiv refresh or location.replace,
+    # otherwise Facebook/Instagram crawler follows the redirect to destination URL and bypasses the card!
+    ua = (request.headers.get('User-Agent') or '').lower()
+    crawler_bots = [
+        'facebookexternalhit', 'facebot', 'meta-externalagent',
+        'instagram', 'twitterbot', 'whatsapp', 'telegrambot',
+        'slackbot', 'linkedinbot', 'discordbot', 'pinterest', 'googlebot'
+    ]
+    is_crawler = any(bot in ua for bot in crawler_bots)
+
+    redirect_block = ""
+    if not is_crawler:
+        redirect_block = f"""<meta http-equiv="refresh" content="0;url={target_url}">
+    <script>
+        window.location.replace("{target_url}");
+    </script>"""
 
     html_content = f"""<!DOCTYPE html>
 <html lang="id">
@@ -1145,7 +1187,7 @@ def smart_link_redirect():
     <title>{title}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="{target_url}">
+    <meta property="og:url" content="{wrapper_url}">
     <meta property="og:title" content="{title}">
     <meta property="og:description" content="{description}">
     <meta property="og:image" content="{fitted_og_image}">
@@ -1156,10 +1198,7 @@ def smart_link_redirect():
     <meta name="twitter:title" content="{title}">
     <meta name="twitter:description" content="{description}">
     <meta name="twitter:image" content="{fitted_og_image}">
-    <meta http-equiv="refresh" content="0;url={target_url}">
-    <script>
-        window.location.replace("{target_url}");
-    </script>
+    {redirect_block}
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -2119,6 +2158,8 @@ def api_scheduled_posts():
         save_scheduled_posts_list(posts_list)
         return jsonify({"status": "success", "message": f"Deleted post {post_id}"})
 
+
+handler = app
 
 if __name__ == '__main__':
     print("=" * 60)
