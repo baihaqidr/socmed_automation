@@ -1019,6 +1019,11 @@ def run_auto_reply_scan():
             post_send_dm = post_rule.get("send_dm", False)
             post_dm_message = post_rule.get("dm_message", "")
             
+            # Delta check: If comment count is unchanged, skip API call entirely (0 call overhead)
+            current_c_count = post.get("comments_count", 0)
+            if p_id in _LAST_SCANNED_COUNTS and _LAST_SCANNED_COUNTS[p_id] == current_c_count:
+                continue
+
             comments_data = get_post_comments(post["id"])
             
             # Check for Meta rate limit error #80002
@@ -1029,6 +1034,8 @@ def run_auto_reply_scan():
                     break
                 continue
                 
+            _LAST_SCANNED_COUNTS[p_id] = current_c_count
+
             if "data" in comments_data:
                 for comment in comments_data["data"]:
                     c_id = comment["id"]
@@ -1150,6 +1157,138 @@ def run_auto_reply_scan():
     }
 
 
+# Delta comment count tracker to avoid duplicate calls to /comments
+_LAST_SCANNED_COUNTS = {}
+
+WEBHOOK_VERIFY_TOKEN = os.environ.get("WEBHOOK_VERIFY_TOKEN", "socmed_studio_webhook_token_2026")
+
+
+def process_webhook_event(payload):
+    """Process incoming Meta Webhook event for real-time instant comment auto-reply with ZERO polling!"""
+    try:
+        rules = load_rules()
+        post_rules = load_post_rules()
+        replied_ids = load_replied_comments()
+
+        for entry in payload.get("entry", []):
+            entry_id = str(entry.get("id", ""))  # IG account or page id
+            for change in entry.get("changes", []):
+                field = change.get("field", "")
+                val = change.get("value", {})
+                
+                # Check for comment events on Instagram
+                if field in ["comments", "comment"]:
+                    c_id = str(val.get("id", ""))
+                    if not c_id or c_id in replied_ids:
+                        continue
+                        
+                    raw_text = val.get("text", "").strip()
+                    user_data = val.get("from", {})
+                    user_handle = user_data.get("username", "") or user_data.get("id", "")
+                    media_data = val.get("media", {})
+                    p_id = str(media_data.get("id", ""))
+                    
+                    # Check if own account comment
+                    own_usernames = [a["username"].lower() for a in KNOWN_INSTAGRAM_ACCOUNTS]
+                    if user_handle.lower() in own_usernames:
+                        continue
+
+                    # Look up post rule
+                    post_rule = post_rules.get(p_id, {})
+                    post_cta_link = str(post_rule.get("cta_link", "")).strip()
+                    if post_cta_link and not post_cta_link.startswith("http://") and not post_cta_link.startswith("https://"):
+                        post_cta_link = f"https://{post_cta_link}"
+                        
+                    post_custom_reply = post_rule.get("custom_reply", "")
+                    post_send_dm = post_rule.get("send_dm", False)
+                    post_dm_message = post_rule.get("dm_message", "")
+                    post_dm_format = str(post_rule.get("dm_format", "card")).strip()
+                    button_label = str(post_rule.get("button_text", "Ini link aksesnya")).strip()
+
+                    final_reply = None
+                    reply_source = "Rule"
+                    if post_custom_reply:
+                        final_reply = post_custom_reply
+                        reply_source = "Post Custom Rule"
+                    else:
+                        for r in rules:
+                            if not r.get("is_active", True):
+                                continue
+                            kw = r.get("keyword", "").lower()
+                            m_type = r.get("match_type", "exact")
+                            lower_text = raw_text.lower()
+                            if (m_type == "exact" and lower_text == kw) or (m_type == "contains" and kw in lower_text):
+                                final_reply = r.get("reply_text")
+                                reply_source = f"Rule ({kw})"
+                                break
+
+                    # AI Fallback if configured
+                    if not final_reply and bool(GEMINI_API_KEY or get_app_setting("gemini_api_key")):
+                        final_reply = generate_ai_comment_reply(
+                            comment_text=raw_text,
+                            post_caption="",
+                            account_username="our_business"
+                        )
+                        reply_source = "Gemini AI"
+
+                    if not final_reply:
+                        final_reply = "Halo kak! Terima kasih sudah berkomentar, cek DM ya! 🙌"
+
+                    # 1. Send Public Reply
+                    reply_res = reply_to_comment(c_id, final_reply)
+                    print(f"[WEBHOOK BOT] Public reply sent to @{user_handle}: {reply_res}")
+
+                    # 2. Send Private DM if configured
+                    if post_send_dm or post_cta_link:
+                        if post_dm_message:
+                            dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", post_cta_link)
+                        else:
+                            if post_dm_format == "button":
+                                dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Silakan klik tombol di bawah ini untuk mengakses tautan resmi:"
+                            else:
+                                dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Ini tautan aksesnya ya:"
+
+                        dm_res = send_private_dm(
+                            comment_id=c_id,
+                            message=dm_content,
+                            target_acc_id=entry_id,
+                            button_url=post_cta_link if post_cta_link else None,
+                            button_title=button_label,
+                            dm_format=post_dm_format
+                        )
+                        print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
+
+                    record_replied_comment(
+                        comment_id=c_id,
+                        post_id=p_id,
+                        username=user_handle,
+                        comment_text=raw_text,
+                        reply_text=f"[{reply_source}] {final_reply}"
+                    )
+                    replied_ids.add(c_id)
+    except Exception as e:
+        print(f"[WEBHOOK PROCESS ERROR] {e}")
+
+
+@app.route('/api/webhook', methods=['GET', 'POST'])
+def api_webhook():
+    """Meta Official Webhook Endpoint for Real-Time Instagram Comments."""
+    if request.method == 'GET':
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        if mode == 'subscribe' and token == WEBHOOK_VERIFY_TOKEN:
+            print("[WEBHOOK] Verification successful with token!")
+            return str(challenge), 200
+        return "Verification token mismatch", 403
+
+    if request.method == 'POST':
+        data = request.get_json() or {}
+        print(f"[WEBHOOK EVENT RECEIVED] {json.dumps(data)[:300]}")
+        threading.Thread(target=process_webhook_event, args=(data,), daemon=True).start()
+        return jsonify({"status": "received"}), 200
+
+
 @app.route('/api/auto-reply-scan', methods=['GET', 'POST'])
 def api_auto_reply_scan():
     result = run_auto_reply_scan()
@@ -1157,10 +1296,10 @@ def api_auto_reply_scan():
 
 
 def start_background_watcher():
-    """Background daemon thread to automatically scan and reply to comments every 75 seconds."""
+    """Background daemon thread to automatically scan and reply to comments every 90 seconds."""
     def watcher_loop():
         time.sleep(10)
-        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 75s)...")
+        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 90s)...")
         while True:
             try:
                 res = run_auto_reply_scan()
@@ -1168,7 +1307,7 @@ def start_background_watcher():
                     print(f"[AUTO-BOT] ⚡ Replied to {res['total_new_replies']} comment(s), {res['total_dms_sent']} DM(s) sent!")
             except Exception as e:
                 print(f"[AUTO-BOT ERROR] {e}")
-            time.sleep(75)
+            time.sleep(90)
 
     t = threading.Thread(target=watcher_loop, daemon=True)
     t.start()
