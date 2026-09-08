@@ -86,9 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDashboardData();
   setupLivePreview();
 
-  // Background Auto-Reply Heartbeat (Guarantees comment auto-replies within 12s even if Meta Webhooks delay)
-  startAutoScanHeartbeat();
-
   // Close dropdowns on outside click
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#gmail-dropdown-wrapper')) {
@@ -99,32 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
-let _autoScanInterval = null;
-function startAutoScanHeartbeat() {
-  if (_autoScanInterval) clearInterval(_autoScanInterval);
-  _autoScanInterval = setInterval(async () => {
-    try {
-      const res = await fetch('/api/auto-reply-scan');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.total_new_replies > 0 || data.total_dms_sent > 0) {
-          console.log(`[AUTO-SCAN] ⚡ Sent ${data.total_new_replies} reply(s) & ${data.total_dms_sent} DM(s)!`);
-          const notif = document.createElement('div');
-          notif.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:#fff;padding:12px 18px;border-radius:10px;font-weight:600;font-size:13px;z-index:99999;box-shadow:0 10px 25px rgba(16,185,129,0.4);display:flex;align-items:center;gap:8px;animation:slideUp 0.3s ease;';
-          notif.innerHTML = `<span>⚡</span> Auto-Reply & DM Terkirim (${data.total_new_replies} Komen, ${data.total_dms_sent} DM)`;
-          document.body.appendChild(notif);
-          setTimeout(() => notif.remove(), 4500);
-          if (document.getElementById('tab-dashboard')?.classList.contains('active')) {
-            loadDashboardData();
-          }
-        }
-      }
-    } catch (e) {
-      // Quiet background failure
-    }
-  }, 12000); // 12 seconds
-}
 
 // Toggle Gmail Switcher Dropdown
 function toggleGmailDropdown(event) {

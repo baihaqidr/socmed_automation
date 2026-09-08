@@ -1963,18 +1963,18 @@ def api_auto_reply_scan():
 
 
 def start_background_watcher():
-    """Background daemon thread to automatically scan and reply to comments every 15 seconds."""
+    """Background daemon thread as a safe fallback net (90s). Real-time is 100% handled by Meta Webhook."""
     def watcher_loop():
-        time.sleep(5)
-        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 15s)...")
+        time.sleep(10)
+        print("[AUTO-BOT] 🤖 Background auto-reply watcher active (90s safety fallback)...")
         while True:
             try:
                 res = run_auto_reply_scan()
                 if res.get("total_new_replies", 0) > 0:
-                    print(f"[AUTO-BOT] ⚡ Replied to {res['total_new_replies']} comment(s), {res['total_dms_sent']} DM(s) sent!")
+                    print(f"[AUTO-BOT] ⚡ Fallback scan replied to {res['total_new_replies']} comment(s), {res['total_dms_sent']} DM(s) sent!")
             except Exception as e:
                 print(f"[AUTO-BOT ERROR] {e}")
-            time.sleep(15)
+            time.sleep(90)
 
     t = threading.Thread(target=watcher_loop, daemon=True)
     t.start()
