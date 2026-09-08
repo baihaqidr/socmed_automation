@@ -1,0 +1,24 @@
+{
+  "18041332658721670": {
+    "post_id": "18041332658721670",
+    "post_caption_preview": "",
+    "cta_link": "https://www.simplifyer.site/",
+    "custom_reply": "",
+    "send_dm": true,
+    "dm_message": "halo kak ini akses aplikasinya ya",
+    "is_active": true,
+    "created_at": "2026-09-07T01:11:36.246687+00:00",
+    "updated_at": "2026-09-07T01:11:36.246687+00:00",
+    "button_text": "Ini link aksesnya"
+  },
+  "18123081262893453": {
+    "post_id": "18123081262893453",
+    "cta_link": "https://simplifyer.site/",
+    "custom_reply": "",
+    "send_dm": true,
+    "dm_message": "Halo kak! Silakan klik tombol di bawah ini untuk mengakses website kami:",
+    "button_text": "Ini link aksesnya",
+    "post_caption_preview": "",
+    "is_active": true
+  }
+}
