@@ -1280,6 +1280,7 @@ def api_webhook():
     if request.method == 'GET':
         mode = request.args.get('hub.mode')
         token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
         allowed_tokens = {WEBHOOK_VERIFY_TOKEN, "balasin", "balasin-ig", "balasin_webhook_token", "socmed_automation"}
         if mode == 'subscribe' and token in allowed_tokens:
             print("[WEBHOOK] Verification successful with token!")
