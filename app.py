@@ -1223,13 +1223,17 @@ def process_webhook_event(payload):
                                 break
 
                     # AI Fallback if configured
-                    if not final_reply and bool(GEMINI_API_KEY or get_app_setting("gemini_api_key")):
-                        final_reply = generate_ai_comment_reply(
+                    if not final_reply and len(raw_text) >= 2:
+                        ai_generated = generate_ai_reply(
                             comment_text=raw_text,
+                            username=user_handle,
                             post_caption="",
-                            account_username="our_business"
+                            cta_link=post_cta_link,
+                            send_dm=post_send_dm
                         )
-                        reply_source = "Gemini AI"
+                        if ai_generated:
+                            final_reply = ai_generated
+                            reply_source = "Gemini AI"
 
                     if not final_reply:
                         final_reply = "Halo kak! Terima kasih sudah berkomentar, cek DM ya! 🙌"
