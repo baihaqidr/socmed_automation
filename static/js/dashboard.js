@@ -484,34 +484,27 @@ async function loadPostRulesView() {
               </div>
               
               <div id="follow-settings-${pId}" style="display: ${requireFollow ? 'block' : 'none'}; margin-top: 10px;">
-                <!-- 2-Step Interactive Button Flow Info Card -->
+                <!-- 1-Step Direct Verification Interactive Button Flow Info Card -->
                 <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 11px; color: var(--on-dark); line-height: 1.5;">
                   <div style="font-weight: 700; color: #10B981; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                    <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i> 2-Step Interactive Button Flow (100% Bebas Ngetik Manual):
+                    <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i> Alur Follow Gatekeeper Otomatis (100% Bebas Ketik Manual):
                   </div>
                   <div style="color: var(--on-dark-bright); margin-bottom: 6px;">
-                    User tidak perlu mengetik kata "SUDAH"! Cukup sentuh tombol interaktif di dalam DM:
+                    User berkomentar ➡️ Bot kirim DM minta follow dengan tombol konfirmasi ➡️ User sentuh <strong>[ ${followBtnText} ]</strong> ➡️ Link Terbuka!
                   </div>
                   <div style="font-family: var(--font-mono); font-size: 10px; background: var(--canvas-night); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-subtle); color: var(--ink-mute);">
-                    DM 1: Sapaan ➡️ <strong>[ ${requestBtnText} ]</strong> ➡️ DM 2: Minta Follow ➡️ <strong>[ ${followBtnText} ]</strong> ➡️ 🔓 Link Unlocked!
+                    DM 1: Minta Follow ➡️ <strong>[ ${followBtnText} ]</strong> ➡️ 🔓 Verifikasi & Kirim Tombol Akses!
                   </div>
                 </div>
 
-                <!-- Interactive Button Labels Configuration -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                <!-- Interactive Button Label Configuration -->
+                <div style="margin-top: 10px;">
                   <div class="form-group" style="margin-bottom: 0;">
                     <label style="font-size: 11px; color: var(--on-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                      <i data-lucide="hand" style="width: 12px; height: 12px; color: var(--primary);"></i> Label Tombol DM 1 (Minta Link)
-                    </label>
-                    <input type="text" id="req-btn-${pId}" class="form-input" value="${requestBtnText}" placeholder="Default: Kirim Linknya">
-                    <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Teks tombol di pesan DM pertama</span>
-                  </div>
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-size: 11px; color: var(--on-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                      <i data-lucide="user-check" style="width: 12px; height: 12px; color: #10B981;"></i> Label Tombol DM 2 (Konfirmasi Follow)
+                      <i data-lucide="user-check" style="width: 12px; height: 12px; color: #10B981;"></i> Label Tombol Konfirmasi Follow
                     </label>
                     <input type="text" id="fol-btn-${pId}" class="form-input" value="${followBtnText}" placeholder="Default: Sudah Follow">
-                    <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Teks tombol konfirmasi verifikasi follow</span>
+                    <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Teks tombol konfirmasi verifikasi follow di DM pertama</span>
                   </div>
                 </div>
 

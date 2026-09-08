@@ -919,12 +919,24 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
 
     # Mode 1: Button Template (Only if explicitly requested and clean_url is provided)
     if dm_format == "button" and smart_link_url:
-        btn_text = (button_title or "Ini link aksesnya").strip()[:80]
-        btn_body = message.strip()
-        if clean_url in btn_body and use_smart_link:
-            btn_body = btn_body.replace(clean_url, smart_link_url)
-        elif smart_link_url not in btn_body:
-            btn_body = f"{btn_body}\n\n👉 {smart_link_url}"
+        btn_text = (button_title or "Buka Link Akses").strip()[:80]
+        # Clean any raw URLs or pointers from text bubble so it is not redundant with the button
+        clean_lines = []
+        for line in message.strip().splitlines():
+            line_str = line.strip()
+            if clean_url and clean_url in line_str:
+                continue
+            if smart_link_url and smart_link_url in line_str:
+                continue
+            if "http://" in line_str or "https://" in line_str:
+                continue
+            if line_str in ["👉", "👇", "🔗"]:
+                continue
+            clean_lines.append(line)
+        
+        btn_body = "\n".join(clean_lines).strip()
+        if not btn_body:
+            btn_body = "Silakan klik tombol di bawah ini untuk mengakses website kami:"
             
         payload = {
             "recipient": recipient_payload,
@@ -1554,14 +1566,14 @@ def api_post_rules():
             send_dm=data.get('send_dm', False),
             dm_message=data.get('dm_message', ''),
             post_caption_preview=data.get('post_caption_preview', ''),
-            button_text=data.get('button_text', 'Ini link aksesnya'),
+            button_text=data.get('button_text', 'Buka Link Akses'),
             dm_format=data.get('dm_format', 'card'),
             use_smart_link=data.get('use_smart_link', True),
             require_follow=data.get('require_follow', False),
             follow_prompt=data.get('follow_prompt', ''),
             not_following_msg=data.get('not_following_msg', ''),
-            request_btn_text=data.get('request_btn_text', 'Send me the link'),
-            follow_btn_text=data.get('follow_btn_text', 'Following'),
+            request_btn_text=data.get('request_btn_text', 'Kirim Linknya'),
+            follow_btn_text=data.get('follow_btn_text', 'Sudah Follow'),
             intro_dm_message=data.get('intro_dm_message', '')
         )
         return jsonify({"status": "success", "rule": saved})
@@ -1773,40 +1785,55 @@ def run_auto_reply_scan():
                                 acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(acc_id)), None)
                                 acc_name = acc_info["username"] if acc_info else "kami"
 
-                                if post_dm_message:
-                                    dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", effective_link).replace("{account}", acc_name)
-                                    if effective_link and effective_link not in dm_content:
-                                        dm_content += f"\n\n👉 {effective_link}"
-                                else:
-                                    if require_follow:
-                                        dm_content = (
-                                            f"Halo kak @{user_handle}! Terima kasih banyak sudah tertarik dengan postingan @{acc_name} 😊\n\n"
-                                            f"Ini dia link akses yang kamu minta:\n"
-                                            f"👉 {effective_link}\n\n"
-                                            f"Silakan klik link di atas atau tombol di bawah ini untuk langsung membukanya ya! 🙌\n\n"
-                                            f"(Jangan lupa follow akun @{acc_name} agar tidak ketinggalan info & promo menarik lainnya ✨)"
-                                        )
-                                    else:
-                                        dm_content = (
-                                            f"Halo kak @{user_handle}! Terima kasih banyak sudah tertarik dengan postingan @{acc_name} 😊\n\n"
-                                            f"Ini dia link akses yang kamu minta:\n"
-                                            f"👉 {effective_link}\n\n"
-                                            f"Silakan klik link di atas atau tombol di bawah ini untuk langsung membukanya ya! 🙌"
-                                        )
+                                if require_follow:
+                                    # Follow Gatekeeper: Ask user to follow with [Sudah Follow] button
+                                    follow_prompt_template = post_rule.get("follow_prompt") or (
+                                        f"Halo kak @{user_handle}! Terima kasih sudah tertarik dengan postingan @{acc_name} 😊\n\n"
+                                        f"Link akses ini spesial kami bagikan khusus untuk followers @{acc_name}. "
+                                        f"Yuk follow akun @{acc_name} dulu ya!\n\n"
+                                        f"Setelah follow, silakan klik tombol 'Sudah Follow' di bawah (atau balas chat ini ketik 'Sudah') untuk konfirmasi! 👇"
+                                    )
+                                    follow_prompt = follow_prompt_template.replace("{username}", user_handle).replace("{account}", acc_name)
+                                    follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
+                                    quick_replies = [{"title": follow_btn_label, "payload": f"CHECK_FOLLOW_{p_id}"}]
 
-                                dm_res = send_private_dm(
-                                    comment_id=c_id,
-                                    message=dm_content,
-                                    target_acc_id=acc_id,
-                                    button_url=post_cta_link if post_cta_link else None,
-                                    button_title=button_label or "Ini link aksesnya",
-                                    dm_format=post_dm_format,
-                                    use_smart_link=post_use_smart_link,
-                                    post_id=p_id
-                                )
-                                dm_status = dm_res.get("status", "sent")
-                                if dm_status == "success":
-                                    total_dms_sent += 1
+                                    set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=from_id, step="awaiting_follow")
+
+                                    dm_res = send_private_dm(
+                                        comment_id=c_id,
+                                        message=follow_prompt,
+                                        target_acc_id=acc_id,
+                                        quick_replies=quick_replies,
+                                        use_smart_link=False,
+                                        post_id=p_id
+                                    )
+                                    dm_status = dm_res.get("status", "sent")
+                                    if dm_status == "success":
+                                        total_dms_sent += 1
+                                else:
+                                    # Direct Delivery: No follow gatekeeper
+                                    if post_dm_message:
+                                        dm_content = post_dm_message.replace("{username}", user_handle).replace("{account}", acc_name)
+                                    else:
+                                        dm_content = f"Halo kak @{user_handle}! Silakan klik tombol di bawah ini untuk mengakses website kami:"
+
+                                    # Only add raw text link if format is NOT button
+                                    if post_dm_format != "button" and effective_link and effective_link not in dm_content:
+                                        dm_content += f"\n\n👉 {effective_link}"
+
+                                    dm_res = send_private_dm(
+                                        comment_id=c_id,
+                                        message=dm_content,
+                                        target_acc_id=acc_id,
+                                        button_url=post_cta_link if post_cta_link else None,
+                                        button_title=button_label or "Buka Link Akses",
+                                        dm_format=post_dm_format,
+                                        use_smart_link=post_use_smart_link,
+                                        post_id=p_id
+                                    )
+                                    dm_status = dm_res.get("status", "sent")
+                                    if dm_status == "success":
+                                        total_dms_sent += 1
 
                             record_replied_comment(
                                 comment_id=c_id,
@@ -1946,38 +1973,51 @@ def process_webhook_event(payload):
                         acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(entry_id)), None)
                         acc_name = acc_info["username"] if acc_info else "kami"
 
-                        if post_dm_message:
-                            dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", effective_link).replace("{account}", acc_name)
-                            if effective_link and effective_link not in dm_content:
-                                dm_content += f"\n\n👉 {effective_link}"
-                        else:
-                            if require_follow:
-                                dm_content = (
-                                    f"Halo kak @{user_handle}! Terima kasih banyak sudah tertarik dengan postingan @{acc_name} 😊\n\n"
-                                    f"Ini dia link akses yang kamu minta:\n"
-                                    f"👉 {effective_link}\n\n"
-                                    f"Silakan klik link di atas atau tombol di bawah ini untuk langsung membukanya ya! 🙌\n\n"
-                                    f"(Jangan lupa follow akun @{acc_name} agar tidak ketinggalan info & promo menarik lainnya ✨)"
-                                )
-                            else:
-                                dm_content = (
-                                    f"Halo kak @{user_handle}! Terima kasih banyak sudah tertarik dengan postingan @{acc_name} 😊\n\n"
-                                    f"Ini dia link akses yang kamu minta:\n"
-                                    f"👉 {effective_link}\n\n"
-                                    f"Silakan klik link di atas atau tombol di bawah ini untuk langsung membukanya ya! 🙌"
-                                )
+                        if require_follow:
+                            # Follow Gatekeeper: Ask user to follow with [Sudah Follow] button
+                            follow_prompt_template = post_rule.get("follow_prompt") or (
+                                f"Halo kak @{user_handle}! Terima kasih sudah tertarik dengan postingan @{acc_name} 😊\n\n"
+                                f"Link akses ini spesial kami bagikan khusus untuk followers @{acc_name}. "
+                                f"Yuk follow akun @{acc_name} dulu ya!\n\n"
+                                f"Setelah follow, silakan klik tombol 'Sudah Follow' di bawah (atau balas chat ini ketik 'Sudah') untuk konfirmasi! 👇"
+                            )
+                            follow_prompt = follow_prompt_template.replace("{username}", user_handle).replace("{account}", acc_name)
+                            follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
+                            quick_replies = [{"title": follow_btn_label, "payload": f"CHECK_FOLLOW_{p_id}"}]
 
-                        dm_res = send_private_dm(
-                            comment_id=c_id,
-                            message=dm_content,
-                            target_acc_id=entry_id,
-                            button_url=post_cta_link if post_cta_link else None,
-                            button_title=button_label or "Ini link aksesnya",
-                            dm_format=post_dm_format,
-                            use_smart_link=post_use_smart_link,
-                            post_id=p_id
-                        )
-                        print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
+                            set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id, user_id=from_id, step="awaiting_follow")
+
+                            dm_res = send_private_dm(
+                                comment_id=c_id,
+                                message=follow_prompt,
+                                target_acc_id=entry_id,
+                                quick_replies=quick_replies,
+                                use_smart_link=False,
+                                post_id=p_id
+                            )
+                            print(f"[WEBHOOK BOT] Follow Gatekeeper DM sent to @{user_handle}: {dm_res}")
+                        else:
+                            # Direct Delivery: No follow gatekeeper
+                            if post_dm_message:
+                                dm_content = post_dm_message.replace("{username}", user_handle).replace("{account}", acc_name)
+                            else:
+                                dm_content = f"Halo kak @{user_handle}! Silakan klik tombol di bawah ini untuk mengakses website kami:"
+
+                            # Only add raw text link if format is NOT button
+                            if post_dm_format != "button" and effective_link and effective_link not in dm_content:
+                                dm_content += f"\n\n👉 {effective_link}"
+
+                            dm_res = send_private_dm(
+                                comment_id=c_id,
+                                message=dm_content,
+                                target_acc_id=entry_id,
+                                button_url=post_cta_link if post_cta_link else None,
+                                button_title=button_label or "Buka Link Akses",
+                                dm_format=post_dm_format,
+                                use_smart_link=post_use_smart_link,
+                                post_id=p_id
+                            )
+                            print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
 
                     record_replied_comment(
                         comment_id=c_id,
@@ -2073,8 +2113,13 @@ def handle_incoming_dm_follow_check(payload):
                            (current_step == "awaiting_request" and "following" not in lower_msg and "sudah" not in lower_msg))
 
             if is_req_link:
-                # STAGE 1: User tapped [Kirim Linknya] -> Send Gatekeeper Prompt with [Sudah Follow] button
-                follow_prompt = post_rule.get("follow_prompt") or f"Sedikit lagi kak! Link akses ini spesial kami bagikan untuk followers @{acc_name} ✨\n\nYuk follow akun @{acc_name} dulu ya! Setelah follow, langsung klik tombol di bawah ini untuk membuka linknya! 🎉"
+                # STAGE 1: User requested link -> Send Gatekeeper Prompt with [Sudah Follow] button
+                follow_prompt = post_rule.get("follow_prompt") or (
+                    f"Halo kak @{display_user}! Terima kasih sudah tertarik dengan postingan @{acc_name} 😊\n\n"
+                    f"Link akses ini spesial kami bagikan khusus untuk followers @{acc_name}. "
+                    f"Yuk follow akun @{acc_name} dulu ya!\n\n"
+                    f"Setelah follow, silakan klik tombol 'Sudah Follow' di bawah (atau balas chat ini ketik 'Sudah') untuk konfirmasi! 👇"
+                )
                 follow_prompt = follow_prompt.replace("{username}", display_user).replace("{account}", acc_name)
                 follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
 
@@ -2088,7 +2133,7 @@ def handle_incoming_dm_follow_check(payload):
                 )
                 set_pending_follow(user_handle=display_user, post_id=p_id, acc_id=target_acc_id, user_id=sender_id, step="awaiting_follow")
             else:
-                # STAGE 2: User tapped [Sudah Follow] -> Verify Follow Status & Deliver Link
+                # STAGE 2: User tapped [Sudah Follow] or replied 'Sudah' -> Verify Follow Status & Deliver Link
                 if not user_info:
                     user_info = check_is_following_business(scoped_user_id=sender_id, target_acc_id=target_acc_id)
                     user_handle = user_info.get("username", "").lower()
@@ -2097,8 +2142,11 @@ def handle_incoming_dm_follow_check(payload):
                 has_meta_err = bool(user_info.get("error"))
 
                 if not is_following and not has_meta_err:
-                    # User has NOT followed yet! Catch them with friendly message + [Sudah Follow] button again
-                    not_f_template = post_rule.get("not_following_msg") or f"Sedikit lagi kak @{display_user}! Sistem mendeteksi kamu belum follow @{acc_name} nih 😢\n\nYuk follow akun @{acc_name} dulu ya, setelah itu langsung klik tombol di bawah ini lagi! 👇"
+                    # User has NOT followed yet! Catch them with friendly Indonesian message + [Sudah Follow] button again
+                    not_f_template = post_rule.get("not_following_msg") or (
+                        f"Sedikit lagi kak @{display_user}! Sistem mendeteksi kamu belum follow @{acc_name} nih 😢\n\n"
+                        f"Yuk klik follow akun @{acc_name} dulu ya, setelah itu langsung klik tombol 'Sudah Follow' di bawah ini lagi! 👇"
+                    )
                     not_f_msg = not_f_template.replace("{username}", display_user).replace("{account}", acc_name)
                     follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
                     quick_replies = [{"title": follow_btn_label, "payload": f"CHECK_FOLLOW_{p_id}"}]
@@ -2119,24 +2167,29 @@ def handle_incoming_dm_follow_check(payload):
                         clear_pending_follow(pending.get("user_handle"))
 
                     post_cta_link = str(post_rule.get("cta_link", "")).strip()
-                    post_dm_format = str(post_rule.get("dm_format", "card")).strip()
-                    button_label = str(post_rule.get("button_text", "Ini link aksesnya")).strip()
+                    post_dm_format = str(post_rule.get("dm_format", "button")).strip()
+                    button_label = str(post_rule.get("button_text", "Buka Link Akses")).strip()
                     post_use_smart_link = post_rule.get("use_smart_link", True)
                     effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
 
                     if post_rule.get("dm_message"):
-                        success_text = post_rule.get("dm_message").replace("{username}", display_user).replace("{link}", effective_link).replace("{account}", acc_name)
-                        if effective_link and effective_link not in success_text:
-                            success_text += f"\n\n👉 {effective_link}"
+                        success_text = post_rule.get("dm_message").replace("{username}", display_user).replace("{account}", acc_name)
                     else:
-                        success_text = f"Keren banget, terima kasih banyak sudah follow @{acc_name} kak @{display_user}! 🎉\n\nIni dia link akses yang kamu minta:\n👉 {effective_link}\n\nSilakan klik tombol di bawah atau link di atas untuk membukanya ya! 🙌"
+                        if post_dm_format == "button":
+                            success_text = f"Keren banget, terima kasih banyak sudah follow @{acc_name} kak @{display_user}! 🎉\n\nSilakan klik tombol di bawah ini untuk mengakses website kami:"
+                        else:
+                            success_text = f"Keren banget, terima kasih banyak sudah follow @{acc_name} kak @{display_user}! 🎉\n\nIni dia link akses yang kamu minta:\n👉 {effective_link}\n\nSilakan klik link di atas untuk membukanya ya! 🙌"
+
+                    # Only add raw text link if format is NOT button
+                    if post_dm_format != "button" and effective_link and effective_link not in success_text:
+                        success_text += f"\n\n👉 {effective_link}"
 
                     send_private_dm(
                         recipient_id=sender_id,
                         message=success_text,
                         target_acc_id=target_acc_id,
                         button_url=post_cta_link if post_cta_link else None,
-                        button_title=button_label,
+                        button_title=button_label or "Buka Link Akses",
                         dm_format=post_dm_format,
                         use_smart_link=post_use_smart_link,
                         post_id=p_id
