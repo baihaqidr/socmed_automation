@@ -236,6 +236,9 @@ def load_post_rules():
                         use_req_follow = bool(local_data.get(p_id, {}).get("require_follow", False))
                     follow_prompt = get_app_setting(f"FOLLOW_PROMPT_{p_id}") or local_data.get(p_id, {}).get("follow_prompt") or ""
                     not_following = get_app_setting(f"NOT_FOLLOWING_{p_id}") or local_data.get(p_id, {}).get("not_following_msg") or ""
+                    req_btn_txt = get_app_setting(f"REQ_BTN_{p_id}") or local_data.get(p_id, {}).get("request_btn_text") or "Send me the link"
+                    fol_btn_txt = get_app_setting(f"FOL_BTN_{p_id}") or local_data.get(p_id, {}).get("follow_btn_text") or "Following"
+                    intro_dm_msg = get_app_setting(f"INTRO_DM_{p_id}") or local_data.get(p_id, {}).get("intro_dm_message") or ""
 
                     row["button_text"] = btn_txt
                     row["dm_format"] = dm_fmt
@@ -243,6 +246,9 @@ def load_post_rules():
                     row["require_follow"] = use_req_follow
                     row["follow_prompt"] = follow_prompt
                     row["not_following_msg"] = not_following
+                    row["request_btn_text"] = req_btn_txt
+                    row["follow_btn_text"] = fol_btn_txt
+                    row["intro_dm_message"] = intro_dm_msg
                     result[p_id] = row
                 return result
         except Exception as e:
@@ -253,13 +259,21 @@ def load_post_rules():
             item["use_smart_link"] = True
         if "require_follow" not in item:
             item["require_follow"] = False
+        if "request_btn_text" not in item:
+            item["request_btn_text"] = "Send me the link"
+        if "follow_btn_text" not in item:
+            item["follow_btn_text"] = "Following"
+        if "intro_dm_message" not in item:
+            item["intro_dm_message"] = ""
     return local_data
 
 
-def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg=""):
+def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg="", request_btn_text="Send me the link", follow_btn_text="Following", intro_dm_message=""):
     """Save custom automation rule for a specific post."""
     btn_text = (button_text or "Ini link aksesnya").strip()
     dm_fmt = (dm_format or "card").strip()
+    req_btn = (request_btn_text or "Send me the link").strip()
+    fol_btn = (follow_btn_text or "Following").strip()
     data = {
         "post_id": str(post_id),
         "cta_link": cta_link,
@@ -272,12 +286,15 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
         "require_follow": bool(require_follow),
         "follow_prompt": follow_prompt or "",
         "not_following_msg": not_following_msg or "",
+        "request_btn_text": req_btn,
+        "follow_btn_text": fol_btn,
+        "intro_dm_message": intro_dm_message or "",
         "post_caption_preview": post_caption_preview,
         "is_active": True
     }
     if supabase_client:
         try:
-            supa_data = {k: v for k, v in data.items() if k not in ["button_text", "dm_format", "use_smart_link", "require_follow", "follow_prompt", "not_following_msg"]}
+            supa_data = {k: v for k, v in data.items() if k not in ["button_text", "dm_format", "use_smart_link", "require_follow", "follow_prompt", "not_following_msg", "request_btn_text", "follow_btn_text", "intro_dm_message"]}
             supabase_client.table("post_rules").upsert(supa_data, on_conflict="post_id").execute()
             set_app_setting(f"BUTTON_TEXT_{post_id}", btn_text)
             set_app_setting(f"DM_FORMAT_{post_id}", dm_fmt)
@@ -285,6 +302,9 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
             set_app_setting(f"REQ_FOLLOW_{post_id}", str(bool(require_follow)))
             set_app_setting(f"FOLLOW_PROMPT_{post_id}", str(follow_prompt or ""))
             set_app_setting(f"NOT_FOLLOWING_{post_id}", str(not_following_msg or ""))
+            set_app_setting(f"REQ_BTN_{post_id}", req_btn)
+            set_app_setting(f"FOL_BTN_{post_id}", fol_btn)
+            set_app_setting(f"INTRO_DM_{post_id}", str(intro_dm_message or ""))
         except Exception as e:
             print(f"[SUPABASE ERROR] save_post_rule_db failed: {e}")
 
@@ -774,16 +794,17 @@ def wrap_text_urls(text, title=None, post_id=None):
     return url_pattern.sub(_rep, text)
 
 
-def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_id=None, button_url=None, button_title=None, dm_format="card", use_smart_link=True, post_id=None):
+def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_id=None, button_url=None, button_title=None, dm_format="card", use_smart_link=True, post_id=None, quick_replies=None):
     """Send Direct Message to commenter (via comment_id) or existing DM user (via recipient_id).
     dm_format: 'card' (Universal Rich Link Card, 100% clickable on Desktop & Mobile)
                or 'button' (Meta Button Template, interactive button on Mobile).
+    quick_replies: List of interactive button dicts e.g. [{"title": "Send me the link", "payload": "REQ_LINK_123"}]
     use_smart_link: Wrap URL in uncropped anti-crop 1200x630 OG previewer.
     """
     acc_id = target_acc_id or get_active_account_id()
     page_id, page_token = get_page_for_ig_account(acc_id)
     target_desc = f"recipient_id {recipient_id}" if recipient_id else f"comment_id {comment_id}"
-    print(f"[DM LOG] Attempting DM ({dm_format}, smart_link={use_smart_link}, post_id={post_id}) for {target_desc} via Page {page_id} (IG {acc_id})...")
+    print(f"[DM LOG] Attempting DM ({dm_format}, smart_link={use_smart_link}, post_id={post_id}, qr={bool(quick_replies)}) for {target_desc} via Page {page_id} (IG {acc_id})...")
     
     url = f"{GRAPH_URL}/{page_id}/messages"
     recipient_payload = {"id": str(recipient_id)} if recipient_id else {"comment_id": str(comment_id)}
@@ -800,6 +821,62 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
 
     if use_smart_link:
         message = wrap_text_urls(message, button_title, post_id=post_id)
+
+    # Mode 0: Interactive Quick Replies (Native Instagram Tappable Buttons as shown in AI Ads example)
+    if quick_replies and isinstance(quick_replies, list):
+        qr_formatted = []
+        for item in quick_replies:
+            if isinstance(item, dict) and item.get("title"):
+                qr_formatted.append({
+                    "content_type": "text",
+                    "title": str(item.get("title", ""))[:20],
+                    "payload": str(item.get("payload", ""))[:1000]
+                })
+        if qr_formatted:
+            # 1. Try Quick Replies (Native Instagram pill buttons)
+            qr_payload = {
+                "recipient": recipient_payload,
+                "message": {
+                    "text": message.strip()[:640],
+                    "quick_replies": qr_formatted
+                }
+            }
+            try:
+                res = requests.post(url, json=qr_payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
+                print(f"[DM LOG] Quick Replies Response: {res}")
+                if "message_id" in res or "recipient_id" in res or "id" in res:
+                    return {"status": "success", "result": res}
+                print(f"[DM LOG] Quick replies rejected ({res}), attempting Postback Button...")
+            except Exception as e:
+                print(f"[DM LOG] Quick replies exception: {e}")
+
+            # 2. Try Button Template with postback (Dark button container inside bubble)
+            pb_payload = {
+                "recipient": recipient_payload,
+                "message": {
+                    "attachment": {
+                        "type": "template",
+                        "payload": {
+                            "template_type": "button",
+                            "text": message.strip()[:640],
+                            "buttons": [
+                                {
+                                    "type": "postback",
+                                    "title": qr_formatted[0]["title"][:20],
+                                    "payload": qr_formatted[0]["payload"][:1000]
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+            try:
+                res_pb = requests.post(url, json=pb_payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
+                print(f"[DM LOG] Postback Button Response: {res_pb}")
+                if "message_id" in res_pb or "recipient_id" in res_pb or "id" in res_pb:
+                    return {"status": "success", "result": res_pb}
+            except Exception as e:
+                print(f"[DM LOG] Postback button exception: {e}")
 
     # Mode 1: Button Template (Only if explicitly requested and clean_url is provided)
     if dm_format == "button" and smart_link_url:
@@ -876,14 +953,18 @@ def check_is_following_business(scoped_user_id, target_acc_id):
         return {}
 
 
-def set_pending_follow(user_handle, post_id, acc_id, user_id=None):
-    """Record that this user must follow before receiving the link for post_id."""
+def set_pending_follow(user_handle, post_id, acc_id, user_id=None, step="awaiting_request"):
+    """Record that this user is in the interactive button flow for post_id.
+    step: 'awaiting_request' (Sent 'Send me the link' button)
+          'awaiting_follow' (Sent 'Following' button)
+    """
     data = {
         "post_id": str(post_id),
         "acc_id": str(acc_id),
         "time": time.time(),
         "user_handle": str(user_handle or "").strip().lower(),
-        "user_id": str(user_id or "").strip()
+        "user_id": str(user_id or "").strip(),
+        "step": str(step or "awaiting_request")
     }
     encoded = json.dumps(data)
     if user_handle:
@@ -1425,7 +1506,10 @@ def api_post_rules():
             use_smart_link=data.get('use_smart_link', True),
             require_follow=data.get('require_follow', False),
             follow_prompt=data.get('follow_prompt', ''),
-            not_following_msg=data.get('not_following_msg', '')
+            not_following_msg=data.get('not_following_msg', ''),
+            request_btn_text=data.get('request_btn_text', 'Send me the link'),
+            follow_btn_text=data.get('follow_btn_text', 'Following'),
+            intro_dm_message=data.get('intro_dm_message', '')
         )
         return jsonify({"status": "success", "rule": saved})
 
@@ -1635,19 +1719,21 @@ def run_auto_reply_scan():
                                 _LAST_DM_TIME_PER_USER[(user_handle.lower(), p_id)] = now_ts
                                 require_follow = bool(post_rule.get("require_follow", False))
                                 if require_follow:
-                                    # WORKFLOW PRE-STEP: Gate delivery until user follows
+                                    # 2-STEP INTERACTIVE WORKFLOW: Message 1 with [Send me the link] Button
                                     acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(acc_id)), None)
                                     acc_name = acc_info["username"] if acc_info else "kami"
-                                    prompt_template = post_rule.get("follow_prompt") or f"Halo kak @{user_handle}! 👋\n\nLink akses ini khusus untuk followers @{acc_name} yaa. Silakan follow akun @{acc_name} dulu, lalu balas chat ini dengan ketik \"SUDAH\" untuk membuka linknya! 👇"
-                                    prompt_msg = prompt_template.replace("{username}", user_handle).replace("{account}", acc_name)
+                                    intro_template = post_rule.get("intro_dm_message") or f"Hey there! I'm so happy you're here, thanks so much for your interest 😊\n\nClick below and I'll send you the link in just a sec ✨"
+                                    intro_msg = intro_template.replace("{username}", user_handle).replace("{account}", acc_name)
+                                    req_btn_label = str(post_rule.get("request_btn_text") or "Send me the link").strip()[:20]
 
                                     dm_res = send_private_dm(
                                         comment_id=c_id,
-                                        message=prompt_msg,
+                                        message=intro_msg,
                                         target_acc_id=acc_id,
+                                        quick_replies=[{"title": req_btn_label, "payload": f"REQ_LINK_{p_id}"}],
                                         use_smart_link=False
                                     )
-                                    set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=from_id)
+                                    set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=from_id, step="awaiting_request")
                                     dm_status = dm_res.get("status", "sent")
                                     if dm_status == "success":
                                         total_dms_sent += 1
@@ -1810,19 +1896,21 @@ def process_webhook_event(payload):
                         _LAST_DM_TIME_PER_USER[(user_handle.lower(), p_id)] = now_ts
                         require_follow = bool(post_rule.get("require_follow", False))
                         if require_follow:
-                            # WORKFLOW PRE-STEP: Gate delivery until user follows
+                            # 2-STEP INTERACTIVE WORKFLOW: Message 1 with [Send me the link] Button
                             acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(entry_id)), None)
                             acc_name = acc_info["username"] if acc_info else "kami"
-                            prompt_template = post_rule.get("follow_prompt") or f"Halo kak @{user_handle}! 👋\n\nLink akses ini khusus untuk followers @{acc_name} yaa. Silakan follow akun @{acc_name} dulu, lalu balas chat ini dengan ketik \"SUDAH\" untuk membuka linknya! 👇"
-                            prompt_msg = prompt_template.replace("{username}", user_handle).replace("{account}", acc_name)
+                            intro_template = post_rule.get("intro_dm_message") or f"Hey there! I'm so happy you're here, thanks so much for your interest 😊\n\nClick below and I'll send you the link in just a sec ✨"
+                            intro_msg = intro_template.replace("{username}", user_handle).replace("{account}", acc_name)
+                            req_btn_label = str(post_rule.get("request_btn_text") or "Send me the link").strip()[:20]
 
                             dm_res = send_private_dm(
                                 comment_id=c_id,
-                                message=prompt_msg,
+                                message=intro_msg,
                                 target_acc_id=entry_id,
+                                quick_replies=[{"title": req_btn_label, "payload": f"REQ_LINK_{p_id}"}],
                                 use_smart_link=False
                             )
-                            set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id, user_id=from_id)
+                            set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id, user_id=from_id, step="awaiting_request")
                         else:
                             # NORMAL DELIVERY
                             post_use_smart_link = post_rule.get("use_smart_link", True)
@@ -1861,49 +1949,126 @@ def process_webhook_event(payload):
 
 
 def handle_incoming_dm_follow_check(payload):
-    """Handle follower replying in DM to verify follow status and unlock link."""
+    """Handle incoming DM interactions (tapped buttons, quick replies, or text replies).
+    Implements the 2-step interactive button flow (Sunny Shoots AI Ads model):
+    Step 1: User taps 'Send me the link' -> Bot sends 'Nearly there! Follow @account...' with [Following] button.
+    Step 2: User taps 'Following' -> Bot verifies follow status -> delivers link!
+    """
     post_rules = load_post_rules()
     for entry in payload.get("entry", []):
         entry_id = str(entry.get("id", ""))
         for msg_event in entry.get("messaging", []):
             sender_id = str(msg_event.get("sender", {}).get("id", ""))
             recipient_id = str(msg_event.get("recipient", {}).get("id", ""))
+            
             msg_obj = msg_event.get("message", {})
-            raw_msg = str(msg_obj.get("text", "")).strip()
+            postback_obj = msg_event.get("postback", {})
 
-            if not sender_id or not raw_msg or msg_obj.get("is_echo"):
+            if msg_obj.get("is_echo"):
                 continue
 
-            print(f"[DM INCOMING] From {sender_id} to {recipient_id}: '{raw_msg}'")
-            user_info = check_is_following_business(scoped_user_id=sender_id, target_acc_id=entry_id)
-            user_handle = user_info.get("username", "").lower()
-            is_following = bool(user_info.get("is_user_follow_business", False))
-            has_meta_err = bool(user_info.get("error"))
+            raw_msg = ""
+            qr_payload = ""
 
+            if msg_obj:
+                raw_msg = str(msg_obj.get("text", "")).strip()
+                qr_data = msg_obj.get("quick_reply", {})
+                if isinstance(qr_data, dict):
+                    qr_payload = str(qr_data.get("payload", "")).strip()
+
+            if postback_obj:
+                raw_msg = str(postback_obj.get("title", "")).strip()
+                qr_payload = str(postback_obj.get("payload", "")).strip()
+
+            if not sender_id or (not raw_msg and not qr_payload):
+                continue
+
+            print(f"[DM INTERACTION] From {sender_id} to {recipient_id}: text='{raw_msg}', payload='{qr_payload}'")
+
+            # Look up pending interaction
             pending = get_pending_follow(sender_id)
-            if not pending and user_handle:
-                pending = get_pending_follow(user_handle)
+            user_info = {}
+            user_handle = ""
 
-            if pending:
-                p_id = pending.get("post_id")
-                target_acc_id = pending.get("acc_id") or entry_id
-                post_rule = post_rules.get(str(p_id), {})
-                acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(target_acc_id)), None)
-                acc_name = acc_info["username"] if acc_info else "kami"
-                display_user = user_handle or pending.get("user_handle") or ""
+            if not pending:
+                user_info = check_is_following_business(scoped_user_id=sender_id, target_acc_id=entry_id)
+                user_handle = user_info.get("username", "").lower()
+                if user_handle:
+                    pending = get_pending_follow(user_handle)
+
+            # Check if payload contains post_id
+            p_id = None
+            if qr_payload.startswith("REQ_LINK_"):
+                p_id = qr_payload.replace("REQ_LINK_", "").strip()
+            elif qr_payload.startswith("CHECK_FOLLOW_"):
+                p_id = qr_payload.replace("CHECK_FOLLOW_", "").strip()
+
+            if not pending and p_id:
+                pending = {
+                    "post_id": p_id,
+                    "acc_id": entry_id,
+                    "step": "awaiting_request" if qr_payload.startswith("REQ_LINK_") else "awaiting_follow",
+                    "user_handle": user_handle,
+                    "user_id": sender_id
+                }
+
+            if not pending:
+                continue
+
+            p_id = str(pending.get("post_id", ""))
+            target_acc_id = pending.get("acc_id") or entry_id
+            current_step = pending.get("step", "awaiting_request")
+            post_rule = post_rules.get(p_id, {})
+            acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(target_acc_id)), None)
+            acc_name = acc_info["username"] if acc_info else "kami"
+            display_user = user_handle or pending.get("user_handle") or ""
+
+            lower_msg = raw_msg.lower()
+            is_req_link = ("req_link" in qr_payload.lower() or 
+                           "send me the link" in lower_msg or 
+                           "kirim link" in lower_msg or 
+                           (current_step == "awaiting_request" and "following" not in lower_msg and "sudah" not in lower_msg))
+
+            if is_req_link:
+                # STAGE 1: User tapped [Send me the link] -> Send Gatekeeper Prompt with [Following] button
+                follow_prompt = post_rule.get("follow_prompt") or f"Nearly there! The link is especially for my followers ✨\n\nRight after you follow me, I'll send you the link so you can dive straight in! 🎉"
+                follow_prompt = follow_prompt.replace("{username}", display_user).replace("{account}", acc_name)
+                follow_btn_label = str(post_rule.get("follow_btn_text") or "Following").strip()[:20]
+
+                quick_replies = [{"title": follow_btn_label, "payload": f"CHECK_FOLLOW_{p_id}"}]
+                send_private_dm(
+                    recipient_id=sender_id,
+                    message=follow_prompt,
+                    target_acc_id=target_acc_id,
+                    quick_replies=quick_replies,
+                    use_smart_link=False
+                )
+                set_pending_follow(user_handle=display_user, post_id=p_id, acc_id=target_acc_id, user_id=sender_id, step="awaiting_follow")
+            else:
+                # STAGE 2: User tapped [Following] -> Verify Follow Status & Deliver Link
+                if not user_info:
+                    user_info = check_is_following_business(scoped_user_id=sender_id, target_acc_id=target_acc_id)
+                    user_handle = user_info.get("username", "").lower()
+
+                is_following = bool(user_info.get("is_user_follow_business", False))
+                has_meta_err = bool(user_info.get("error"))
 
                 if not is_following and not has_meta_err:
-                    # User has NOT followed! Catch them!
-                    not_f_template = post_rule.get("not_following_msg") or f"Yah kak @{display_user}, sistem mendeteksi kamu belum follow @{acc_name} nih 😢\n\nYuk follow akun @{acc_name} dulu ya, kalau sudah follow balas pesan ini 'SUDAH' lagi!"
+                    # User has NOT followed yet! Catch them with friendly message + [Following] button again
+                    not_f_template = post_rule.get("not_following_msg") or f"Nearly there kak @{display_user}! Sistem mendeteksi kamu belum follow @{acc_name} nih 😢\n\nYuk follow akun @{acc_name} dulu ya, setelah itu langsung klik tombol di bawah ini lagi! 👇"
                     not_f_msg = not_f_template.replace("{username}", display_user).replace("{account}", acc_name)
+                    follow_btn_label = str(post_rule.get("follow_btn_text") or "Following").strip()[:20]
+                    quick_replies = [{"title": follow_btn_label, "payload": f"CHECK_FOLLOW_{p_id}"}]
+
                     send_private_dm(
                         recipient_id=sender_id,
                         message=not_f_msg,
                         target_acc_id=target_acc_id,
+                        quick_replies=quick_replies,
                         use_smart_link=False
                     )
                 else:
-                    # User is confirmed following (or fallback approved)! Unlock & deliver the link!
+                    # User IS following! Deliver link!
                     clear_pending_follow(sender_id)
                     if user_handle:
                         clear_pending_follow(user_handle)
