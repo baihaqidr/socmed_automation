@@ -146,8 +146,16 @@ def reset_rules_to_default():
     return default_rules
 
 
-def load_rules():
+_RULES_CACHE = None
+_RULES_CACHE_TIME = 0
+
+def load_rules(force_refresh=False):
     """Load auto-reply rules from Supabase (or fallback to local JSON). Auto-cleans legacy property rules."""
+    global _RULES_CACHE, _RULES_CACHE_TIME
+    now = time.time()
+    if not force_refresh and _RULES_CACHE is not None and (now - _RULES_CACHE_TIME < 30):
+        return _RULES_CACHE
+
     if supabase_client:
         try:
             res = supabase_client.table("rules").select("*").eq("is_active", True).execute()
@@ -157,6 +165,8 @@ def load_rules():
                 has_legacy = any("ciracas" in str(v).lower() or "2 lantai" in str(v).lower() for v in rules_map.values())
                 if has_legacy or "lokasi" in rules_map or "spesifikasi" in rules_map:
                     return reset_rules_to_default()
+                _RULES_CACHE = rules_map
+                _RULES_CACHE_TIME = now
                 return rules_map
         except Exception as e:
             print(f"[SUPABASE ERROR] load_rules failed: {e}")
@@ -168,6 +178,8 @@ def load_rules():
                 has_legacy = any("ciracas" in str(v).lower() for v in data.values())
                 if has_legacy:
                     return reset_rules_to_default()
+                _RULES_CACHE = data
+                _RULES_CACHE_TIME = now
                 return data
         except Exception:
             pass
@@ -177,6 +189,8 @@ def load_rules():
 
 def save_rules(rules):
     """Save auto-reply rules to Supabase and local file."""
+    global _RULES_CACHE
+    _RULES_CACHE = None
     if supabase_client:
         try:
             for kw, reply in rules.items():
@@ -204,8 +218,16 @@ def delete_rule_db(keyword):
             print(f"[SUPABASE ERROR] delete_rule failed: {e}")
 
 
-def load_post_rules():
-    """Load per-post custom rules & CTA links from Supabase or fallback JSON."""
+_POST_RULES_CACHE = None
+_POST_RULES_CACHE_TIME = 0
+
+def load_post_rules(force_refresh=False):
+    """Load per-post custom rules & CTA links from Supabase (fast batch-loaded) or fallback JSON."""
+    global _POST_RULES_CACHE, _POST_RULES_CACHE_TIME
+    now = time.time()
+    if not force_refresh and _POST_RULES_CACHE is not None and (now - _POST_RULES_CACHE_TIME < 30):
+        return _POST_RULES_CACHE
+
     local_data = {}
     if os.path.exists(POST_RULES_FILE):
         try:
@@ -218,27 +240,36 @@ def load_post_rules():
         try:
             res = supabase_client.table("post_rules").select("*").eq("is_active", True).execute()
             if res.data:
+                # Batch fetch all app_settings in 1 single query instead of 36 sequential calls!
+                settings_map = {}
+                try:
+                    s_res = supabase_client.table("app_settings").select("key,value").execute()
+                    if s_res.data:
+                        settings_map = {r["key"]: r["value"] for r in s_res.data}
+                except Exception as ex:
+                    print(f"[SETTINGS BATCH WARN] {ex}")
+
                 result = {}
                 for row in res.data:
                     p_id = str(row["post_id"])
-                    btn_txt = get_app_setting(f"BUTTON_TEXT_{p_id}") or local_data.get(p_id, {}).get("button_text") or "Ini link aksesnya"
-                    dm_fmt = get_app_setting(f"DM_FORMAT_{p_id}") or local_data.get(p_id, {}).get("dm_format") or "card"
-                    smart_val = get_app_setting(f"SMART_LINK_{p_id}", None)
+                    btn_txt = settings_map.get(f"BUTTON_TEXT_{p_id}") or local_data.get(p_id, {}).get("button_text") or "Ini link aksesnya"
+                    dm_fmt = settings_map.get(f"DM_FORMAT_{p_id}") or local_data.get(p_id, {}).get("dm_format") or "card"
+                    smart_val = settings_map.get(f"SMART_LINK_{p_id}", None)
                     if smart_val is not None and str(smart_val).strip() != "":
                         use_smart = (str(smart_val).strip().lower() != "false")
                     else:
                         use_smart = local_data.get(p_id, {}).get("use_smart_link", True)
 
-                    req_follow = get_app_setting(f"REQ_FOLLOW_{p_id}", None)
+                    req_follow = settings_map.get(f"REQ_FOLLOW_{p_id}", None)
                     if req_follow is not None and str(req_follow).strip() != "":
                         use_req_follow = (str(req_follow).strip().lower() == "true")
                     else:
                         use_req_follow = bool(local_data.get(p_id, {}).get("require_follow", False))
-                    follow_prompt = get_app_setting(f"FOLLOW_PROMPT_{p_id}") or local_data.get(p_id, {}).get("follow_prompt") or ""
-                    not_following = get_app_setting(f"NOT_FOLLOWING_{p_id}") or local_data.get(p_id, {}).get("not_following_msg") or ""
-                    req_btn_txt = get_app_setting(f"REQ_BTN_{p_id}") or local_data.get(p_id, {}).get("request_btn_text") or "Kirim Linknya"
-                    fol_btn_txt = get_app_setting(f"FOL_BTN_{p_id}") or local_data.get(p_id, {}).get("follow_btn_text") or "Sudah Follow"
-                    intro_dm_msg = get_app_setting(f"INTRO_DM_{p_id}") or local_data.get(p_id, {}).get("intro_dm_message") or ""
+                    follow_prompt = settings_map.get(f"FOLLOW_PROMPT_{p_id}") or local_data.get(p_id, {}).get("follow_prompt") or ""
+                    not_following = settings_map.get(f"NOT_FOLLOWING_{p_id}") or local_data.get(p_id, {}).get("not_following_msg") or ""
+                    req_btn_txt = settings_map.get(f"REQ_BTN_{p_id}") or local_data.get(p_id, {}).get("request_btn_text") or "Kirim Linknya"
+                    fol_btn_txt = settings_map.get(f"FOL_BTN_{p_id}") or local_data.get(p_id, {}).get("follow_btn_text") or "Sudah Follow"
+                    intro_dm_msg = settings_map.get(f"INTRO_DM_{p_id}") or local_data.get(p_id, {}).get("intro_dm_message") or ""
 
                     row["button_text"] = btn_txt
                     row["dm_format"] = dm_fmt
@@ -250,6 +281,9 @@ def load_post_rules():
                     row["follow_btn_text"] = fol_btn_txt
                     row["intro_dm_message"] = intro_dm_msg
                     result[p_id] = row
+
+                _POST_RULES_CACHE = result
+                _POST_RULES_CACHE_TIME = now
                 return result
         except Exception as e:
             print(f"[SUPABASE ERROR] load_post_rules failed: {e}")
@@ -265,11 +299,15 @@ def load_post_rules():
             item["follow_btn_text"] = "Sudah Follow"
         if "intro_dm_message" not in item:
             item["intro_dm_message"] = ""
+    _POST_RULES_CACHE = local_data
+    _POST_RULES_CACHE_TIME = now
     return local_data
 
 
 def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg="", request_btn_text="Kirim Linknya", follow_btn_text="Sudah Follow", intro_dm_message=""):
     """Save custom automation rule for a specific post."""
+    global _POST_RULES_CACHE
+    _POST_RULES_CACHE = None
     btn_text = (button_text or "Ini link aksesnya").strip()
     dm_fmt = (dm_format or "card").strip()
     req_btn = (request_btn_text or "Kirim Linknya").strip()
@@ -308,7 +346,7 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
         except Exception as e:
             print(f"[SUPABASE ERROR] save_post_rule_db failed: {e}")
 
-    post_rules = load_post_rules()
+    post_rules = load_post_rules(force_refresh=True)
     post_rules[str(post_id)] = data
     try:
         with open(POST_RULES_FILE, 'w', encoding='utf-8') as f:
@@ -316,6 +354,7 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
     except Exception:
         pass
     return data
+
 
 
 def delete_post_rule_db(post_id):
