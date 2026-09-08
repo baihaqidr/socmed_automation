@@ -392,20 +392,33 @@ _POSTS_CACHE_TIME = {}
 
 
 def load_posts_from_file_cache(target_acc_id=None):
-    """Load cached posts safely from posts_cache.json with UTF-8 encoding."""
-    try:
-        if os.path.exists(POSTS_CACHE_FILE):
+    """Load cached posts safely from posts_cache.json with Supabase cloud fallback."""
+    data = {}
+    if os.path.exists(POSTS_CACHE_FILE):
+        try:
             with open(POSTS_CACHE_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                if target_acc_id:
-                    return data.get(str(target_acc_id), [])
-                return data
+        except Exception as e:
+            print(f"[CACHE FILE READ WARNING] {e}")
+
+    # Fallback to Supabase cloud app_settings if file is missing, empty, or has fewer posts
+    try:
+        sb_cache_str = get_app_setting("POSTS_CACHE")
+        if sb_cache_str:
+            sb_data = json.loads(sb_cache_str)
+            if isinstance(sb_data, dict):
+                for k, v in sb_data.items():
+                    if k not in data or len(v) > len(data.get(k, [])):
+                        data[k] = v
     except Exception as e:
-        print(f"[CACHE READ WARNING] {e}")
-    return [] if target_acc_id else {}
+        pass
+
+    if target_acc_id:
+        return data.get(str(target_acc_id), [])
+    return data
 
 
-# Pre-populate in-memory cache on startup from file
+# Pre-populate in-memory cache on startup from file or Supabase
 try:
     _init_cache = load_posts_from_file_cache()
     if isinstance(_init_cache, dict):
@@ -423,7 +436,7 @@ def get_all_posts(limit=100, target_id=None):
     acc_id = str(target_id or get_active_account_id())
     now = time.time()
 
-    # Always ensure in-memory cache has at least as many posts as file cache
+    # Always ensure in-memory cache has at least as many posts as file/cloud cache
     file_cached = load_posts_from_file_cache(acc_id)
     if acc_id not in _POSTS_CACHE or len(_POSTS_CACHE.get(acc_id, [])) < len(file_cached):
         _POSTS_CACHE[acc_id] = file_cached
@@ -485,6 +498,7 @@ def get_all_posts(limit=100, target_id=None):
             cache_data[acc_id] = merged_posts
             with open(POSTS_CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, indent=2, ensure_ascii=False)
+            set_app_setting("POSTS_CACHE", json.dumps(cache_data))
         except Exception as e:
             print(f"[CACHE WRITE ERROR] {e}")
         return merged_posts[:limit]
