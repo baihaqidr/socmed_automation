@@ -372,8 +372,8 @@ async function loadPostRulesView() {
       const requireFollow = rule.require_follow === true;
       const followPrompt = rule.follow_prompt || '';
       const notFollowingMsg = rule.not_following_msg || '';
-      const requestBtnText = rule.request_btn_text || 'Send me the link';
-      const followBtnText = rule.follow_btn_text || 'Following';
+      const requestBtnText = rule.request_btn_text || 'Kirim Linknya';
+      const followBtnText = rule.follow_btn_text || 'Sudah Follow';
       const introDmMessage = rule.intro_dm_message || '';
       const captionText = post.caption || 'Tanpa Caption';
 
@@ -503,14 +503,14 @@ async function loadPostRulesView() {
                     <label style="font-size: 11px; color: var(--on-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
                       <i data-lucide="hand" style="width: 12px; height: 12px; color: var(--primary);"></i> Label Tombol DM 1 (Minta Link)
                     </label>
-                    <input type="text" id="req-btn-${pId}" class="form-input" value="${requestBtnText}" placeholder="Default: Send me the link">
+                    <input type="text" id="req-btn-${pId}" class="form-input" value="${requestBtnText}" placeholder="Default: Kirim Linknya">
                     <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Teks tombol di pesan DM pertama</span>
                   </div>
                   <div class="form-group" style="margin-bottom: 0;">
                     <label style="font-size: 11px; color: var(--on-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
                       <i data-lucide="user-check" style="width: 12px; height: 12px; color: #10B981;"></i> Label Tombol DM 2 (Konfirmasi Follow)
                     </label>
-                    <input type="text" id="fol-btn-${pId}" class="form-input" value="${followBtnText}" placeholder="Default: Following">
+                    <input type="text" id="fol-btn-${pId}" class="form-input" value="${followBtnText}" placeholder="Default: Sudah Follow">
                     <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Teks tombol konfirmasi verifikasi follow</span>
                   </div>
                 </div>
@@ -523,15 +523,15 @@ async function loadPostRulesView() {
                   <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-subtle);">
                     <div class="form-group" style="margin-bottom: 0;">
                       <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks DM 1 (Sapaan Awal)</label>
-                      <input type="text" id="intro-dm-${pId}" class="form-input" value="${introDmMessage}" placeholder="Default: Hey there! Click below...">
+                      <input type="text" id="intro-dm-${pId}" class="form-input" value="${introDmMessage}" placeholder="Default: Halo kak! Terima kasih sudah tertarik...">
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                       <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks DM 2 (Minta Follow)</label>
-                      <input type="text" id="follow-prompt-${pId}" class="form-input" value="${followPrompt}" placeholder="Default: Nearly there! Link is for followers...">
+                      <input type="text" id="follow-prompt-${pId}" class="form-input" value="${followPrompt}" placeholder="Default: Sedikit lagi kak! Link akses khusus followers...">
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                       <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks Jika Belum Follow</label>
-                      <input type="text" id="not-following-msg-${pId}" class="form-input" value="${notFollowingMsg}" placeholder="Default: Nearly there kak! Kamu belum follow...">
+                      <input type="text" id="not-following-msg-${pId}" class="form-input" value="${notFollowingMsg}" placeholder="Default: Sedikit lagi kak! Kamu belum follow nih...">
                     </div>
                   </div>
                 </details>
@@ -651,8 +651,8 @@ async function savePostRule(postId) {
   const requireFollow = document.getElementById(`require-follow-${postId}`) ? document.getElementById(`require-follow-${postId}`).checked : false;
   const followPrompt = document.getElementById(`follow-prompt-${postId}`)?.value.trim() || '';
   const notFollowingMsg = document.getElementById(`not-following-msg-${postId}`)?.value.trim() || '';
-  const requestBtnText = document.getElementById(`req-btn-${postId}`)?.value.trim() || 'Send me the link';
-  const followBtnText = document.getElementById(`fol-btn-${postId}`)?.value.trim() || 'Following';
+  const requestBtnText = document.getElementById(`req-btn-${postId}`)?.value.trim() || 'Kirim Linknya';
+  const followBtnText = document.getElementById(`fol-btn-${postId}`)?.value.trim() || 'Sudah Follow';
   const introDmMessage = document.getElementById(`intro-dm-${postId}`)?.value.trim() || '';
 
   if (btn) {
