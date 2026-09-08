@@ -216,7 +216,9 @@ def load_post_rules():
                 for row in res.data:
                     p_id = str(row["post_id"])
                     btn_txt = get_app_setting(f"BUTTON_TEXT_{p_id}") or local_data.get(p_id, {}).get("button_text") or "Ini link aksesnya"
+                    dm_fmt = get_app_setting(f"DM_FORMAT_{p_id}") or local_data.get(p_id, {}).get("dm_format") or "card"
                     row["button_text"] = btn_txt
+                    row["dm_format"] = dm_fmt
                     result[p_id] = row
                 return result
         except Exception as e:
@@ -225,9 +227,10 @@ def load_post_rules():
     return local_data
 
 
-def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya"):
+def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card"):
     """Save custom automation rule for a specific post."""
     btn_text = (button_text or "Ini link aksesnya").strip()
+    dm_fmt = (dm_format or "card").strip()
     data = {
         "post_id": str(post_id),
         "cta_link": cta_link,
@@ -235,14 +238,16 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
         "send_dm": bool(send_dm),
         "dm_message": dm_message,
         "button_text": btn_text,
+        "dm_format": dm_fmt,
         "post_caption_preview": post_caption_preview,
         "is_active": True
     }
     if supabase_client:
         try:
-            supa_data = {k: v for k, v in data.items() if k != "button_text"}
+            supa_data = {k: v for k, v in data.items() if k not in ["button_text", "dm_format"]}
             supabase_client.table("post_rules").upsert(supa_data, on_conflict="post_id").execute()
             set_app_setting(f"BUTTON_TEXT_{post_id}", btn_text)
+            set_app_setting(f"DM_FORMAT_{post_id}", dm_fmt)
         except Exception as e:
             print(f"[SUPABASE ERROR] save_post_rule_db failed: {e}")
 
@@ -579,28 +584,29 @@ def get_page_for_ig_account(acc_id):
     return str(acc_id), ACCESS_TOKEN
 
 
-def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None):
+def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None, dm_format="card"):
     """Send Direct Message (Private Reply) to commenter via linked Page endpoint.
-    Supports native Meta Button Template with web_url if button_url is provided.
+    dm_format: 'card' (Universal Rich Link Card, 100% clickable on Desktop & Mobile)
+               or 'button' (Meta Button Template, interactive button on Mobile).
     """
     acc_id = target_acc_id or get_active_account_id()
     page_id, page_token = get_page_for_ig_account(acc_id)
-    print(f"[DM LOG] Attempting Private DM for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
+    print(f"[DM LOG] Attempting Private DM ({dm_format}) for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
     
     url = f"{GRAPH_URL}/{page_id}/messages"
     
-    # Priority 1: If button_url is provided, send official Meta Button Template
+    clean_url = ""
     if button_url:
-        btn_text = (button_title or "Ini link aksesnya").strip()[:80]
-        # Clean URL
         clean_url = button_url.strip()
         if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
             clean_url = f"https://{clean_url}"
-            
-        # Ensure text includes link for desktop fallback while preserving native button for mobile
+
+    # Mode 1: Button Template (Only if explicitly requested and clean_url is provided)
+    if dm_format == "button" and clean_url:
+        btn_text = (button_title or "Ini link aksesnya").strip()[:80]
         btn_body = message.strip()
         if clean_url not in btn_body:
-            btn_body = f"{btn_body}\n👉 {clean_url}"
+            btn_body = f"{btn_body}\n\n👉 {clean_url}"
             
         payload = {
             "recipient": {"comment_id": comment_id},
@@ -626,26 +632,26 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
             print(f"[DM LOG] Button Template Response: {res}")
             if "message_id" in res or "recipient_id" in res or "id" in res:
                 return {"status": "success", "result": res}
-            print(f"[DM LOG] Button template failed ({res}), falling back to text format...")
+            print(f"[DM LOG] Button template failed ({res}), falling back to standard text/card...")
         except Exception as e:
             print(f"[DM LOG] Button template exception: {e}")
 
-    # Priority 2: Text format fallback
+    # Mode 2: Universal Rich Link Card (100% clickable on Desktop Web & Mobile + Auto OG Preview Card)
     try:
-        text_message = message
-        if button_url and button_url not in text_message:
-            text_message += f"\n\n👉 {button_url}"
+        text_message = message.strip()
+        if clean_url and clean_url not in text_message:
+            text_message += f"\n\n👉 {clean_url}"
             
         payload = {
             "recipient": {"comment_id": comment_id},
             "message": {"text": text_message}
         }
         res = requests.post(url, json=payload, params={"access_token": page_token or ACCESS_TOKEN}, timeout=10).json()
-        print(f"[DM LOG] Page Private Reply Response: {res}")
+        print(f"[DM LOG] Universal Rich Link/Card Response: {res}")
         if "message_id" in res or "recipient_id" in res or "id" in res:
             return {"status": "success", "result": res}
     except Exception as e:
-        print(f"[DM LOG] Page Private Reply Exception: {e}")
+        print(f"[DM LOG] Text Private Reply Exception: {e}")
 
     return {"status": "failed", "note": "Private reply requires instagram_manage_messages and pages_messaging permission"}
 
@@ -907,7 +913,8 @@ def api_post_rules():
             send_dm=data.get('send_dm', False),
             dm_message=data.get('dm_message', ''),
             post_caption_preview=data.get('post_caption_preview', ''),
-            button_text=data.get('button_text', 'Ini link aksesnya')
+            button_text=data.get('button_text', 'Ini link aksesnya'),
+            dm_format=data.get('dm_format', 'card')
         )
         return jsonify({"status": "success", "rule": saved})
         
@@ -1063,12 +1070,16 @@ def run_auto_reply_scan():
                             user_handle = comment.get('username', '')
                             dm_content = ""
                             button_label = str(post_rule.get("button_text", "")).strip() or "Ini link aksesnya"
+                            post_dm_format = str(post_rule.get("dm_format", "card")).strip()
                             
                             if post_send_dm or post_cta_link:
                                 if post_dm_message:
                                     dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", post_cta_link)
                                 else:
-                                    dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Silakan klik tombol di bawah ini untuk mengakses tautan resmi:"
+                                    if post_dm_format == "button":
+                                        dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Silakan klik tombol di bawah ini untuk mengakses tautan resmi:"
+                                    else:
+                                        dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Ini tautan aksesnya ya:"
 
                             if dm_content:
                                 dm_res = send_private_dm(
@@ -1076,7 +1087,8 @@ def run_auto_reply_scan():
                                     message=dm_content,
                                     target_acc_id=acc_id,
                                     button_url=post_cta_link if post_cta_link else None,
-                                    button_title=button_label
+                                    button_title=button_label,
+                                    dm_format=post_dm_format
                                 )
                                 dm_status = dm_res.get("status", "sent")
                                 if dm_status == "success":
