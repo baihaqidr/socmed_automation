@@ -1823,6 +1823,7 @@ def run_auto_reply_scan():
                                 _LAST_DM_TIME_PER_USER[(user_handle.lower(), p_id)] = now_ts
                                 acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(acc_id)), None)
                                 acc_name = acc_info["username"] if acc_info else "kami"
+                                require_follow = bool(post_rule.get("require_follow", False))
 
                                 if require_follow:
                                     # Step 1: Send Friendly Intro DM with [Kirim Linknya] postback button docked in bubble card
