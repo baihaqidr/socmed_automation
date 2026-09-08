@@ -1,10 +1,15 @@
-from flask import Flask, render_template, jsonify, request, Response
+from flask import Flask, render_template, jsonify, request, Response, send_file
 import requests
 import json
 import time
 import sys
 import os
 import threading
+import hashlib
+import urllib.parse
+from io import BytesIO
+from PIL import Image, ImageFilter, ImageDraw, ImageStat
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 # Load environment variables from .env if present
@@ -217,17 +222,26 @@ def load_post_rules():
                     p_id = str(row["post_id"])
                     btn_txt = get_app_setting(f"BUTTON_TEXT_{p_id}") or local_data.get(p_id, {}).get("button_text") or "Ini link aksesnya"
                     dm_fmt = get_app_setting(f"DM_FORMAT_{p_id}") or local_data.get(p_id, {}).get("dm_format") or "card"
+                    smart_val = get_app_setting(f"SMART_LINK_{p_id}")
+                    if smart_val is not None:
+                        use_smart = (str(smart_val).lower() == "true")
+                    else:
+                        use_smart = local_data.get(p_id, {}).get("use_smart_link", True)
                     row["button_text"] = btn_txt
                     row["dm_format"] = dm_fmt
+                    row["use_smart_link"] = use_smart
                     result[p_id] = row
                 return result
         except Exception as e:
             print(f"[SUPABASE ERROR] load_post_rules failed: {e}")
 
+    for p_id, item in local_data.items():
+        if "use_smart_link" not in item:
+            item["use_smart_link"] = True
     return local_data
 
 
-def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card"):
+def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True):
     """Save custom automation rule for a specific post."""
     btn_text = (button_text or "Ini link aksesnya").strip()
     dm_fmt = (dm_format or "card").strip()
@@ -239,15 +253,17 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
         "dm_message": dm_message,
         "button_text": btn_text,
         "dm_format": dm_fmt,
+        "use_smart_link": bool(use_smart_link),
         "post_caption_preview": post_caption_preview,
         "is_active": True
     }
     if supabase_client:
         try:
-            supa_data = {k: v for k, v in data.items() if k not in ["button_text", "dm_format"]}
+            supa_data = {k: v for k, v in data.items() if k not in ["button_text", "dm_format", "use_smart_link"]}
             supabase_client.table("post_rules").upsert(supa_data, on_conflict="post_id").execute()
             set_app_setting(f"BUTTON_TEXT_{post_id}", btn_text)
             set_app_setting(f"DM_FORMAT_{post_id}", dm_fmt)
+            set_app_setting(f"SMART_LINK_{post_id}", str(bool(use_smart_link)))
         except Exception as e:
             print(f"[SUPABASE ERROR] save_post_rule_db failed: {e}")
 
@@ -584,14 +600,131 @@ def get_page_for_ig_account(acc_id):
     return str(acc_id), ACCESS_TOKEN
 
 
-def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None, dm_format="card"):
+# ==========================================
+# UNIVERSAL SMART LINK & ANTI-CROP OG ENGINE
+# ==========================================
+_OG_IMAGE_CACHE = {}   # key: md5(img_url + title + domain) -> bytes
+_URL_META_CACHE = {}    # key: url -> {title, desc, img, domain, time}
+
+
+def get_fitted_og_bytes(img_url='', title='', domain=''):
+    """Generate a pixel-perfect 1200x630 (1.91:1) Instagram OG card.
+    Auto-detects transparency (dark/light) or blurred backdrop for opaque photos
+    so that 100% of the thumbnail/logo is visible and NEVER cropped!
+    """
+    cache_key = hashlib.md5(f"{img_url}_{title}_{domain}".encode('utf-8')).hexdigest()
+    if cache_key in _OG_IMAGE_CACHE:
+        return _OG_IMAGE_CACHE[cache_key]
+
+    W, H = 1200, 630
+    canvas = None
+
+    if img_url:
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            resp = requests.get(img_url, headers=headers, timeout=6)
+            if resp.status_code == 200 and len(resp.content) > 100:
+                src = Image.open(BytesIO(resp.content)).convert('RGBA')
+                alpha = src.split()[3]
+                min_a, max_a = alpha.getextrema()
+                has_transparency = min_a < 240
+
+                if has_transparency:
+                    # Transparency detected (e.g. Logo, PNG graphic)
+                    stat = ImageStat.Stat(src.convert('RGB'), mask=alpha)
+                    # Perceived luminance: Y = 0.299 R + 0.587 G + 0.114 B
+                    avg_lum = (stat.mean[0] * 0.299 + stat.mean[1] * 0.587 + stat.mean[2] * 0.114)
+
+                    # Dark logo -> clean light studio background; Light logo -> sleek dark slate
+                    bg_col = (248, 250, 252, 255) if avg_lum < 140 else (11, 15, 25, 255)
+                    canvas = Image.new('RGBA', (W, H), bg_col)
+
+                    # Contain scaling inside safe padding box (max 960x480)
+                    max_w, max_h = 960, 480
+                    sw, sh = src.size
+                    ratio = min(max_w / sw, max_h / sh)
+                    nw, nh = max(1, int(sw * ratio)), max(1, int(sh * ratio))
+                    fitted = src.resize((nw, nh), Image.Resampling.LANCZOS)
+
+                    pos_x = (W - nw) // 2
+                    pos_y = (H - nh) // 2
+                    canvas.paste(fitted, (pos_x, pos_y), fitted)
+                else:
+                    # Opaque image (photos, product pictures, article banners)
+                    # 1. Background: blurred and zoomed version of the image
+                    canvas = Image.new('RGBA', (W, H), (15, 23, 42, 255))
+                    bg = src.copy().resize((W, H), Image.Resampling.BILINEAR)
+                    bg = bg.filter(ImageFilter.GaussianBlur(radius=35))
+                    dimmer = Image.new('RGBA', (W, H), (0, 0, 0, 80))
+                    bg = Image.alpha_composite(bg, dimmer)
+                    canvas.paste(bg, (0, 0))
+
+                    # 2. Foreground: centered crisp original image with contain scaling
+                    max_w, max_h = 1000, 520
+                    sw, sh = src.size
+                    ratio = min(max_w / sw, max_h / sh)
+                    nw, nh = max(1, int(sw * ratio)), max(1, int(sh * ratio))
+                    fitted = src.resize((nw, nh), Image.Resampling.LANCZOS)
+
+                    pos_x = (W - nw) // 2
+                    pos_y = (H - nh) // 2
+
+                    # Soft drop shadow for elevated aesthetic
+                    shadow = Image.new('RGBA', (nw + 24, nh + 24), (0, 0, 0, 0))
+                    d = ImageDraw.Draw(shadow)
+                    d.rectangle([12, 12, nw + 12, nh + 12], fill=(0, 0, 0, 150))
+                    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=10))
+                    canvas.paste(shadow, (pos_x - 12, pos_y - 12), shadow)
+
+                    canvas.paste(fitted, (pos_x, pos_y), fitted)
+        except Exception as e:
+            print(f"[OG FIT ERROR] Failed to fetch or process {img_url}: {e}")
+
+    if canvas is None:
+        # Fallback card with modern dark aesthetic
+        canvas = Image.new('RGBA', (W, H), (15, 23, 42, 255))
+        d = ImageDraw.Draw(canvas)
+        d.rectangle([0, 0, W, 8], fill=(59, 130, 246, 255))
+        d.text((100, 240), (domain or "Website Link").upper(), fill=(59, 130, 246, 255))
+        if title:
+            d.text((100, 290), title[:70], fill=(241, 245, 249, 255))
+
+    buf = BytesIO()
+    canvas.convert('RGB').save(buf, format='JPEG', quality=92)
+    img_data = buf.getvalue()
+    _OG_IMAGE_CACHE[cache_key] = img_data
+    return img_data
+
+
+def make_smart_link(original_url, title=None):
+    """Wraps any 3rd-party or custom URL into an uncropped anti-crop Smart Link."""
+    if not original_url:
+        return ""
+    clean = original_url.strip()
+    if not clean.startswith("http://") and not clean.startswith("https://"):
+        clean = f"https://{clean}"
+    if "/l?" in clean or "/r?" in clean:
+        return clean
+
+    base = "https://socmedautomation.vercel.app"
+    encoded_u = urllib.parse.quote(clean, safe="")
+    smart_url = f"{base}/l?u={encoded_u}"
+    if title:
+        smart_url += f"&t={urllib.parse.quote(str(title).strip(), safe='')}"
+    return smart_url
+
+
+def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, button_title=None, dm_format="card", use_smart_link=True):
     """Send Direct Message (Private Reply) to commenter via linked Page endpoint.
     dm_format: 'card' (Universal Rich Link Card, 100% clickable on Desktop & Mobile)
                or 'button' (Meta Button Template, interactive button on Mobile).
+    use_smart_link: Wrap URL in uncropped anti-crop 1200x630 OG previewer.
     """
     acc_id = target_acc_id or get_active_account_id()
     page_id, page_token = get_page_for_ig_account(acc_id)
-    print(f"[DM LOG] Attempting Private DM ({dm_format}) for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
+    print(f"[DM LOG] Attempting Private DM ({dm_format}, smart_link={use_smart_link}) for comment_id {comment_id} via Page {page_id} (IG {acc_id})...")
     
     url = f"{GRAPH_URL}/{page_id}/messages"
     
@@ -601,12 +734,18 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
         if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
             clean_url = f"https://{clean_url}"
 
+    smart_link_url = clean_url
+    if clean_url and use_smart_link:
+        smart_link_url = make_smart_link(clean_url, button_title)
+
     # Mode 1: Button Template (Only if explicitly requested and clean_url is provided)
-    if dm_format == "button" and clean_url:
+    if dm_format == "button" and smart_link_url:
         btn_text = (button_title or "Ini link aksesnya").strip()[:80]
         btn_body = message.strip()
-        if clean_url not in btn_body:
-            btn_body = f"{btn_body}\n\n👉 {clean_url}"
+        if clean_url in btn_body and use_smart_link:
+            btn_body = btn_body.replace(clean_url, smart_link_url)
+        elif smart_link_url not in btn_body:
+            btn_body = f"{btn_body}\n\n👉 {smart_link_url}"
             
         payload = {
             "recipient": {"comment_id": comment_id},
@@ -619,7 +758,7 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
                         "buttons": [
                             {
                                 "type": "web_url",
-                                "url": clean_url,
+                                "url": smart_link_url,
                                 "title": btn_text
                             }
                         ]
@@ -639,8 +778,10 @@ def send_private_dm(comment_id, message, target_acc_id=None, button_url=None, bu
     # Mode 2: Universal Rich Link Card (100% clickable on Desktop Web & Mobile + Auto OG Preview Card)
     try:
         text_message = message.strip()
-        if clean_url and clean_url not in text_message:
-            text_message += f"\n\n👉 {clean_url}"
+        if clean_url in text_message and use_smart_link:
+            text_message = text_message.replace(clean_url, smart_link_url)
+        elif smart_link_url and smart_link_url not in text_message:
+            text_message += f"\n\n👉 {smart_link_url}"
             
         payload = {
             "recipient": {"comment_id": comment_id},
@@ -888,6 +1029,207 @@ def api_switch_user():
     })
 
 
+@app.route('/api/og-image')
+def api_og_image():
+    """Serves dynamically fitted 1200x630 JPEG/PNG with zero cropping."""
+    img_url = request.args.get('img', '').strip()
+    title = request.args.get('t', '').strip()
+    domain = request.args.get('d', '').strip()
+
+    img_bytes = get_fitted_og_bytes(img_url=img_url, title=title, domain=domain)
+    response = Response(img_bytes, mimetype='image/jpeg')
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
+
+
+@app.route('/l')
+@app.route('/r')
+def smart_link_redirect():
+    """Smart Link Wrapper: serves anti-crop OG tags to crawlers and instantly redirects human visitors."""
+    target_url = request.args.get('u', '').strip()
+    custom_title = request.args.get('t', '').strip()
+    custom_img = request.args.get('img', '').strip()
+
+    if not target_url:
+        return "Tautan tidak valid.", 400
+
+    if not target_url.startswith("http://") and not target_url.startswith("https://"):
+        target_url = f"https://{target_url}"
+
+    parsed = urllib.parse.urlparse(target_url)
+    domain = parsed.netloc or "website"
+
+    title = custom_title
+    description = f"Klik untuk membuka tautan resmi dari {domain}."
+    image_url = custom_img
+
+    # Scrape target URL if title or image missing
+    if not title or not image_url:
+        now = time.time()
+        cached = _URL_META_CACHE.get(target_url)
+        if cached and (now - cached.get("time", 0)) < 3600:
+            if not title:
+                title = cached.get("title", "")
+            if not image_url:
+                image_url = cached.get("image", "")
+            description = cached.get("desc", description)
+        else:
+            try:
+                headers = {
+                    'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+                }
+                resp = requests.get(target_url, headers=headers, timeout=5)
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.text, 'html.parser')
+
+                    # Extract title
+                    if not title:
+                        og_t = soup.find('meta', property='og:title')
+                        if og_t and og_t.get('content'):
+                            title = og_t.get('content').strip()
+                        elif soup.title and soup.title.string:
+                            title = soup.title.string.strip()
+
+                    # Extract description
+                    og_d = soup.find('meta', property='og:description')
+                    if og_d and og_d.get('content'):
+                        description = og_d.get('content').strip()
+                    else:
+                        meta_d = soup.find('meta', attrs={'name': 'description'})
+                        if meta_d and meta_d.get('content'):
+                            description = meta_d.get('content').strip()
+
+                    # Extract image
+                    if not image_url:
+                        og_i = soup.find('meta', property='og:image')
+                        if og_i and og_i.get('content'):
+                            image_url = og_i.get('content').strip()
+                        elif soup.find('link', rel=lambda r: r and 'icon' in r.lower()):
+                            ico = soup.find('link', rel=lambda r: r and 'icon' in r.lower())
+                            if ico and ico.get('href'):
+                                image_url = ico.get('href').strip()
+
+                    if image_url and not image_url.startswith('http://') and not image_url.startswith('https://'):
+                        image_url = urllib.parse.urljoin(target_url, image_url)
+
+                    _URL_META_CACHE[target_url] = {
+                        "title": title,
+                        "desc": description,
+                        "image": image_url,
+                        "domain": domain,
+                        "time": now
+                    }
+            except Exception as e:
+                print(f"[META SCRAPE ERROR] {e}")
+
+    if not title:
+        title = f"Kunjungi {domain}"
+
+    # Build fitted OG image URL on our server
+    host = "https://socmedautomation.vercel.app"
+    if request.host and ("localhost" in request.host or "127.0.0.1" in request.host):
+        host = request.host_url.rstrip('/')
+
+    og_image_param = f"d={urllib.parse.quote(domain, safe='')}"
+    if image_url:
+        og_image_param += f"&img={urllib.parse.quote(image_url, safe='')}"
+    if title:
+        og_image_param += f"&t={urllib.parse.quote(title[:80], safe='')}"
+
+    fitted_og_image = f"{host}/api/og-image?{og_image_param}"
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <title>{title}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{target_url}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:image" content="{fitted_og_image}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{fitted_og_image}">
+    <meta http-equiv="refresh" content="0;url={target_url}">
+    <script>
+        window.location.replace("{target_url}");
+    </script>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #0B0F19;
+            color: #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            box-sizing: border-box;
+        }}
+        .card {{
+            background: #161F30;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 440px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }}
+        .domain {{
+            color: #3B82F6;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }}
+        h2 {{
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.4;
+        }}
+        p {{
+            color: #94A3B8;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0 0 20px 0;
+        }}
+        .btn {{
+            display: inline-block;
+            background: #2563EB;
+            color: #FFFFFF;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: background 0.2s;
+        }}
+        .btn:hover {{
+            background: #1D4ED8;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="domain">{domain}</div>
+        <h2>{title}</h2>
+        <p>Membuka tautan tujuan...</p>
+        <a href="{target_url}" class="btn">Buka Sekarang 👉</a>
+    </div>
+</body>
+</html>"""
+    return Response(html_content, mimetype='text/html')
+
+
 @app.route('/api/posts')
 def api_posts():
     limit = request.args.get('limit', 25, type=int)
@@ -899,10 +1241,10 @@ def api_post_rules():
     post_rules = load_post_rules()
     if request.method == 'GET':
         return jsonify(post_rules)
-        
+
     data = request.get_json() or {}
     post_id = str(data.get('post_id', '')).strip()
-    
+
     if request.method == 'POST':
         if not post_id:
             return jsonify({"error": "Missing post_id"}), 400
@@ -914,10 +1256,11 @@ def api_post_rules():
             dm_message=data.get('dm_message', ''),
             post_caption_preview=data.get('post_caption_preview', ''),
             button_text=data.get('button_text', 'Ini link aksesnya'),
-            dm_format=data.get('dm_format', 'card')
+            dm_format=data.get('dm_format', 'card'),
+            use_smart_link=data.get('use_smart_link', True)
         )
         return jsonify({"status": "success", "rule": saved})
-        
+
     if request.method == 'DELETE':
         if not post_id:
             return jsonify({"error": "Missing post_id"}), 400
@@ -1105,10 +1448,12 @@ def run_auto_reply_scan():
                             dm_content = ""
                             button_label = str(post_rule.get("button_text", "")).strip() or "Ini link aksesnya"
                             post_dm_format = str(post_rule.get("dm_format", "card")).strip()
-                            
+                            post_use_smart_link = post_rule.get("use_smart_link", True)
+                            effective_link = make_smart_link(post_cta_link, button_label) if (post_use_smart_link and post_cta_link) else post_cta_link
+
                             if post_send_dm or post_cta_link:
                                 if post_dm_message:
-                                    dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", post_cta_link)
+                                    dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", effective_link)
                                 else:
                                     if post_dm_format == "button":
                                         dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Silakan klik tombol di bawah ini untuk mengakses tautan resmi:"
@@ -1122,7 +1467,8 @@ def run_auto_reply_scan():
                                     target_acc_id=acc_id,
                                     button_url=post_cta_link if post_cta_link else None,
                                     button_title=button_label,
-                                    dm_format=post_dm_format
+                                    dm_format=post_dm_format,
+                                    use_smart_link=post_use_smart_link
                                 )
                                 dm_status = dm_res.get("status", "sent")
                                 if dm_status == "success":
@@ -1248,8 +1594,11 @@ def process_webhook_event(payload):
 
                     # 2. Send Private DM if configured
                     if post_send_dm or post_cta_link:
+                        post_use_smart_link = post_rule.get("use_smart_link", True)
+                        effective_link = make_smart_link(post_cta_link, button_label) if (post_use_smart_link and post_cta_link) else post_cta_link
+
                         if post_dm_message:
-                            dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", post_cta_link)
+                            dm_content = post_dm_message.replace("{username}", user_handle).replace("{link}", effective_link)
                         else:
                             if post_dm_format == "button":
                                 dm_content = f"Halo kak @{user_handle}! 👋\n\nTerima kasih atas antusiasmenya. Silakan klik tombol di bawah ini untuk mengakses tautan resmi:"
@@ -1262,7 +1611,8 @@ def process_webhook_event(payload):
                             target_acc_id=entry_id,
                             button_url=post_cta_link if post_cta_link else None,
                             button_title=button_label,
-                            dm_format=post_dm_format
+                            dm_format=post_dm_format,
+                            use_smart_link=post_use_smart_link
                         )
                         print(f"[WEBHOOK BOT] Private DM sent to @{user_handle}: {dm_res}")
 

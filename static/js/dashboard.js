@@ -342,6 +342,7 @@ async function loadPostRulesView() {
       const dmMessage = rule.dm_message || '';
       const buttonText = rule.button_text || 'Ini link aksesnya';
       const dmFormat = rule.dm_format || 'card';
+      const useSmartLink = rule.use_smart_link !== false;
       const captionText = post.caption || 'Tanpa Caption';
 
       return `
@@ -369,11 +370,22 @@ async function loadPostRulesView() {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <!-- Custom Destination URL Link -->
               <div class="form-group" style="margin-bottom: 12px;">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
-                  <i data-lucide="link" style="width: 14px; height: 14px; color: var(--primary);"></i> Custom Link (URL Tujuan / Landing Page / Tautan Khusus)
-                </label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                    <i data-lucide="link" style="width: 14px; height: 14px; color: var(--primary);"></i> Custom Link (URL Tujuan)
+                  </label>
+                  <button type="button" onclick="testOgCardPreview('${pId}')" class="btn-ghost" style="font-size: 11px; padding: 2px 8px; height: 22px; color: var(--accent-blue); display: inline-flex; align-items: center; gap: 4px;" title="Lihat kartu preview uncropped">
+                    <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Test Preview Card
+                  </button>
+                </div>
                 <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://domainanda.com/promo atau https://linktr.ee/...">
-                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 3px; display: block;">Tautan tujuan ini akan dibuka saat tombol/link DM diklik.</span>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
+                  <label style="font-size: 11px; color: var(--on-dark); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="smart-link-${pId}" ${useSmartLink ? 'checked' : ''} style="accent-color: var(--accent-blue); cursor: pointer;">
+                    <span>🛡️ <strong>Anti-Krop Smart Card</strong>: Thumbnail pas tanpa kepotong</span>
+                  </label>
+                  <span style="font-size: 10px; color: var(--ink-mute-2);">1200x630 Pas</span>
+                </div>
               </div>
 
               <!-- Custom Public Reply -->
@@ -436,6 +448,17 @@ async function loadPostRulesView() {
   }
 }
 
+// Preview uncropped OG card helper
+function testOgCardPreview(postId) {
+  const ctaLink = document.getElementById(`cta-link-${postId}`)?.value.trim();
+  if (!ctaLink) {
+    showToast('Masukkan URL tujuan terlebih dahulu!', 'error');
+    return;
+  }
+  const previewUrl = `/l?u=${encodeURIComponent(ctaLink)}`;
+  window.open(previewUrl, '_blank');
+}
+
 // Save Single Post Rule
 async function savePostRule(postId) {
   const btn = document.getElementById(`btn-save-${postId}`);
@@ -445,6 +468,7 @@ async function savePostRule(postId) {
   const dmMessage = document.getElementById(`dm-message-${postId}`)?.value.trim() || '';
   const buttonText = document.getElementById(`btn-text-${postId}`)?.value.trim() || 'Ini link aksesnya';
   const dmFormat = document.getElementById(`dm-format-${postId}`)?.value || 'card';
+  const useSmartLink = document.getElementById(`smart-link-${postId}`) ? document.getElementById(`smart-link-${postId}`).checked : true;
 
   if (btn) {
     btn.disabled = true;
@@ -463,7 +487,8 @@ async function savePostRule(postId) {
         send_dm: sendDm,
         dm_message: dmMessage,
         button_text: buttonText,
-        dm_format: dmFormat
+        dm_format: dmFormat,
+        use_smart_link: useSmartLink
       })
     });
 
