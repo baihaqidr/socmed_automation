@@ -1039,72 +1039,80 @@ def api_scraper_hashtag():
                                 p["media_type"] = "VIDEO" if p.get("thumbnail_url") else "IMAGE"
                             p["like_count"] = p.get("like_count", 0)
                             p["comments_count"] = p.get("comments_count", 0)
+                            if not p.get("permalink") or p.get("permalink") in ["https://instagram.com", "https://instagram.com/"]:
+                                p["permalink"] = f"https://www.instagram.com/explore/tags/{query}/"
                         return jsonify({"status": "success", "hashtag": query, "data": posts})
         except Exception as e:
             print(f"[SCRAPER ERROR] Hashtag search error: {e}")
 
-    # Rich Sandbox Data Fallback with diverse media types (Reels, Carousel, Single Post)
+    # Rich Sandbox Data Fallback with diverse media types and author handles
     mock_posts = [
         {
             "id": "h1",
+            "username": "creativestudio_id",
             "caption": f"Strategi viral #{query} 2026 yang terbukti menaikkan omzet 3x lipat! 🔥 Simak video ini sampai habis. #growth #strategy #digital",
-            "media_type": "VIDEO",
-            "like_count": 1420,
-            "comments_count": 284,
-            "media_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
-            "thumbnail_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
-            "permalink": "https://instagram.com",
-            "timestamp": "2026-09-07T10:00:00Z"
-        },
-        {
-            "id": "h2",
-            "caption": f"5 Langkah mudah jualan online via DM otomatis untuk keyword #{query} 🚀 Swipe left untuk membaca slide panduannya!",
-            "media_type": "CAROUSEL_ALBUM",
-            "like_count": 980,
-            "comments_count": 142,
-            "media_url": "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600",
-            "permalink": "https://instagram.com",
-            "timestamp": "2026-09-06T15:30:00Z"
-        },
-        {
-            "id": "h3",
-            "caption": f"Template desain gratis khusus promosi brand #{query}! Komen MAU di bawah nanti bot langsung kirim link via DM 💡",
-            "media_type": "IMAGE",
-            "like_count": 2150,
-            "comments_count": 630,
-            "media_url": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600",
-            "permalink": "https://instagram.com",
-            "timestamp": "2026-09-05T12:00:00Z"
-        },
-        {
-            "id": "h4",
-            "caption": f"Cara bikin konten #{query} yang hook-nya bikin audiens berhenti scrolling! 🎬 #reels #contentcreator",
             "media_type": "VIDEO",
             "like_count": 3120,
             "comments_count": 418,
             "media_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
             "thumbnail_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
-            "permalink": "https://instagram.com",
+            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "timestamp": "2026-09-07T10:00:00Z"
+        },
+        {
+            "id": "h2",
+            "username": "digitalmarket.ai",
+            "caption": f"5 Langkah mudah jualan online via DM otomatis untuk keyword #{query} 🚀 Swipe left untuk membaca slide panduannya!",
+            "media_type": "CAROUSEL_ALBUM",
+            "like_count": 2150,
+            "comments_count": 630,
+            "media_url": "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600",
+            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "timestamp": "2026-09-06T15:30:00Z"
+        },
+        {
+            "id": "h3",
+            "username": "contentlab_official",
+            "caption": f"Template desain gratis khusus promosi brand #{query}! Komen MAU di bawah nanti bot langsung kirim link via DM 💡",
+            "media_type": "IMAGE",
+            "like_count": 1890,
+            "comments_count": 230,
+            "media_url": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600",
+            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
+            "timestamp": "2026-09-05T12:00:00Z"
+        },
+        {
+            "id": "h4",
+            "username": "growthhackers.id",
+            "caption": f"Cara bikin konten #{query} yang hook-nya bikin audiens berhenti scrolling! 🎬 #reels #contentcreator",
+            "media_type": "VIDEO",
+            "like_count": 1420,
+            "comments_count": 284,
+            "media_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
+            "thumbnail_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
+            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
             "timestamp": "2026-09-04T18:45:00Z"
         },
         {
             "id": "h5",
+            "username": "brandhacker",
             "caption": f"Riset mendalam mengenai Tren pasar #{query} kuartal ini. Simpan postingan carousel ini untuk referensi tim Anda 📌",
             "media_type": "CAROUSEL_ALBUM",
-            "like_count": 750,
-            "comments_count": 95,
+            "like_count": 980,
+            "comments_count": 142,
             "media_url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600",
-            "permalink": "https://instagram.com",
+            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
             "timestamp": "2026-09-03T09:15:00Z"
         },
         {
             "id": "h6",
+            "username": "socialpro.app",
             "caption": f"Pengalaman menggunakan otomasi AI untuk campaign #{query}. Hasil luar biasa tanpa perlu admin bergadang!⚡",
             "media_type": "IMAGE",
-            "like_count": 1890,
-            "comments_count": 230,
+            "like_count": 750,
+            "comments_count": 95,
             "media_url": "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600",
-            "permalink": "https://instagram.com",
+            "permalink": f"https://www.instagram.com/explore/tags/{query}/",
             "timestamp": "2026-09-02T14:10:00Z"
         }
     ]
@@ -1126,10 +1134,13 @@ def api_scraper_competitor():
             b_data = res["business_discovery"]
             posts = b_data.get("media", {}).get("data", [])
             for p in posts:
+                p["username"] = username
                 if not p.get("media_type"):
                     p["media_type"] = "VIDEO" if p.get("thumbnail_url") else "IMAGE"
                 p["like_count"] = p.get("like_count", 0)
                 p["comments_count"] = p.get("comments_count", 0)
+                if not p.get("permalink") or p.get("permalink") in ["https://instagram.com", "https://instagram.com/"]:
+                    p["permalink"] = f"https://www.instagram.com/{username}/"
             return jsonify({
                 "status": "success",
                 "username": b_data.get("username"),
@@ -1144,31 +1155,34 @@ def api_scraper_competitor():
     mock_posts = [
         {
             "id": "c1",
+            "username": username,
             "caption": f"Rilis produk terbaru dari @{username}! Diskon 30% hari ini aja 🔥 Sikat sebelum kehabisan!",
             "media_type": "VIDEO",
             "like_count": 1280,
             "comments_count": 195,
             "media_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
             "thumbnail_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
-            "permalink": "https://instagram.com"
+            "permalink": f"https://www.instagram.com/{username}/"
         },
         {
             "id": "c2",
+            "username": username,
             "caption": f"3 Alasan kenapa kamu harus beralih ke layanan @{username} 💡 Carousel panduan lengkap!",
             "media_type": "CAROUSEL_ALBUM",
             "like_count": 840,
             "comments_count": 92,
             "media_url": "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600",
-            "permalink": "https://instagram.com"
+            "permalink": f"https://www.instagram.com/{username}/"
         },
         {
             "id": "c3",
+            "username": username,
             "caption": f"Bantu jawab di komentar ya gaes! Solusi mudah pakai @{username} ✨",
             "media_type": "IMAGE",
             "like_count": 510,
             "comments_count": 64,
             "media_url": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600",
-            "permalink": "https://instagram.com"
+            "permalink": f"https://www.instagram.com/{username}/"
         }
     ]
 

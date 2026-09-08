@@ -886,6 +886,8 @@ async function loadInsightsData() {
 // NEW MODULE 2: COMPETITOR SPY & HASHTAG SCRAPER
 // ==========================================
 window.rawScraperPosts = [];
+window.currentCompetitorUsername = null;
+window.currentScraperHashtag = null;
 
 function applyScraperSortFilter() {
   const container = document.getElementById('scraper-results-container');
@@ -928,6 +930,18 @@ function applyScraperSortFilter() {
     const rawImg = p.thumbnail_url || p.media_url || '';
     const proxiedImg = rawImg ? `/api/proxy-image?url=${encodeURIComponent(rawImg)}` : '';
     const mediaType = (p.media_type || '').toUpperCase();
+    const authorUsername = p.username || (p.owner && p.owner.username) || window.currentCompetitorUsername || 'instagram_creator';
+
+    let targetLink = p.permalink || '';
+    if (!targetLink || targetLink === 'https://instagram.com' || targetLink === 'https://instagram.com/') {
+      if (authorUsername && authorUsername !== 'instagram_creator') {
+        targetLink = `https://www.instagram.com/${authorUsername}/`;
+      } else if (window.currentScraperHashtag) {
+        targetLink = `https://www.instagram.com/explore/tags/${encodeURIComponent(window.currentScraperHashtag)}/`;
+      } else {
+        targetLink = `https://www.instagram.com/explore/`;
+      }
+    }
 
     let badgeHtml = '';
     if (mediaType === 'VIDEO' || mediaType === 'REELS') {
@@ -945,6 +959,21 @@ function applyScraperSortFilter() {
     return `
     <div class="supa-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
       <div>
+        <!-- AUTHOR HEADER -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);">
+          <a href="https://www.instagram.com/${authorUsername}/" target="_blank" style="display: flex; align-items: center; gap: 8px; text-decoration: none; overflow: hidden;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #10B981, #3B82F6); display: flex; align-items: center; justify-content: center; color: #FFF; font-weight: 700; font-size: 11px; flex-shrink: 0;">
+              ${authorUsername[0].toUpperCase()}
+            </div>
+            <span style="font-size: 12px; font-weight: 600; color: var(--on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              @${authorUsername}
+            </span>
+          </a>
+          <span style="font-size: 10px; color: var(--ink-mute-2);">
+            ${p.timestamp ? new Date(p.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : ''}
+          </span>
+        </div>
+
         <div style="width: 100%; height: 170px; border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden; background: var(--bg-tertiary); position: relative; border: 1px solid var(--border-color);">
           ${badgeHtml}
           ${rawImg ? `
@@ -980,12 +1009,9 @@ function applyScraperSortFilter() {
           </span>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 10px; color: var(--ink-mute-2);">
-            ${p.timestamp ? new Date(p.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : 'Instagram Post'}
-          </span>
-          <a href="${p.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;">
-            Lihat Post ↗
+        <div style="display: flex; align-items: center; justify-content: flex-end;">
+          <a href="${targetLink}" target="_blank" style="font-size: 11px; color: var(--primary); text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;">
+            Buka di Instagram ↗
           </a>
         </div>
       </div>
@@ -1007,6 +1033,9 @@ async function searchHashtag() {
     showToast('Ketik kata kunci hashtag terlebih dahulu.', 'warning');
     return;
   }
+
+  window.currentScraperHashtag = q;
+  window.currentCompetitorUsername = null;
 
   container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Me-scrape postingan viral hashtag #' + q + '...</div>';
 
@@ -1041,6 +1070,9 @@ async function spyCompetitor() {
     showToast('Ketik username kompetitor terlebih dahulu.', 'warning');
     return;
   }
+
+  window.currentCompetitorUsername = username;
+  window.currentScraperHashtag = null;
 
   container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Mengintip data akun @' + username + '...</div>';
 
