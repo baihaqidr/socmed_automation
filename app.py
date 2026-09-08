@@ -977,16 +977,34 @@ def run_auto_reply_scan():
     total_scanned_posts = 0
     details = []
     
-    # Scan across connected Instagram accounts (limit 25 posts each for optimal speed)
-    for acc in KNOWN_INSTAGRAM_ACCOUNTS:
-        acc_id = acc["id"]
+    active_acc_id = str(get_active_account_id())
+    # Sort accounts so the active account is scanned first
+    accounts_to_scan = sorted(KNOWN_INSTAGRAM_ACCOUNTS, key=lambda a: 0 if str(a["id"]) == active_acc_id else 1)
+
+    for acc in accounts_to_scan:
+        acc_id = str(acc["id"])
         acc_username = acc["username"].lower()
         
-        # Fetch posts for this account
-        posts = get_all_posts(limit=25, target_id=acc_id)
-        total_scanned_posts += len(posts)
+        # Only scan posts for active account or accounts that actually have post rules configured
+        has_rules_in_this_account = any(p_id in post_rules for p_id in [str(p.get("id")) for p in _POSTS_CACHE.get(acc_id, [])])
+        if acc_id != active_acc_id and not has_rules_in_this_account:
+            continue
+
+        # Fetch posts for this account from cache
+        posts = get_all_posts(limit=15, target_id=acc_id)
         
-        for post in posts:
+        # TARGETED SCAN: Only scan posts that:
+        # 1. Have active automation rules configured in post_rules, OR
+        # 2. Are the top 2 most recent posts
+        target_posts = []
+        for idx, post in enumerate(posts):
+            p_id = str(post.get("id", ""))
+            if p_id in post_rules or idx < 2:
+                target_posts.append(post)
+
+        total_scanned_posts += len(target_posts)
+        
+        for post in target_posts:
             if post.get("comments_count", 0) == 0:
                 continue
                 
@@ -1002,6 +1020,15 @@ def run_auto_reply_scan():
             post_dm_message = post_rule.get("dm_message", "")
             
             comments_data = get_post_comments(post["id"])
+            
+            # Check for Meta rate limit error #80002
+            if "error" in comments_data:
+                err_code = comments_data["error"].get("code")
+                if err_code == 80002:
+                    print(f"[RATE LIMIT] Meta #80002 active on account @{acc_username}. Halting scan for this account to allow cooldown.")
+                    break
+                continue
+                
             if "data" in comments_data:
                 for comment in comments_data["data"]:
                     c_id = comment["id"]
