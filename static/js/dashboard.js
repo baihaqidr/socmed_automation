@@ -1494,3 +1494,30 @@ async function cancelScheduledPost(postId) {
     showToast('Gagal menghapus postingan terjadwal.', 'error');
   }
 }
+
+// ==========================================
+// AUTOMATIC SCANNER (Dashboard Active Watcher)
+// ==========================================
+let autoScanInterval = null;
+function startAutoScanner() {
+  if (autoScanInterval) clearInterval(autoScanInterval);
+  
+  // Run gentle background scan every 25 seconds
+  autoScanInterval = setInterval(async () => {
+    try {
+      const res = await fetch('/api/auto-reply-scan', { method: 'POST' });
+      const data = await res.json();
+      if (data && data.total_new_replies > 0) {
+        showToast(`⚡ Bot otomatis membalas ${data.total_new_replies} komentar & mengirim ${data.total_dms_sent} DM!`, 'success');
+        if (typeof loadInboxComments === 'function') loadInboxComments();
+      }
+    } catch (e) {
+      // Silent fail in background
+    }
+  }, 25000);
+}
+
+// Start auto scanner on dashboard boot
+if (typeof window !== 'undefined') {
+  setTimeout(startAutoScanner, 5000);
+}
