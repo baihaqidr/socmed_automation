@@ -403,22 +403,41 @@ async function loadPostRulesView() {
 
             <!-- Workflow Pre-Step: Follow Gatekeeper (Optional) -->
             <div style="padding: 12px 14px; background: rgba(59, 130, 246, 0.04); border: 1px dashed var(--primary); border-radius: var(--radius-sm); margin-top: 6px; margin-bottom: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
                 <label style="font-size: 13px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <input type="checkbox" id="require-follow-${pId}" ${requireFollow ? 'checked' : ''} onchange="document.getElementById('follow-settings-${pId}').style.display = this.checked ? 'grid' : 'none'" style="accent-color: var(--primary); cursor: pointer;">
+                  <input type="checkbox" id="require-follow-${pId}" ${requireFollow ? 'checked' : ''} onchange="document.getElementById('follow-settings-${pId}').style.display = this.checked ? 'block' : 'none'" style="accent-color: var(--primary); cursor: pointer;">
                   <i data-lucide="user-check" style="width: 15px; height: 15px;"></i> 🛡️ Pre-Step: Wajib Cek Follow (Follow Gatekeeper)
                 </label>
                 <span class="pill-badge pill-purple" style="font-size: 10px;">Tahap Verifikasi Awal</span>
               </div>
-              <div id="follow-settings-${pId}" style="display: ${requireFollow ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Pesan Minta Follow (DM Pertama)</label>
-                  <input type="text" id="follow-prompt-${pId}" class="form-input" value="${followPrompt}" placeholder="Halo kak @{username}! Follow @{account} dulu, lalu balas 'SUDAH' untuk klaim linknya!">
+              
+              <div id="follow-settings-${pId}" style="display: ${requireFollow ? 'block' : 'none'}; margin-top: 10px;">
+                <!-- Reassuring Smart Automation Info Card -->
+                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 11px; color: var(--on-dark); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;">
+                  <i data-lucide="sparkles" style="width: 15px; height: 15px; color: var(--success); flex-shrink: 0; margin-top: 2px;"></i>
+                  <div>
+                    <strong>100% Otomatis (Siap Pakai)</strong>: Kamu <u>TIDAK PERLU</u> mengetik nama user manual! Bot otomatis menyapa nama follower (misal: <em>@budi</em>) dan nama akun tokomu (misal: <em>@produkly</em>) secara real-time. Langsung klik <strong>Simpan Pengaturan</strong> di bawah.
+                  </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Pesan Jika Belum Follow (Tertangkap)</label>
-                  <input type="text" id="not-following-msg-${pId}" class="form-input" value="${notFollowingMsg}" placeholder="Yah kak @{username}, sistem mendeteksi kamu belum follow nih 😢 Follow dulu ya!">
-                </div>
+
+                <!-- Optional Customization Details -->
+                <details style="margin-top: 8px;">
+                  <summary style="font-size: 11px; font-weight: 500; color: var(--primary); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 4px;">
+                    <span>✏️ Ingin sesuaikan kata-kata sendiri? (Opsional)</span>
+                  </summary>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-subtle);">
+                    <div class="form-group" style="margin-bottom: 0;">
+                      <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Pesan Minta Follow (DM Pertama)</label>
+                      <input type="text" id="follow-prompt-${pId}" class="form-input" value="${followPrompt}" placeholder="Kosongkan untuk pakai template standar otomatis">
+                      <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Variabel {username} & {account} akan otomatis diganti oleh sistem.</span>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                      <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Pesan Jika Belum Follow (Tertangkap)</label>
+                      <input type="text" id="not-following-msg-${pId}" class="form-input" value="${notFollowingMsg}" placeholder="Kosongkan untuk pakai template standar otomatis">
+                      <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Variabel {username} & {account} akan otomatis diganti oleh sistem.</span>
+                    </div>
+                  </div>
+                </details>
               </div>
             </div>
 

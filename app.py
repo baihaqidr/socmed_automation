@@ -646,11 +646,11 @@ _URL_META_CACHE = {}    # key: url -> {title, desc, img, domain, time}
 
 
 def get_fitted_og_bytes(img_url='', title='', domain=''):
-    """Generate a pixel-perfect 1200x630 (1.91:1) Instagram OG card.
+    """Generate a pixel-perfect 1200x630 Instagram OG card with Mobile Square Safe Zone (520x420).
     Auto-detects transparency (dark/light) or blurred backdrop for opaque photos
-    so that 100% of the thumbnail/logo is visible and NEVER cropped!
+    so that 100% of the thumbnail/logo is visible on BOTH Desktop Widescreen AND Mobile Square DMs!
     """
-    cache_key = hashlib.md5(f"{img_url}_{title}_{domain}".encode('utf-8')).hexdigest()
+    cache_key = hashlib.md5(f"v3_safecrop_{img_url}_{title}_{domain}".encode('utf-8')).hexdigest()
     if cache_key in _OG_IMAGE_CACHE:
         return _OG_IMAGE_CACHE[cache_key]
 
@@ -676,11 +676,13 @@ def get_fitted_og_bytes(img_url='', title='', domain=''):
                     avg_lum = (stat.mean[0] * 0.299 + stat.mean[1] * 0.587 + stat.mean[2] * 0.114)
 
                     # Dark logo -> clean light studio background; Light logo -> sleek dark slate
-                    bg_col = (248, 250, 252, 255) if avg_lum < 140 else (11, 15, 25, 255)
+                    bg_col = (255, 255, 255, 255) if avg_lum < 140 else (11, 15, 25, 255)
                     canvas = Image.new('RGBA', (W, H), bg_col)
 
-                    # Contain scaling inside safe padding box (max 960x480)
-                    max_w, max_h = 960, 480
+                    # Contain scaling inside safe mobile square padding box (max 520x420)
+                    # This guarantees that even when mobile Instagram crops to a center 1:1 square,
+                    # 100% of the logo and artwork is clearly visible without being cut off!
+                    max_w, max_h = 520, 420
                     sw, sh = src.size
                     ratio = min(max_w / sw, max_h / sh)
                     nw, nh = max(1, int(sw * ratio)), max(1, int(sh * ratio))
@@ -699,8 +701,8 @@ def get_fitted_og_bytes(img_url='', title='', domain=''):
                     bg = Image.alpha_composite(bg, dimmer)
                     canvas.paste(bg, (0, 0))
 
-                    # 2. Foreground: centered crisp original image with contain scaling
-                    max_w, max_h = 1000, 520
+                    # 2. Foreground: centered crisp original image with contain scaling inside mobile safe zone (max 540x420)
+                    max_w, max_h = 540, 420
                     sw, sh = src.size
                     ratio = min(max_w / sw, max_h / sh)
                     nw, nh = max(1, int(sw * ratio)), max(1, int(sh * ratio))
@@ -1226,7 +1228,7 @@ def render_smart_page(target_url, custom_title="", custom_img="", canonical_url=
     if request.host and ("localhost" in request.host or "127.0.0.1" in request.host):
         host = request.host_url.rstrip('/')
 
-    og_image_param = f"d={urllib.parse.quote(domain, safe='')}"
+    og_image_param = f"v=3&d={urllib.parse.quote(domain, safe='')}"
     if image_url:
         og_image_param += f"&img={urllib.parse.quote(image_url, safe='')}"
     if title:
