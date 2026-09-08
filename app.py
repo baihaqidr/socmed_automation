@@ -1004,6 +1004,144 @@ def api_insights():
 # ==========================================
 # MODULE 2: COMPETITOR SPY & HASHTAG SCRAPER
 # ==========================================
+def generate_dynamic_hashtag_sandbox(query, tag_permalink):
+    """Generate realistic, topic-appropriate posts matching the user's exact query when Meta Graph token is expired/limited."""
+    q_lower = query.lower()
+    
+    # 1. Disaster / Volcanic Ash / Nature News
+    if any(k in q_lower for k in ["vulkanik", "abu", "bencana", "gunung", "gempa", "erupsi", "alam"]):
+        return [
+            {
+                "id": "h1",
+                "username": "infobencana_id",
+                "caption": f"Laporan Terkini: Hujan #{query} terpantau meluas ke pemukiman warga setempat. Petugas membagikan masker gratis dan mengimbau warga tetap di rumah 🌋😷",
+                "media_type": "VIDEO",
+                "like_count": 4820,
+                "comments_count": 612,
+                "media_url": "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=600",
+                "thumbnail_url": "https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=600",
+                "permalink": tag_permalink,
+                "timestamp": "2026-09-07T14:20:00Z"
+            },
+            {
+                "id": "h2",
+                "username": "geologi_indonesia",
+                "caption": f"Peta sebaran dampak #{query} dan panduan evakuasi keselamatan. Geser slide untuk melihat zonasi daerah rawan! 🗺️📌",
+                "media_type": "CAROUSEL_ALBUM",
+                "like_count": 3150,
+                "comments_count": 418,
+                "media_url": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600",
+                "permalink": tag_permalink,
+                "timestamp": "2026-09-06T18:40:00Z"
+            },
+            {
+                "id": "h3",
+                "username": "kabarnusantara_news",
+                "caption": f"Pemberian bantuan logistik dan pembersihan material #{query} oleh tim gabungan relawan hari ini 🙏 Stay safe warga sekitarnya!",
+                "media_type": "IMAGE",
+                "like_count": 2890,
+                "comments_count": 310,
+                "media_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600",
+                "permalink": tag_permalink,
+                "timestamp": "2026-09-05T09:15:00Z"
+            },
+            {
+                "id": "h4",
+                "username": "patroli_alam",
+                "caption": f"Visual kondisi terkini dari puncak kawah dan sebaran paparan #{query} pagi hari ini ⛰️ #berita #mitigasi",
+                "media_type": "VIDEO",
+                "like_count": 1940,
+                "comments_count": 215,
+                "media_url": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600",
+                "thumbnail_url": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600",
+                "permalink": tag_permalink,
+                "timestamp": "2026-09-04T11:00:00Z"
+            }
+        ]
+
+    # 2. Skincare / Beauty / Cosmetics
+    elif any(k in q_lower for k in ["skin", "beauty", "glowing", "makeup", "wajah", "jerawat"]):
+        return [
+            {
+                "id": "h1",
+                "username": "glowskin_journal",
+                "caption": f"Rekomendasi rutinitas harian #{query} untuk pemula agar kulit lebih sehat & glowing tanpa iritasi ✨ Simak rekomendasinya!",
+                "media_type": "CAROUSEL_ALBUM",
+                "like_count": 3950,
+                "comments_count": 512,
+                "media_url": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600",
+                "permalink": tag_permalink,
+                "timestamp": "2026-09-07T12:00:00Z"
+            },
+            {
+                "id": "h2",
+                "username": "derma_tips.id",
+                "caption": f"Review jujur kandungan bahan aktif di produk #{query} terpopuler bulan ini 🧴 Komen produk favoritmu di bawah!",
+                "media_type": "IMAGE",
+                "like_count": 2740,
+                "comments_count": 380,
+                "media_url": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600",
+                "permalink": tag_permalink,
+                "timestamp": "2026-09-06T14:30:00Z"
+            }
+        ]
+
+    # 3. Food / Culinary / Cafe
+    elif any(k in q_lower for k in ["food", "kuliner", "makanan", "kopi", "cafe", "resep"]):
+        return [
+            {
+                "id": "h1",
+                "username": "foodies_jkt",
+                "caption": f"Cobain spot #{query} paling rame dan viral minggu ini! Rasa bintang 5 harga ramah di kantong 🍜🔥 #jajanan",
+                "media_type": "VIDEO",
+                "like_count": 5120,
+                "comments_count": 780,
+                "media_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600",
+                "thumbnail_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600",
+                "permalink": tag_permalink,
+                "timestamp": "2026-09-07T17:00:00Z"
+            }
+        ]
+
+    # 4. Default / General / Business & Digital
+    return [
+        {
+            "id": "h1",
+            "username": "digitalgrowth_id",
+            "caption": f"Strategi konten viral #{query} 2026 yang terbukti meningkatkan audiens & omzet 3x lipat! 🔥 #marketing",
+            "media_type": "VIDEO",
+            "like_count": 3120,
+            "comments_count": 418,
+            "media_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
+            "thumbnail_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
+            "permalink": tag_permalink,
+            "timestamp": "2026-09-07T10:00:00Z"
+        },
+        {
+            "id": "h2",
+            "username": "contentlab_official",
+            "caption": f"Rangkuman tren terpopuler seputar #{query} minggu ini. Simpan postingan carousel ini untuk ide riset Anda 📌",
+            "media_type": "CAROUSEL_ALBUM",
+            "like_count": 2150,
+            "comments_count": 630,
+            "media_url": "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600",
+            "permalink": tag_permalink,
+            "timestamp": "2026-09-06T15:30:00Z"
+        },
+        {
+            "id": "h3",
+            "username": "creativestudio.app",
+            "caption": f"Tips & Trik praktis seputar topik #{query} yang wajib dicoba oleh para content creator 💡",
+            "media_type": "IMAGE",
+            "like_count": 1890,
+            "comments_count": 230,
+            "media_url": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600",
+            "permalink": tag_permalink,
+            "timestamp": "2026-09-05T12:00:00Z"
+        }
+    ]
+
+
 @app.route('/api/scraper/hashtag')
 def api_scraper_hashtag():
     query = request.args.get('q', 'marketing').strip().lstrip('#')
@@ -1047,78 +1185,15 @@ def api_scraper_hashtag():
         except Exception as e:
             print(f"[SCRAPER ERROR] Hashtag search error: {e}")
 
-    # Rich Sandbox Data Fallback with diverse media types and author handles
-    mock_posts = [
-        {
-            "id": "h1",
-            "username": "creativestudio_id",
-            "caption": f"Strategi viral #{query} 2026 yang terbukti menaikkan omzet 3x lipat! 🔥 Simak video ini sampai habis. #growth #strategy #digital",
-            "media_type": "VIDEO",
-            "like_count": 3120,
-            "comments_count": 418,
-            "media_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
-            "thumbnail_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600",
-            "permalink": tag_permalink,
-            "timestamp": "2026-09-07T10:00:00Z"
-        },
-        {
-            "id": "h2",
-            "username": "digitalmarket.ai",
-            "caption": f"5 Langkah mudah jualan online via DM otomatis untuk keyword #{query} 🚀 Swipe left untuk membaca slide panduannya!",
-            "media_type": "CAROUSEL_ALBUM",
-            "like_count": 2150,
-            "comments_count": 630,
-            "media_url": "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=600",
-            "permalink": tag_permalink,
-            "timestamp": "2026-09-06T15:30:00Z"
-        },
-        {
-            "id": "h3",
-            "username": "contentlab_official",
-            "caption": f"Template desain gratis khusus promosi brand #{query}! Komen MAU di bawah nanti bot langsung kirim link via DM 💡",
-            "media_type": "IMAGE",
-            "like_count": 1890,
-            "comments_count": 230,
-            "media_url": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600",
-            "permalink": tag_permalink,
-            "timestamp": "2026-09-05T12:00:00Z"
-        },
-        {
-            "id": "h4",
-            "username": "growthhackers.id",
-            "caption": f"Cara bikin konten #{query} yang hook-nya bikin audiens berhenti scrolling! 🎬 #reels #contentcreator",
-            "media_type": "VIDEO",
-            "like_count": 1420,
-            "comments_count": 284,
-            "media_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
-            "thumbnail_url": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600",
-            "permalink": tag_permalink,
-            "timestamp": "2026-09-04T18:45:00Z"
-        },
-        {
-            "id": "h5",
-            "username": "brandhacker",
-            "caption": f"Riset mendalam mengenai Tren pasar #{query} kuartal ini. Simpan postingan carousel ini untuk referensi tim Anda 📌",
-            "media_type": "CAROUSEL_ALBUM",
-            "like_count": 980,
-            "comments_count": 142,
-            "media_url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600",
-            "permalink": tag_permalink,
-            "timestamp": "2026-09-03T09:15:00Z"
-        },
-        {
-            "id": "h6",
-            "username": "socialpro.app",
-            "caption": f"Pengalaman menggunakan otomasi AI untuk campaign #{query}. Hasil luar biasa tanpa perlu admin bergadang!⚡",
-            "media_type": "IMAGE",
-            "like_count": 750,
-            "comments_count": 95,
-            "media_url": "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600",
-            "permalink": tag_permalink,
-            "timestamp": "2026-09-02T14:10:00Z"
-        }
-    ]
-    return jsonify({"status": "success", "hashtag": query, "data": mock_posts})
+    # Dynamic Topic Sandbox Fallback matching the exact query category
+    mock_posts = generate_dynamic_hashtag_sandbox(query, tag_permalink)
+    return jsonify({
+        "status": "success",
+        "hashtag": query,
+        "data": mock_posts,
+        "is_sandbox": True,
+        "notice": "Access Token Meta kadaluarsa / Dev Mode restriction. Menampilkan data riset simulasi dinamis."
+    })
 
 
 @app.route('/api/scraper/competitor')

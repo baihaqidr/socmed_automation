@@ -1049,6 +1049,9 @@ async function searchHashtag() {
     if (data.data && data.data.length > 0) {
       window.rawScraperPosts = data.data;
       applyScraperSortFilter();
+      if (data.is_sandbox && data.notice) {
+        showToast('⚠️ Meta Token Expired. Menampilkan data riset simulasi dinamis.', 'warning');
+      }
     } else {
       window.rawScraperPosts = [];
       container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; grid-column: 1 / -1;">Tidak ada postingan ditemukan untuk hashtag ini.</div>';
