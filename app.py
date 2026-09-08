@@ -1963,10 +1963,10 @@ def api_auto_reply_scan():
 
 
 def start_background_watcher():
-    """Background daemon thread to automatically scan and reply to comments every 90 seconds."""
+    """Background daemon thread to automatically scan and reply to comments every 15 seconds."""
     def watcher_loop():
-        time.sleep(10)
-        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 90s)...")
+        time.sleep(5)
+        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 15s)...")
         while True:
             try:
                 res = run_auto_reply_scan()
@@ -1974,7 +1974,7 @@ def start_background_watcher():
                     print(f"[AUTO-BOT] ⚡ Replied to {res['total_new_replies']} comment(s), {res['total_dms_sent']} DM(s) sent!")
             except Exception as e:
                 print(f"[AUTO-BOT ERROR] {e}")
-            time.sleep(90)
+            time.sleep(15)
 
     t = threading.Thread(target=watcher_loop, daemon=True)
     t.start()
