@@ -386,9 +386,20 @@ def get_account_info(target_id=None):
     return requests.get(url, params=params).json()
 
 
+POSTS_CACHE_FILE = "posts_cache.json"
+_POSTS_CACHE = {}
+_POSTS_CACHE_TIME = {}
+
+
 def get_all_posts(limit=100, target_id=None):
-    """Fetch all posts from active Instagram account with pagination."""
-    acc_id = target_id or get_active_account_id()
+    """Fetch all posts from active Instagram account with pagination and smart rate-limit fallback cache."""
+    acc_id = str(target_id or get_active_account_id())
+    now = time.time()
+    
+    # Check in-memory cache first if recent (< 90s)
+    if acc_id in _POSTS_CACHE and (now - _POSTS_CACHE_TIME.get(acc_id, 0)) < 90:
+        return _POSTS_CACHE[acc_id][:limit]
+
     all_posts = []
     url = f"{GRAPH_URL}/{acc_id}/media"
     params = {
@@ -402,23 +413,60 @@ def get_all_posts(limit=100, target_id=None):
     
     while req_url:
         try:
-            res = requests.get(req_url, params=req_params, timeout=15).json()
+            res = requests.get(req_url, params=req_params, timeout=12).json()
             if "data" in res:
                 all_posts.extend(res["data"])
+            elif "error" in res:
+                err = res["error"]
+                print(f"[GRAPH API WARNING] get_all_posts for {acc_id}: {err.get('message')}")
+                break
             
             paging = res.get("paging", {})
             next_url = paging.get("next")
             
             if next_url and len(all_posts) < limit:
                 req_url = next_url
-                req_params = None  # Next URL already contains query params
+                req_params = None
             else:
                 break
         except Exception as e:
-            print(f"[GRAPH API ERROR] get_all_posts error: {e}")
+            print(f"[GRAPH API ERROR] get_all_posts exception: {e}")
             break
-            
-    return all_posts
+
+    # If fresh posts were fetched, update memory and file cache
+    if all_posts:
+        _POSTS_CACHE[acc_id] = all_posts
+        _POSTS_CACHE_TIME[acc_id] = now
+        try:
+            cache_data = {}
+            if os.path.exists(POSTS_CACHE_FILE):
+                with open(POSTS_CACHE_FILE, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+            cache_data[acc_id] = all_posts
+            with open(POSTS_CACHE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+        return all_posts[:limit]
+
+    # Fallback 1: in-memory cache
+    if acc_id in _POSTS_CACHE:
+        return _POSTS_CACHE[acc_id][:limit]
+
+    # Fallback 2: file-based cache (safe against Meta rate limit #80002)
+    if os.path.exists(POSTS_CACHE_FILE):
+        try:
+            with open(POSTS_CACHE_FILE, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+                cached = cache_data.get(acc_id, [])
+                if cached:
+                    _POSTS_CACHE[acc_id] = cached
+                    _POSTS_CACHE_TIME[acc_id] = now
+                    return cached[:limit]
+        except Exception:
+            pass
+
+    return []
 
 
 def get_recent_posts(limit=25):
@@ -1019,10 +1067,10 @@ def api_auto_reply_scan():
 
 
 def start_background_watcher():
-    """Background daemon thread to automatically scan and reply to comments every 30 seconds."""
+    """Background daemon thread to automatically scan and reply to comments every 75 seconds."""
     def watcher_loop():
-        time.sleep(8)
-        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 30s)...")
+        time.sleep(10)
+        print("[AUTO-BOT] 🤖 Background auto-reply watcher started (polling every 75s)...")
         while True:
             try:
                 res = run_auto_reply_scan()
@@ -1030,7 +1078,7 @@ def start_background_watcher():
                     print(f"[AUTO-BOT] ⚡ Replied to {res['total_new_replies']} comment(s), {res['total_dms_sent']} DM(s) sent!")
             except Exception as e:
                 print(f"[AUTO-BOT ERROR] {e}")
-            time.sleep(30)
+            time.sleep(75)
 
     t = threading.Thread(target=watcher_loop, daemon=True)
     t.start()
