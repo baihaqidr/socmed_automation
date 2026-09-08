@@ -1168,7 +1168,7 @@ def smart_link_redirect():
     ua = (request.headers.get('User-Agent') or '').lower()
     crawler_bots = [
         'facebookexternalhit', 'facebot', 'meta-externalagent',
-        'instagram', 'twitterbot', 'whatsapp', 'telegrambot',
+        'twitterbot', 'whatsapp', 'telegrambot',
         'slackbot', 'linkedinbot', 'discordbot', 'pinterest', 'googlebot'
     ]
     is_crawler = any(bot in ua for bot in crawler_bots)
