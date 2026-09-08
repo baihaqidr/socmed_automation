@@ -1900,9 +1900,10 @@ def process_webhook_event(payload):
                     media_data = val.get("media", {})
                     p_id = str(media_data.get("id", ""))
                     
-                    # Check if own account comment
-                    own_usernames = [a["username"].lower() for a in KNOWN_INSTAGRAM_ACCOUNTS]
-                    if user_handle.lower() in own_usernames:
+                    # Check if own account comment (only skip if post owner comments on their own post)
+                    acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(entry_id)), None)
+                    acc_owner = acc_info["username"].lower() if acc_info else ""
+                    if acc_owner and user_handle.lower() == acc_owner:
                         continue
 
                     # Look up post rule
@@ -1915,7 +1916,7 @@ def process_webhook_event(payload):
                     post_send_dm = post_rule.get("send_dm", False)
                     post_dm_message = post_rule.get("dm_message", "")
                     post_dm_format = str(post_rule.get("dm_format", "card")).strip()
-                    button_label = str(post_rule.get("button_text", "Ini link aksesnya")).strip()
+                    button_label = str(post_rule.get("button_text", "Buka Link Akses")).strip()
 
                     final_reply = None
                     reply_source = "Rule"
