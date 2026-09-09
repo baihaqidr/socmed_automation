@@ -32,15 +32,10 @@
           </button>
         </li>
         <li class="nav-item">
-          <button onclick="switchTab('postrules')">
-            <i data-lucide="link"></i>
-            <span>Post Links & DMs</span>
-          </button>
-        </li>
-        <li class="nav-item">
-          <button onclick="switchTab('autoreply')">
-            <i data-lucide="bot"></i>
-            <span>AI & Keyword Rules</span>
+          <button onclick="switchTab('postrules')" id="nav-btn-postrules">
+            <i data-lucide="zap"></i>
+            <span>Comment Automations</span>
+            <span class="pill-badge pill-green" style="font-size: 9px; padding: 1px 6px; margin-left: auto;">ManyChat</span>
           </button>
         </li>
         <li class="nav-item">
@@ -271,15 +266,25 @@
           </div>
         </div>
 
-        <!-- TAB 2: POST CUSTOM RULES & DM LINKS -->
+        <!-- TAB 2: COMMENT AUTOMATIONS (MANYCHAT FLOW) -->
         <div id="tab-postrules" class="tab-view">
           <div class="section-header">
-            <h1 class="section-title">Post Links & Direct Messages (DM)</h1>
-            <p class="section-desc">Atur link tujuan (URL), template balasan custom, dan pengiriman pesan DM otomatis untuk masing-masing postingan.</p>
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <h1 class="section-title" style="display: flex; align-items: center; gap: 10px;">
+                  <i data-lucide="zap" style="color: var(--primary);"></i> Comment Automations Studio
+                  <span class="pill-badge pill-green" style="font-size: 11px;">ManyChat Engine</span>
+                </h1>
+                <p class="section-desc">Atur alur otomatisasi balasan komentar publik & pesan DM bertombol secara instan per postingan.</p>
+              </div>
+              <button class="btn-primary" onclick="openAutomationBuilder('any_post')" style="display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="sparkles"></i> <span>Buat Otomatisasi Universal (Semua Post)</span>
+              </button>
+            </div>
           </div>
 
           <div id="post-rules-cards-container" style="display: flex; flex-direction: column; gap: 20px;">
-            <!-- Dynamically populated with all posts and their config forms -->
+            <!-- Dynamically populated with all posts and their ManyChat flow cards -->
           </div>
         </div>
 
@@ -705,8 +710,218 @@
         </button>
       </div>
     </div>
+  <!-- ManyChat Automation Flow Studio Modal -->
+  <div id="mc-builder-overlay" class="mc-builder-overlay">
+    <div class="mc-builder-modal">
+      
+      <!-- Modal Header -->
+      <div class="mc-builder-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="mc-step-num" style="background: rgba(62, 207, 142, 0.15); color: var(--primary); border: 1px solid var(--primary);">
+            <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--on-dark-bright); margin: 0;" id="mc-modal-title">Automation Builder</h3>
+            <p style="font-size: 12px; color: var(--ink-mute); margin: 2px 0 0 0;" id="mc-modal-subtitle">Atur pemicu kata kunci dan aksi balasan otomatis ManyChat Flow</p>
+          </div>
+        </div>
+        <button type="button" class="btn-ghost" onclick="closeAutomationBuilder()" style="color: var(--ink-mute); font-size: 18px; padding: 4px 8px; border-radius: var(--radius-sm); border: none; background: transparent; cursor: pointer;">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Body (2 Columns: Left Flow Builder, Right Phone Preview) -->
+      <div class="mc-builder-body">
+        
+        <!-- Column 1: The 3-Step Flow Builder -->
+        <div class="mc-flow-column">
+          <input type="hidden" id="mc-target-post-id" value="">
+
+          <!-- Step 1: When someone comments on -->
+          <div class="mc-step-card">
+            <div class="mc-step-header">
+              <div class="mc-step-num">1</div>
+              <div class="mc-step-title">When someone comments on:</div>
+            </div>
+            
+            <div class="mc-option-group">
+              <div class="mc-radio-box active" id="mc-target-box-specific" onclick="setMcTargetMode('specific')">
+                <div class="mc-radio-circle"></div>
+                <div style="flex: 1;">
+                  <div style="font-size: 13px; font-weight: 600; color: var(--on-dark-bright);">A specific post or reel</div>
+                  <div style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;" id="mc-target-post-summary">Post ID terpilih</div>
+                </div>
+                <div id="mc-target-post-thumb-wrap" style="width: 38px; height: 38px; border-radius: 6px; overflow: hidden; background: #222; flex-shrink: 0; display: none;">
+                  <img id="mc-target-post-thumb" src="" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+              </div>
+
+              <div class="mc-radio-box" id="mc-target-box-any" onclick="setMcTargetMode('any')">
+                <div class="mc-radio-circle"></div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--on-dark-bright); display: flex; align-items: center; gap: 6px;">
+                    Any post or reel <span class="pill-badge pill-purple" style="font-size: 10px;">Universal</span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;">Otomatisasi akan aktif di seluruh postingan Instagram akun ini</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: And this comment has -->
+          <div class="mc-step-card">
+            <div class="mc-step-header">
+              <div class="mc-step-num">2</div>
+              <div class="mc-step-title">And this comment has:</div>
+            </div>
+
+            <div class="mc-option-group">
+              <div class="mc-radio-box active" id="mc-cond-box-any" onclick="setMcConditionMode('any_word')">
+                <div class="mc-radio-circle"></div>
+                <div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--on-dark-bright);">Any word (Semua Komentar)</div>
+                  <div style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;">Komentar apa pun langsung memicu balasan dan pesan DM</div>
+                </div>
+              </div>
+
+              <div class="mc-radio-box" id="mc-cond-box-specific" onclick="setMcConditionMode('specific_words')">
+                <div class="mc-radio-circle"></div>
+                <div style="flex: 1;">
+                  <div style="font-size: 13px; font-weight: 600; color: var(--on-dark-bright);">A specific word or words (Kata Kunci Tertentu)</div>
+                  <div style="font-size: 11px; color: var(--ink-mute); margin-top: 2px;">Hanya memicu jika komentar mengandung salah satu kata kunci:</div>
+                  
+                  <div id="mc-keyword-input-wrap" style="margin-top: 10px; display: none;">
+                    <input type="text" id="mc-keywords-input" class="form-input" placeholder="contoh: visit, survei, lokasi, harga, mau" oninput="updateMcKeywordsPreview()" style="font-size: 12px;">
+                    <div style="font-size: 10px; color: var(--ink-mute-2); margin-top: 4px;">Pisahkan dengan tanda koma (contoh: <code>visit, harga, info</code>)</div>
+                    <div class="mc-tag-chips-wrap" id="mc-keywords-chips"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Response Actions -->
+          <div class="mc-step-card">
+            <div class="mc-step-header">
+              <div class="mc-step-num">3</div>
+              <div class="mc-step-title">Response Actions (Aksi Balasan):</div>
+            </div>
+
+            <!-- Action A: Public Reply -->
+            <div style="padding: 12px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--on-dark); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" id="mc-enable-public-reply" checked onchange="toggleMcPublicReply(this.checked)" style="accent-color: var(--primary); cursor: pointer;">
+                  <i data-lucide="message-circle" style="width: 14px; height: 14px; color: var(--accent-blue);"></i> Balas Komentar di Feed (Public Reply)
+                </label>
+                <span class="pill-badge pill-green" style="font-size: 10px;" id="mc-public-badge">Aktif</span>
+              </div>
+
+              <div id="mc-public-reply-details">
+                <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                  <label style="font-size: 11px; color: var(--on-dark); display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input type="radio" name="mc-reply-mode" id="mc-rep-mode-custom" value="custom" checked onchange="setMcReplyMode('custom')" style="accent-color: var(--primary);">
+                    <span>Teks Tetap (Custom)</span>
+                  </label>
+                  <label style="font-size: 11px; color: #FBBF24; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input type="radio" name="mc-reply-mode" id="mc-rep-mode-ai" value="ai" onchange="setMcReplyMode('ai')" style="accent-color: #FBBF24;">
+                    <span>✨ Gemini AI Otomatis (Luwes & Relevan)</span>
+                  </label>
+                </div>
+                <input type="text" id="mc-custom-reply-text" class="form-input" placeholder="contoh: Halo kak, detail dan linknya sudah kami kirim ke DM ya! Cek inbox yuk ✨" oninput="updateMcPhonePreview()" style="font-size: 12px;">
+              </div>
+            </div>
+
+            <!-- Action B: Direct Message (DM) -->
+            <div style="padding: 12px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <label style="font-size: 12px; font-weight: 600; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" id="mc-enable-dm" checked onchange="toggleMcDm(this.checked)" style="accent-color: #F59E0B; cursor: pointer;">
+                  <i data-lucide="mail" style="width: 14px; height: 14px; color: #FBBF24;"></i> Kirim Pesan DM Otomatis (Private Reply)
+                </label>
+                <span class="pill-badge pill-purple" style="font-size: 10px;">Button Card</span>
+              </div>
+
+              <div id="mc-dm-details" style="display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                  <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Pesan DM (Teks Persuasif)</label>
+                  <textarea id="mc-dm-message" class="form-textarea" rows="4" oninput="updateMcPhonePreview()" placeholder="Tulis isi pesan DM..." style="font-size: 12px;"></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div>
+                    <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Label Tombol (Button Text)</label>
+                    <input type="text" id="mc-button-text" class="form-input" value="Buka Link Akses" oninput="updateMcPhonePreview()" placeholder="Buka Link Akses" style="font-size: 12px;">
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">URL Tujuan Link</label>
+                    <input type="text" id="mc-cta-link" class="form-input" value="https://simplifyer.site/" oninput="updateMcPhonePreview()" placeholder="https://..." style="font-size: 12px;">
+                  </div>
+                </div>
+
+                <!-- Follow Gatekeeper (Optional Pre-Step) -->
+                <div style="margin-top: 6px; padding: 8px 12px; background: rgba(59, 130, 246, 0.05); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: var(--radius-sm);">
+                  <label style="font-size: 11px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="mc-require-follow" onchange="updateMcPhonePreview()" style="accent-color: var(--primary); cursor: pointer;">
+                    <span>🛡️ Aktifkan Cek Follow Wajib (Follow Gatekeeper)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Save Button Bar -->
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+            <button type="button" class="btn-secondary" onclick="closeAutomationBuilder()">Batal</button>
+            <button type="button" class="btn-primary" id="btn-save-mc-automation" onclick="saveMcAutomation()" style="display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="check"></i> Simpan & Aktifkan Otomatisasi
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Column 2: Interactive Real-Time Phone Simulator -->
+        <div class="mc-preview-column">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink-mute); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="smartphone" style="width: 13px; height: 13px;"></i> Live Phone Preview
+          </div>
+
+          <!-- Phone Tabs -->
+          <div class="phone-tab-controls">
+            <button type="button" class="phone-tab-btn active" id="phone-tab-btn-dm" onclick="switchPhonePreviewTab('dm')">
+              ✉️ Direct Message
+            </button>
+            <button type="button" class="phone-tab-btn" id="phone-tab-btn-comments" onclick="switchPhonePreviewTab('comments')">
+              💬 Comments Reply
+            </button>
+          </div>
+
+          <!-- Phone Frame -->
+          <div class="phone-mockup">
+            <div class="phone-notch"></div>
+            
+            <div class="phone-ig-topbar">
+              <span style="font-size: 10px; color: #888;">9:41</span>
+              <span id="preview-account-header">@sarangestate</span>
+              <span style="font-size: 12px; color: #888;">•••</span>
+            </div>
+
+            <div class="phone-content" id="phone-preview-content">
+              <!-- Dynamically rendered based on active preview tab -->
+            </div>
+          </div>
+
+          <div style="font-size: 11px; color: var(--ink-mute-2); margin-top: 12px; text-align: center;">
+            Simulasi visual real-time bagaimana audiens melihat komentar & kartu pesan DM di aplikasi Instagram.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=9.0"></script>
+  <script src="/static/js/dashboard.js?v=9.1"></script>
 </body>
 </html>

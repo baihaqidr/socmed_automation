@@ -359,221 +359,119 @@ async function loadPostRulesView() {
       </div>
     `;
 
+    window._POSTS_CACHE_DATA = posts;
+    window._RULES_CACHE_DATA = rulesData;
+
     const cardsHtml = posts.map(post => {
       const pId = String(post.id);
       const rule = rulesData[pId] || {};
       const ctaLink = rule.cta_link || '';
       const customReply = rule.custom_reply || '';
-      const sendDm = rule.send_dm || false;
-      const dmMessage = rule.dm_message || '';
-      const buttonText = rule.button_text || 'Ini link aksesnya';
-      const dmFormat = rule.dm_format || 'card';
-      const useSmartLink = rule.use_smart_link !== false;
-      const requireFollow = rule.require_follow === true;
-      const followPrompt = rule.follow_prompt || '';
-      const notFollowingMsg = rule.not_following_msg || '';
-      const requestBtnText = rule.request_btn_text || 'Kirim Linknya';
-      const followBtnText = rule.follow_btn_text || 'Sudah Follow';
-      const introDmMessage = rule.intro_dm_message || '';
+      const sendDm = rule.send_dm !== false;
+      const buttonText = rule.button_text || 'Buka Link Akses';
+      const triggerType = rule.trigger_type || 'any_word';
+      const triggerKeywords = rule.trigger_keywords || '';
+      const replyMode = rule.reply_mode || 'custom';
       const captionText = post.caption || 'Tanpa Caption';
+      const thumbUrl = post.thumbnail_url || post.media_url || '/templates/image.png';
 
-      // Distinguish saved vs unsaved
-      const isSaved = Boolean(rule && (rule.cta_link || rule.send_dm || rule.custom_reply || rule.require_follow));
+      const isSaved = Boolean(rule && (rule.cta_link || rule.send_dm || rule.custom_reply || rule.trigger_keywords));
 
       const cardBorder = isSaved
-        ? 'border: 1.5px solid rgba(16, 185, 129, 0.45); border-left: 6px solid #10B981; background: rgba(16, 185, 129, 0.015); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.06);'
-        : 'border: 1px dashed var(--border-color); border-left: 4px solid var(--border-color); opacity: 0.92;';
+        ? 'border: 1.5px solid rgba(16, 185, 129, 0.45); border-left: 5px solid #10B981; background: rgba(16, 185, 129, 0.02);'
+        : 'border: 1px solid var(--border-color); border-left: 4px solid var(--border-subtle);';
 
-      const statusBadgeHtml = isSaved
-        ? `<span class="pill-badge pill-green" style="font-size: 11px; font-weight: 700; padding: 3px 10px; background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.35); display: inline-flex; align-items: center; gap: 5px;">
-             <i data-lucide="check-circle-2" style="width: 13px; height: 13px;"></i> AKTIF & TERSIMPAN
+      const statusBadge = isSaved
+        ? `<span class="pill-badge pill-green" style="font-size: 11px; font-weight: 700; padding: 3px 10px; display: inline-flex; align-items: center; gap: 4px;">
+             <i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> AKTIF (ManyChat Flow)
            </span>`
-        : `<span class="pill-badge" style="font-size: 11px; font-weight: 500; color: var(--ink-mute); background: var(--canvas-night-soft); border: 1px solid var(--border-subtle); padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px;">
-             <i data-lucide="circle-dashed" style="width: 13px; height: 13px;"></i> Belum Diatur
+        : `<span class="pill-badge" style="font-size: 11px; color: var(--ink-mute); background: var(--canvas-night-soft); border: 1px solid var(--border-subtle); padding: 3px 10px; display: inline-flex; align-items: center; gap: 4px;">
+             <i data-lucide="circle-dashed" style="width: 12px; height: 12px;"></i> Belum Diatur
            </span>`;
 
-      const bottomBarHtml = isSaved
-        ? `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(16, 185, 129, 0.2);">
-            <div style="font-size: 12px; color: #10B981; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-              <i data-lucide="check-check" style="width: 15px; height: 15px;"></i> Aturan postingan ini aktif tersimpan di Supabase
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button type="button" class="btn-ghost" onclick="deletePostRule('${pId}')" style="color: var(--danger); font-size: 12px; padding: 6px 12px; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;" title="Reset dan hapus aturan post ini">
-                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Hapus Aturan
-              </button>
-              <button type="button" class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}" style="display: inline-flex; align-items: center; gap: 6px; background: #10B981; border-color: #10B981;">
-                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Update Pengaturan Post
-              </button>
-            </div>
-          </div>
-        `
-        : `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
-            <div style="font-size: 12px; color: var(--ink-mute); display: flex; align-items: center; gap: 6px;">
-              <i data-lucide="info" style="width: 14px; height: 14px;"></i> Belum ada aturan khusus (menggunakan balasan AI umum)
-            </div>
-            <button type="button" class="btn-primary" onclick="savePostRule('${pId}')" id="btn-save-${pId}" style="display: inline-flex; align-items: center; gap: 6px;">
-              <i data-lucide="save" style="width: 14px; height: 14px;"></i> Simpan Pengaturan Post Ini
-            </button>
+      // Trigger Badge
+      let triggerBadgeHtml = '';
+      if (triggerType === 'specific_words' && triggerKeywords) {
+        const kList = triggerKeywords.split(',').map(k => k.trim()).filter(Boolean);
+        const tags = kList.slice(0, 4).map(k => `<span class="mc-tag-chip" style="font-size: 10px; padding: 1px 7px;">${k}</span>`).join(' ');
+        const extra = kList.length > 4 ? `<span style="font-size: 10px; color: var(--ink-mute);">+${kList.length - 4} lainnya</span>` : '';
+        triggerBadgeHtml = `
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span style="font-size: 12px; font-weight: 600; color: #60A5FA;">🔑 Kata Kunci:</span>
+            ${tags} ${extra}
           </div>
         `;
+      } else {
+        triggerBadgeHtml = `
+          <div style="font-size: 12px; color: var(--on-dark); display: flex; align-items: center; gap: 6px;">
+            <span class="pill-badge pill-purple" style="font-size: 10px;">✨ Semua Komentar (Any word)</span>
+          </div>
+        `;
+      }
+
+      // Actions Summary
+      const replySummary = (replyMode === 'none')
+        ? '<span style="color: var(--ink-mute);">⚪ Balas Publik: Nonaktif</span>'
+        : (replyMode === 'ai' ? '<span style="color: #FBBF24; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="sparkles" style="width: 11px; height: 11px;"></i> Gemini AI</span>' : `<span style="color: var(--on-dark);">💬 Balas: "${customReply ? (customReply.length > 35 ? customReply.slice(0, 35) + '...' : customReply) : 'Halo kak, link sudah dikirim...'}"</span>`);
+
+      const dmSummary = sendDm
+        ? `<span style="color: #10B981; font-weight: 500;">✉️ DM: [ ${buttonText} ] ➡️ <span style="font-size: 11px; text-decoration: underline; color: var(--ink-mute);">${ctaLink ? ctaLink.replace('https://', '').slice(0, 25) : 'simplifyer.site'}</span></span>`
+        : '<span style="color: var(--ink-mute);">⚪ DM: Nonaktif</span>';
 
       return `
-        <div class="supa-card post-card-item" data-saved="${isSaved ? 'true' : 'false'}" style="display: grid; grid-template-columns: 260px 1fr; gap: 24px; margin-bottom: 20px; ${cardBorder}">
-          <!-- Post Summary -->
-          <div>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-              ${statusBadgeHtml}
-              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--ink-mute-2);">ID: ${pId}</span>
-            </div>
-            <div style="font-size: 13px; font-weight: 500; color: var(--on-dark); margin-bottom: 10px; line-height: 1.4; max-height: 110px; overflow-y: auto; padding: 10px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-              ${captionText}
-            </div>
-            <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
-              <span class="pill-badge ${post.comments_count > 0 ? 'pill-green' : 'pill-purple'}" style="display: inline-flex; align-items: center; gap: 6px;">
-                <i data-lucide="message-square" style="width: 13px; height: 13px;"></i> ${post.comments_count || 0} Komentar
+        <div class="supa-card post-card-item" data-saved="${isSaved ? 'true' : 'false'}" style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 16px; padding: 18px; ${cardBorder}">
+          
+          <!-- Left: Thumbnail & Post Meta -->
+          <div style="width: 140px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="width: 100%; height: 110px; border-radius: var(--radius-sm); overflow: hidden; background: #1a1a1a; position: relative;">
+              <img src="${thumbUrl}" alt="Post Media" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/templates/image.png'">
+              <span class="pill-badge" style="position: absolute; bottom: 6px; right: 6px; font-size: 10px; background: rgba(0,0,0,0.75); color: #fff; padding: 2px 6px;">
+                <i data-lucide="message-square" style="width: 10px; height: 10px;"></i> ${post.comments_count || 0}
               </span>
-              <a href="${post.permalink || '#'}" target="_blank" style="font-size: 12px; color: var(--ink-mute); text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                Buka Post <i data-lucide="external-link" style="width: 13px; height: 13px;"></i>
-              </a>
+            </div>
+            <a href="${post.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--ink-mute); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 6px;">
+              Buka di IG <i data-lucide="external-link" style="width: 11px; height: 11px;"></i>
+            </a>
+          </div>
+
+          <!-- Center: ManyChat Flow Summary -->
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                ${statusBadge}
+                <span style="font-size: 11px; font-family: var(--font-mono); color: var(--ink-mute-2);">ID: ${pId}</span>
+              </div>
+              <div style="font-size: 13px; font-weight: 500; color: var(--on-dark); line-height: 1.4; max-height: 38px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 12px;">
+                ${captionText}
+              </div>
+            </div>
+
+            <!-- Flow Step Badges -->
+            <div style="background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 11px; color: var(--ink-mute); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                ⚡ Alur Otomatisasi (ManyChat Flow):
+              </div>
+              <div>${triggerBadgeHtml}</div>
+              <div style="display: flex; align-items: center; gap: 16px; font-size: 12px; margin-top: 2px; flex-wrap: wrap;">
+                <div>${replySummary}</div>
+                <div>•</div>
+                <div>${dmSummary}</div>
+              </div>
             </div>
           </div>
 
-          <!-- Configuration Form -->
-          <div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <!-- Custom Destination URL Link -->
-              <div class="form-group" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <label class="form-label" style="display: flex; align-items: center; gap: 6px; margin-bottom: 0;">
-                    <i data-lucide="link" style="width: 14px; height: 14px; color: var(--primary);"></i> Custom Link (URL Tujuan)
-                  </label>
-                  <button type="button" onclick="testOgCardPreview('${pId}')" class="btn-ghost" style="font-size: 11px; padding: 2px 8px; height: 22px; color: var(--accent-blue); display: inline-flex; align-items: center; gap: 4px;" title="Lihat kartu preview uncropped">
-                    <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Test Preview Card
-                  </button>
-                </div>
-                <input type="text" id="cta-link-${pId}" class="form-input" value="${ctaLink}" placeholder="contoh: https://domainanda.com/promo atau https://linktr.ee/...">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
-                  <label style="font-size: 11px; color: var(--on-dark); display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                    <input type="checkbox" id="smart-link-${pId}" ${useSmartLink ? 'checked' : ''} style="accent-color: var(--accent-blue); cursor: pointer;">
-                    <span>🛡️ <strong>Anti-Krop Smart Card</strong>: Thumbnail pas tanpa kepotong</span>
-                  </label>
-                  <span style="font-size: 10px; color: var(--ink-mute-2);">1200x630 Pas</span>
-                </div>
-              </div>
-
-              <!-- Custom Public Reply -->
-              <div class="form-group" style="margin-bottom: 12px;">
-                <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
-                  <i data-lucide="message-circle" style="width: 14px; height: 14px; color: var(--accent-blue);"></i> Custom Comment Reply (Opsional)
-                </label>
-                <input type="text" id="custom-reply-${pId}" class="form-input" value="${customReply}" placeholder="Kosongkan jika ingin memakai AI Gemini otomatis">
-                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 3px; display: block;">Jika diisi, bot akan memakai teks tetap ini. Jika kosong, AI yang menjawab.</span>
-              </div>
-            </div>
-
-            <!-- Workflow Pre-Step: Follow Gatekeeper (Optional) -->
-            <div style="padding: 12px 14px; background: rgba(59, 130, 246, 0.04); border: 1px dashed var(--primary); border-radius: var(--radius-sm); margin-top: 6px; margin-bottom: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between;">
-                <label style="font-size: 13px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <input type="checkbox" id="require-follow-${pId}" ${requireFollow ? 'checked' : ''} onchange="document.getElementById('follow-settings-${pId}').style.display = this.checked ? 'block' : 'none'" style="accent-color: var(--primary); cursor: pointer;">
-                  <i data-lucide="user-check" style="width: 15px; height: 15px;"></i> 🛡️ Pre-Step: Wajib Cek Follow (Follow Gatekeeper)
-                </label>
-                <span class="pill-badge pill-purple" style="font-size: 10px;">Tahap Verifikasi Awal</span>
-              </div>
-              
-              <div id="follow-settings-${pId}" style="display: ${requireFollow ? 'block' : 'none'}; margin-top: 10px;">
-                <!-- 2-Step Interactive Button Flow Info Card -->
-                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 11px; color: var(--on-dark); line-height: 1.5;">
-                  <div style="font-weight: 700; color: #10B981; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                    <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i> Alur Follow Gatekeeper 2-Tahap (Semua Tombol Nempel di Teks Bubble):
-                  </div>
-                  <div style="color: var(--on-dark-bright); margin-bottom: 6px;">
-                    User berkomentar ➡️ Bot kirim DM 1 [ ${requestBtnText} ] ➡️ User sentuh ➡️ Bot kirim DM 2 [ ${followBtnText} ] ➡️ Verifikasi Follow ➡️ DM 3 [ ${buttonText} ]!
-                  </div>
-                  <div style="font-family: var(--font-mono); font-size: 10px; background: var(--canvas-night); padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border-subtle); color: var(--ink-mute);">
-                    DM 1: <strong>[ ${requestBtnText} ]</strong> ➡️ DM 2: <strong>[ ${followBtnText} ]</strong> ➡️ DM 3: 🔓 <strong>[ ${buttonText} ]</strong>
-                  </div>
-                </div>
-
-                <!-- Interactive Button Label Configuration (2-Column Grid) -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-size: 11px; color: var(--on-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                      <i data-lucide="mouse-pointer-click" style="width: 12px; height: 12px; color: #3B82F6;"></i> Tombol DM 1 (Minta Link)
-                    </label>
-                    <input type="text" id="req-btn-${pId}" class="form-input" value="${requestBtnText}" placeholder="Default: Kirim Linknya">
-                    <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Tombol nempel di teks DM pertama</span>
-                  </div>
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-size: 11px; color: var(--on-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                      <i data-lucide="user-check" style="width: 12px; height: 12px; color: #10B981;"></i> Tombol DM 2 (Konfirmasi Follow)
-                    </label>
-                    <input type="text" id="fol-btn-${pId}" class="form-input" value="${followBtnText}" placeholder="Default: Sudah Follow">
-                    <span style="font-size: 10px; color: var(--ink-mute-2); margin-top: 2px; display: block;">Tombol nempel di teks DM kedua</span>
-                  </div>
-                </div>
-
-                <!-- Optional Customization Details -->
-                <details style="margin-top: 10px;">
-                  <summary style="font-size: 11px; font-weight: 500; color: var(--primary); cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 4px;">
-                    <span>✏️ Sesuaikan teks pesan DM (Opsional)</span>
-                  </summary>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-subtle);">
-                    <div class="form-group" style="margin-bottom: 0;">
-                      <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks DM 1 (Sapaan Awal)</label>
-                      <input type="text" id="intro-dm-${pId}" class="form-input" value="${introDmMessage}" placeholder="Default: Halo kak! Terima kasih sudah tertarik...">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                      <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks DM 2 (Minta Follow)</label>
-                      <input type="text" id="follow-prompt-${pId}" class="form-input" value="${followPrompt}" placeholder="Default: Sedikit lagi kak! Link akses khusus followers...">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                      <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks Jika Belum Follow</label>
-                      <input type="text" id="not-following-msg-${pId}" class="form-input" value="${notFollowingMsg}" placeholder="Default: Sedikit lagi kak! Kamu belum follow nih...">
-                    </div>
-                  </div>
-                </details>
-              </div>
-            </div>
-
-            <!-- Direct Message (DM) Delivery Automation Section -->
-            <div style="padding: 12px 14px; background: var(--canvas-night-soft); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-top: 6px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <label style="font-size: 13px; font-weight: 500; color: #FBBF24; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                  <input type="checkbox" id="send-dm-${pId}" ${sendDm ? 'checked' : ''} style="accent-color: #F59E0B; cursor: pointer;">
-                  <i data-lucide="mail" style="width: 14px; height: 14px; color: #FBBF24;"></i> Kirim DM Otomatis (Private Reply)
-                </label>
-                <span style="font-size: 11px; color: var(--ink-mute);">Instagram Private DM</span>
-              </div>
-
-              <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px;">
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label style="font-size: 11px; color: var(--primary); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                    <i data-lucide="layout" style="width: 12px; height: 12px;"></i> Tipe Format DM
-                  </label>
-                  <select id="dm-format-${pId}" class="form-input" style="height: 38px; font-size: 12px;">
-                    <option value="card" ${dmFormat === 'card' ? 'selected' : ''}>💻 Universal Link Card (Preview + 100% Clickable Desktop & HP)</option>
-                    <option value="button" ${dmFormat === 'button' ? 'selected' : ''}>📱 Tombol Button Template (Khusus Aplikasi HP)</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Teks Pesan DM</label>
-                  <input type="text" id="dm-message-${pId}" class="form-input" value="${dmMessage}" placeholder="Halo kak! Ini link aksesnya ya...">
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-                    <i data-lucide="mouse-pointer-click" style="width: 12px; height: 12px;"></i> Label Tombol (Mode Button)
-                  </label>
-                  <input type="text" id="btn-text-${pId}" class="form-input" value="${buttonText}" placeholder="contoh: Ini link aksesnya">
-                </div>
-              </div>
-            </div>
-
-            <!-- Card Bottom Bar (Saved vs Unsaved) -->
-            ${bottomBarHtml}
+          <!-- Right: Action CTA -->
+          <div style="width: 190px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; border-left: 1px solid var(--border-color); padding-left: 18px;">
+            <button type="button" class="btn-primary" onclick="openAutomationBuilder('${pId}')" style="width: 100%; justify-content: center; font-size: 12px; padding: 10px 12px;">
+              <i data-lucide="sliders"></i> Atur Otomatisasi
+            </button>
+            ${isSaved ? `
+              <button type="button" class="btn-ghost" onclick="deletePostRule('${pId}')" style="width: 100%; justify-content: center; color: var(--danger); font-size: 11px; border: 1px solid rgba(239, 68, 68, 0.25); padding: 5px 10px; border-radius: var(--radius-sm);">
+                <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Hapus Aturan
+              </button>
+            ` : ''}
           </div>
+
         </div>
       `;
     }).join('');
@@ -698,6 +596,342 @@ async function savePostRule(postId) {
       btn.innerHTML = '<i data-lucide="save" style="width: 14px; height: 14px;"></i> Simpan Pengaturan Post Ini';
       refreshIcons();
     }
+  }
+}
+
+// ============================================================================
+// ManyChat-Style Automation Studio Controller & Reactive Live Phone Simulator
+// ============================================================================
+let _MC_BUILDER_STATE = {
+  postId: '',
+  targetMode: 'specific', // 'specific' or 'any'
+  conditionMode: 'any_word', // 'any_word' or 'specific_words'
+  keywords: '',
+  replyMode: 'custom', // 'custom', 'ai', 'none'
+  customReply: '',
+  sendDm: true,
+  dmMessage: '',
+  buttonText: 'Buka Link Akses',
+  ctaLink: 'https://simplifyer.site/',
+  requireFollow: false,
+  previewTab: 'dm' // 'dm' or 'comments'
+};
+
+function openAutomationBuilder(postId) {
+  const posts = window._POSTS_CACHE_DATA || [];
+  const rules = window._RULES_CACHE_DATA || {};
+  const isAny = (postId === 'any_post');
+  
+  const post = posts.find(p => String(p.id) === String(postId)) || {};
+  const rule = rules[String(postId)] || (isAny ? rules['any_post'] || {} : {});
+
+  _MC_BUILDER_STATE.postId = String(postId);
+  _MC_BUILDER_STATE.targetMode = isAny ? 'any' : 'specific';
+  _MC_BUILDER_STATE.conditionMode = rule.trigger_type || 'any_word';
+  _MC_BUILDER_STATE.keywords = rule.trigger_keywords || '';
+  _MC_BUILDER_STATE.replyMode = rule.reply_mode || (rule.custom_reply ? 'custom' : 'custom');
+  _MC_BUILDER_STATE.customReply = rule.custom_reply || '';
+  _MC_BUILDER_STATE.sendDm = rule.send_dm !== false;
+  _MC_BUILDER_STATE.dmMessage = rule.dm_message || (
+    "Halo kak! Makasih banyak ya udah mampir ke postingan kita 😊\n\n" +
+    "Silakan klik tombol di bawah ini buat langsung akses info lengkapnya yaa.\n\n" +
+    "Oiya kak, bantu follow akun kita juga ya biar bisa dapet lebih banyak insight & update menarik lainnya! Makasih banyak ✨"
+  );
+  _MC_BUILDER_STATE.buttonText = rule.button_text || 'Buka Link Akses';
+  _MC_BUILDER_STATE.ctaLink = rule.cta_link || 'https://simplifyer.site/';
+  _MC_BUILDER_STATE.requireFollow = rule.require_follow === true;
+
+  // Set Post ID hidden input
+  const hiddenInput = document.getElementById('mc-target-post-id');
+  if (hiddenInput) hiddenInput.value = String(postId);
+  
+  // Title & Subtitle
+  const modalTitle = document.getElementById('mc-modal-title');
+  const modalSub = document.getElementById('mc-modal-subtitle');
+  if (isAny) {
+    if (modalTitle) modalTitle.textContent = 'Otomatisasi Universal (Semua Postingan)';
+    if (modalSub) modalSub.textContent = 'Aturan ini akan membalas semua postingan yang belum diatur secara spesifik.';
+    setMcTargetMode('any');
+  } else {
+    if (modalTitle) modalTitle.textContent = `Otomatisasi: ${post.caption ? post.caption.slice(0, 32) + '...' : 'Post ' + postId}`;
+    if (modalSub) modalSub.textContent = `Instagram Post ID: ${postId}`;
+    setMcTargetMode('specific');
+  }
+
+  // Thumbnail preview in Step 1
+  const thumbWrap = document.getElementById('mc-target-post-thumb-wrap');
+  const thumbImg = document.getElementById('mc-target-post-thumb');
+  const thumbSummary = document.getElementById('mc-target-post-summary');
+  const thumbSrc = post.thumbnail_url || post.media_url;
+  if (!isAny && thumbSrc) {
+    if (thumbWrap) thumbWrap.style.display = 'block';
+    if (thumbImg) thumbImg.src = thumbSrc;
+    if (thumbSummary) thumbSummary.textContent = post.caption ? post.caption.slice(0, 48) + '...' : 'Post ID: ' + postId;
+  } else {
+    if (thumbWrap) thumbWrap.style.display = 'none';
+    if (thumbSummary) thumbSummary.textContent = isAny ? 'Berlaku di semua post & reels' : 'ID: ' + postId;
+  }
+
+  // Step 2: Trigger Condition
+  setMcConditionMode(_MC_BUILDER_STATE.conditionMode);
+  const kwInput = document.getElementById('mc-keywords-input');
+  if (kwInput) kwInput.value = _MC_BUILDER_STATE.keywords;
+  updateMcKeywordsPreview();
+
+  // Step 3: Response Actions
+  const chkPublic = document.getElementById('mc-enable-public-reply');
+  if (chkPublic) chkPublic.checked = (_MC_BUILDER_STATE.replyMode !== 'none');
+  toggleMcPublicReply(_MC_BUILDER_STATE.replyMode !== 'none');
+  setMcReplyMode(_MC_BUILDER_STATE.replyMode);
+  const txtCustom = document.getElementById('mc-custom-reply-text');
+  if (txtCustom) txtCustom.value = _MC_BUILDER_STATE.customReply;
+
+  const chkDm = document.getElementById('mc-enable-dm');
+  if (chkDm) chkDm.checked = _MC_BUILDER_STATE.sendDm;
+  toggleMcDm(_MC_BUILDER_STATE.sendDm);
+  const txtDm = document.getElementById('mc-dm-message');
+  if (txtDm) txtDm.value = _MC_BUILDER_STATE.dmMessage;
+  const txtBtn = document.getElementById('mc-button-text');
+  if (txtBtn) txtBtn.value = _MC_BUILDER_STATE.buttonText;
+  const txtCta = document.getElementById('mc-cta-link');
+  if (txtCta) txtCta.value = _MC_BUILDER_STATE.ctaLink;
+  const chkFollow = document.getElementById('mc-require-follow');
+  if (chkFollow) chkFollow.checked = _MC_BUILDER_STATE.requireFollow;
+
+  // Show Modal & Refresh Phone Simulator
+  const overlay = document.getElementById('mc-builder-overlay');
+  if (overlay) overlay.classList.add('active');
+  updateMcPhonePreview();
+  refreshIcons();
+}
+
+function closeAutomationBuilder() {
+  const overlay = document.getElementById('mc-builder-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function setMcTargetMode(mode) {
+  _MC_BUILDER_STATE.targetMode = mode;
+  const bSpecific = document.getElementById('mc-target-box-specific');
+  const bAny = document.getElementById('mc-target-box-any');
+  if (bSpecific) bSpecific.classList.toggle('active', mode === 'specific');
+  if (bAny) bAny.classList.toggle('active', mode === 'any');
+}
+
+function setMcConditionMode(mode) {
+  _MC_BUILDER_STATE.conditionMode = mode;
+  const bAny = document.getElementById('mc-cond-box-any');
+  const bSpecific = document.getElementById('mc-cond-box-specific');
+  const kwWrap = document.getElementById('mc-keyword-input-wrap');
+  if (bAny) bAny.classList.toggle('active', mode === 'any_word');
+  if (bSpecific) bSpecific.classList.toggle('active', mode === 'specific_words');
+  if (kwWrap) kwWrap.style.display = (mode === 'specific_words') ? 'block' : 'none';
+  updateMcPhonePreview();
+}
+
+function updateMcKeywordsPreview() {
+  const val = document.getElementById('mc-keywords-input')?.value || '';
+  _MC_BUILDER_STATE.keywords = val;
+  const chipsWrap = document.getElementById('mc-keywords-chips');
+  if (!chipsWrap) return;
+  const list = val.split(',').map(s => s.trim()).filter(Boolean);
+  chipsWrap.innerHTML = list.map(s => `<span class="mc-tag-chip">🏷️ ${s}</span>`).join('');
+  updateMcPhonePreview();
+}
+
+function toggleMcPublicReply(checked) {
+  const details = document.getElementById('mc-public-reply-details');
+  const badge = document.getElementById('mc-public-badge');
+  if (details) {
+    details.style.opacity = checked ? '1' : '0.35';
+    details.style.pointerEvents = checked ? 'auto' : 'none';
+  }
+  if (badge) {
+    badge.textContent = checked ? 'Aktif' : 'Nonaktif';
+    badge.className = checked ? 'pill-badge pill-green' : 'pill-badge';
+  }
+  updateMcPhonePreview();
+}
+
+function setMcReplyMode(mode) {
+  _MC_BUILDER_STATE.replyMode = mode;
+  const radCustom = document.getElementById('mc-rep-mode-custom');
+  const radAi = document.getElementById('mc-rep-mode-ai');
+  if (radCustom) radCustom.checked = (mode === 'custom');
+  if (radAi) radAi.checked = (mode === 'ai');
+  const txtInput = document.getElementById('mc-custom-reply-text');
+  if (txtInput) {
+    txtInput.style.display = (mode === 'custom') ? 'block' : 'none';
+  }
+  updateMcPhonePreview();
+}
+
+function toggleMcDm(checked) {
+  _MC_BUILDER_STATE.sendDm = checked;
+  const details = document.getElementById('mc-dm-details');
+  if (details) {
+    details.style.opacity = checked ? '1' : '0.35';
+    details.style.pointerEvents = checked ? 'auto' : 'none';
+  }
+  updateMcPhonePreview();
+}
+
+function switchPhonePreviewTab(tab) {
+  _MC_BUILDER_STATE.previewTab = tab;
+  const bDm = document.getElementById('phone-tab-btn-dm');
+  const bComm = document.getElementById('phone-tab-btn-comments');
+  if (bDm) bDm.classList.toggle('active', tab === 'dm');
+  if (bComm) bComm.classList.toggle('active', tab === 'comments');
+  updateMcPhonePreview();
+}
+
+function updateMcPhonePreview() {
+  const container = document.getElementById('phone-preview-content');
+  if (!container) return;
+
+  const currentTab = _MC_BUILDER_STATE.previewTab || 'dm';
+  const kw = _MC_BUILDER_STATE.keywords.split(',')[0]?.trim() || 'info';
+  const userCommentText = (_MC_BUILDER_STATE.conditionMode === 'specific_words' && kw) ? `Mau ${kw} dong min!` : 'Halo mau info lengkapnya dong min';
+  
+  const repMode = document.querySelector('input[name="mc-reply-mode"]:checked')?.value || 'custom';
+  const customReply = document.getElementById('mc-custom-reply-text')?.value.trim();
+  const botReplyText = (repMode === 'ai') 
+    ? 'Halo kak @audiens! ✨ Terima kasih sudah tertarik, detail link lengkapnya sudah kami kirimkan ke DM kamu ya, silakan di-cek!'
+    : (customReply || 'Halo kak @audiens, linknya sudah kami kirimkan via DM ya! Cek inbox yuk 🙌');
+  
+  const dmMsg = document.getElementById('mc-dm-message')?.value || '';
+  const btnText = document.getElementById('mc-button-text')?.value.trim() || 'Buka Link Akses';
+  const ctaUrl = document.getElementById('mc-cta-link')?.value.trim() || 'https://simplifyer.site/';
+  const enablePublic = document.getElementById('mc-enable-public-reply')?.checked;
+  const enableDm = document.getElementById('mc-enable-dm')?.checked;
+
+  if (currentTab === 'comments') {
+    container.innerHTML = `
+      <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 600;">Feed Post Comments</div>
+      
+      <!-- User Comment -->
+      <div class="sim-comment-box">
+        <div class="sim-avatar">U</div>
+        <div style="flex: 1;">
+          <div style="display: flex; gap: 6px; align-items: baseline;">
+            <span style="font-weight: 700; color: #fff;">audiens</span>
+            <span style="font-size: 10px; color: #666;">1m</span>
+          </div>
+          <div style="color: #ddd; margin-top: 2px;">${userCommentText}</div>
+        </div>
+      </div>
+
+      <!-- Bot Automated Reply -->
+      ${enablePublic ? `
+        <div class="sim-comment-box" style="margin-left: 20px; border-left: 2px solid var(--primary); background: #161616;">
+          <div class="sim-avatar" style="background: #10B981;">S</div>
+          <div style="flex: 1;">
+            <div style="display: flex; gap: 6px; align-items: baseline;">
+              <span style="font-weight: 700; color: #10B981;">sarangestate</span>
+              <span class="pill-badge pill-green" style="font-size: 8px; padding: 1px 4px;">Author</span>
+              <span style="font-size: 10px; color: #666;">just now</span>
+            </div>
+            <div style="color: #fff; margin-top: 2px;">${botReplyText}</div>
+          </div>
+        </div>
+      ` : `
+        <div style="margin-left: 20px; padding: 8px; font-size: 11px; color: #666; font-style: italic;">
+          (Balasan publik dinonaktifkan - Hanya kirim DM)
+        </div>
+      `}
+    `;
+  } else {
+    // DM View
+    container.innerHTML = `
+      <div style="font-size: 10px; color: #666; text-align: center; margin-bottom: 8px;">
+        sarangestate messaged you about a comment that you made on their post.
+      </div>
+      
+      ${enableDm ? `
+        <div class="sim-dm-card">
+          <div class="sim-dm-body">
+            ${dmMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+          </div>
+          <div class="sim-dm-button">
+            ${btnText} 🔗
+          </div>
+        </div>
+        <div style="font-size: 10px; color: #888; text-align: right; margin-top: 4px; padding-right: 4px;">
+          Tautan: ${ctaUrl.slice(0, 26)}...
+        </div>
+      ` : `
+        <div style="padding: 24px; text-align: center; color: #666; font-size: 12px;">
+          (Pesan DM dinonaktifkan)
+        </div>
+      `}
+    `;
+  }
+}
+
+async function saveMcAutomation() {
+  const btn = document.getElementById('btn-save-mc-automation');
+  const origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Menyimpan...';
+  refreshIcons();
+
+  const postId = document.getElementById('mc-target-post-id').value;
+  const isAny = (_MC_BUILDER_STATE.targetMode === 'any');
+  const targetPostId = isAny ? 'any_post' : postId;
+
+  const triggerType = _MC_BUILDER_STATE.conditionMode || 'any_word';
+  const triggerKeywords = document.getElementById('mc-keywords-input')?.value.trim() || '';
+  
+  const enablePublic = document.getElementById('mc-enable-public-reply')?.checked;
+  let replyMode = 'custom';
+  if (!enablePublic) {
+    replyMode = 'none';
+  } else {
+    replyMode = document.querySelector('input[name="mc-reply-mode"]:checked')?.value || 'custom';
+  }
+  const customReply = document.getElementById('mc-custom-reply-text')?.value.trim() || '';
+
+  const sendDm = document.getElementById('mc-enable-dm')?.checked ?? true;
+  const dmMessage = document.getElementById('mc-dm-message')?.value.trim() || '';
+  const buttonText = document.getElementById('mc-button-text')?.value.trim() || 'Buka Link Akses';
+  const ctaLink = document.getElementById('mc-cta-link')?.value.trim() || 'https://simplifyer.site/';
+  const requireFollow = document.getElementById('mc-require-follow')?.checked ?? false;
+
+  const payload = {
+    post_id: targetPostId,
+    trigger_type: triggerType,
+    trigger_keywords: triggerKeywords,
+    reply_mode: replyMode,
+    custom_reply: customReply,
+    send_dm: sendDm,
+    dm_message: dmMessage,
+    button_text: buttonText,
+    cta_link: ctaLink,
+    dm_format: 'button',
+    use_smart_link: true,
+    require_follow: requireFollow
+  };
+
+  try {
+    const res = await fetch('/api/post-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      showToast('Otomatisasi berhasil disimpan & aktif!', 'success');
+      closeAutomationBuilder();
+      await loadPostRulesView();
+    } else {
+      showToast('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'), 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan jaringan: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+    refreshIcons();
   }
 }
 

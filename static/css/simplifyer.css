@@ -797,3 +797,318 @@ svg.lucide, [data-lucide] {
   color: var(--primary) !important;
 }
 
+/* ==========================================================================
+   ManyChat-Style Unified Automation Flow Studio Styles
+   ========================================================================== */
+.mc-builder-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.mc-builder-overlay.active {
+  display: flex;
+}
+
+.mc-builder-modal {
+  width: 100%;
+  max-width: 1100px;
+  max-height: 92vh;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: mcSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes mcSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mc-builder-header {
+  padding: 16px 24px;
+  background: var(--canvas-night-soft);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mc-builder-body {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.mc-flow-column {
+  padding: 24px 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-right: 1px solid var(--border-color);
+}
+
+.mc-preview-column {
+  padding: 24px;
+  background: var(--canvas-night);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+/* Step Cards */
+.mc-step-card {
+  background: var(--card-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  transition: border-color 0.15s ease;
+}
+
+.mc-step-card:hover {
+  border-color: var(--ink-mute-2);
+}
+
+.mc-step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mc-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mc-step-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-dark-bright);
+}
+
+/* Radio Selection Option Pills */
+.mc-option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mc-radio-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--canvas-night-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mc-radio-box:hover {
+  border-color: var(--primary);
+  background: rgba(62, 207, 142, 0.03);
+}
+
+.mc-radio-box.active {
+  border-color: var(--primary);
+  background: rgba(62, 207, 142, 0.08);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.mc-radio-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-mute);
+  margin-top: 2px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.mc-radio-box.active .mc-radio-circle {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.mc-radio-box.active .mc-radio-circle::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #000;
+}
+
+/* Keyword Tag Chips */
+.mc-tag-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mc-tag-chip {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Real-Time Mobile Device Simulator */
+.phone-mockup {
+  width: 320px;
+  height: 560px;
+  background: #000;
+  border: 4px solid #333;
+  border-radius: 36px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.phone-notch {
+  width: 100px;
+  height: 18px;
+  background: #222;
+  border-radius: 0 0 12px 12px;
+  margin: 0 auto;
+}
+
+.phone-ig-topbar {
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #000;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid #222;
+}
+
+.phone-content {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.phone-tab-controls {
+  display: flex;
+  background: #111;
+  border-radius: 20px;
+  padding: 3px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.phone-tab-btn {
+  flex: 1;
+  padding: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #888;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.phone-tab-btn.active {
+  background: #262626;
+  color: #fff;
+}
+
+/* Instagram Simulated Bubble in Preview */
+.sim-comment-box {
+  background: #121212;
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sim-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #444;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sim-dm-card {
+  background: #262626;
+  border-radius: 16px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-left: auto;
+  max-width: 88%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.sim-dm-body {
+  padding: 12px 14px;
+  white-space: pre-line;
+}
+
+.sim-dm-button {
+  background: #0095F6;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 10px 14px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
+  text-decoration: none;
+  cursor: default;
+}
+

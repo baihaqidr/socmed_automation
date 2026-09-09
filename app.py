@@ -270,6 +270,9 @@ def load_post_rules(force_refresh=False):
                     req_btn_txt = settings_map.get(f"REQ_BTN_{p_id}") or local_data.get(p_id, {}).get("request_btn_text") or "Kirim Linknya"
                     fol_btn_txt = settings_map.get(f"FOL_BTN_{p_id}") or local_data.get(p_id, {}).get("follow_btn_text") or "Sudah Follow"
                     intro_dm_msg = settings_map.get(f"INTRO_DM_{p_id}") or local_data.get(p_id, {}).get("intro_dm_message") or ""
+                    trigger_type = settings_map.get(f"TRIGGER_TYPE_{p_id}") or local_data.get(p_id, {}).get("trigger_type") or "any_word"
+                    trigger_keywords = settings_map.get(f"TRIGGER_KWS_{p_id}") or local_data.get(p_id, {}).get("trigger_keywords") or ""
+                    reply_mode = settings_map.get(f"REPLY_MODE_{p_id}") or local_data.get(p_id, {}).get("reply_mode") or "custom"
 
                     row["button_text"] = btn_txt
                     row["dm_format"] = dm_fmt
@@ -280,6 +283,9 @@ def load_post_rules(force_refresh=False):
                     row["request_btn_text"] = req_btn_txt
                     row["follow_btn_text"] = fol_btn_txt
                     row["intro_dm_message"] = intro_dm_msg
+                    row["trigger_type"] = trigger_type
+                    row["trigger_keywords"] = trigger_keywords
+                    row["reply_mode"] = reply_mode
                     result[p_id] = row
 
                 _POST_RULES_CACHE = result
@@ -299,19 +305,28 @@ def load_post_rules(force_refresh=False):
             item["follow_btn_text"] = "Sudah Follow"
         if "intro_dm_message" not in item:
             item["intro_dm_message"] = ""
+        if "trigger_type" not in item:
+            item["trigger_type"] = "any_word"
+        if "trigger_keywords" not in item:
+            item["trigger_keywords"] = ""
+        if "reply_mode" not in item:
+            item["reply_mode"] = "custom"
     _POST_RULES_CACHE = local_data
     _POST_RULES_CACHE_TIME = now
     return local_data
 
 
-def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg="", request_btn_text="Kirim Linknya", follow_btn_text="Sudah Follow", intro_dm_message=""):
-    """Save custom automation rule for a specific post."""
+def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg="", request_btn_text="Kirim Linknya", follow_btn_text="Sudah Follow", intro_dm_message="", trigger_type="any_word", trigger_keywords="", reply_mode="custom"):
+    """Save custom automation rule for a specific post (ManyChat unified flow)."""
     global _POST_RULES_CACHE
     _POST_RULES_CACHE = None
     btn_text = (button_text or "Ini link aksesnya").strip()
     dm_fmt = (dm_format or "card").strip()
     req_btn = (request_btn_text or "Kirim Linknya").strip()
     fol_btn = (follow_btn_text or "Sudah Follow").strip()
+    trig_type = (trigger_type or "any_word").strip()
+    trig_kws = (trigger_keywords or "").strip()
+    rep_mode = (reply_mode or "custom").strip()
     data = {
         "post_id": str(post_id),
         "cta_link": cta_link,
@@ -327,12 +342,16 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
         "request_btn_text": req_btn,
         "follow_btn_text": fol_btn,
         "intro_dm_message": intro_dm_message or "",
+        "trigger_type": trig_type,
+        "trigger_keywords": trig_kws,
+        "reply_mode": rep_mode,
         "post_caption_preview": post_caption_preview,
         "is_active": True
     }
     if supabase_client:
         try:
-            supa_data = {k: v for k, v in data.items() if k not in ["button_text", "dm_format", "use_smart_link", "require_follow", "follow_prompt", "not_following_msg", "request_btn_text", "follow_btn_text", "intro_dm_message"]}
+            extra_keys = ["button_text", "dm_format", "use_smart_link", "require_follow", "follow_prompt", "not_following_msg", "request_btn_text", "follow_btn_text", "intro_dm_message", "trigger_type", "trigger_keywords", "reply_mode"]
+            supa_data = {k: v for k, v in data.items() if k not in extra_keys}
             supabase_client.table("post_rules").upsert(supa_data, on_conflict="post_id").execute()
             set_app_setting(f"BUTTON_TEXT_{post_id}", btn_text)
             set_app_setting(f"DM_FORMAT_{post_id}", dm_fmt)
@@ -343,6 +362,9 @@ def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_m
             set_app_setting(f"REQ_BTN_{post_id}", req_btn)
             set_app_setting(f"FOL_BTN_{post_id}", fol_btn)
             set_app_setting(f"INTRO_DM_{post_id}", str(intro_dm_message or ""))
+            set_app_setting(f"TRIGGER_TYPE_{post_id}", trig_type)
+            set_app_setting(f"TRIGGER_KWS_{post_id}", trig_kws)
+            set_app_setting(f"REPLY_MODE_{post_id}", rep_mode)
         except Exception as e:
             print(f"[SUPABASE ERROR] save_post_rule_db failed: {e}")
 
@@ -1618,7 +1640,10 @@ def api_post_rules():
             not_following_msg=data.get('not_following_msg', ''),
             request_btn_text=data.get('request_btn_text', 'Kirim Linknya'),
             follow_btn_text=data.get('follow_btn_text', 'Sudah Follow'),
-            intro_dm_message=data.get('intro_dm_message', '')
+            intro_dm_message=data.get('intro_dm_message', ''),
+            trigger_type=data.get('trigger_type', 'any_word'),
+            trigger_keywords=data.get('trigger_keywords', ''),
+            reply_mode=data.get('reply_mode', 'custom')
         )
         return jsonify({"status": "success", "rule": saved})
 
@@ -1773,27 +1798,25 @@ def run_auto_reply_scan():
                         replied_ids.add(c_id)
                         continue
 
-                    # 4. Determine final reply
+                    # 4. Check ManyChat trigger condition ("And this comment has:")
                     raw_text = comment.get("text", "").strip()
                     lower_text = raw_text.lower()
+
+                    trigger_type = post_rule.get("trigger_type", "any_word")
+                    trigger_keywords = post_rule.get("trigger_keywords", "")
+                    if trigger_type == "specific_words" and trigger_keywords:
+                        kws = [k.strip().lower() for k in trigger_keywords.split(",") if k.strip()]
+                        if kws and not any(k in lower_text for k in kws):
+                            # Comment does not contain trigger keywords -> Skip automation
+                            continue
+
                     final_reply = None
                     reply_source = "Rule"
+                    reply_mode = post_rule.get("reply_mode", "custom")
                     
-                    # Priority A: Specific Post Custom Reply Override
-                    if post_custom_reply:
-                        final_reply = post_custom_reply
-                        reply_source = "Post Custom Rule"
-
-                    # Priority B: Global Keyword Rule
-                    if not final_reply:
-                        for kw, reply_msg in rules.items():
-                            if kw.lower() in lower_text:
-                                final_reply = reply_msg
-                                reply_source = f"Rule ({kw})"
-                                break
-
-                    # Priority C: Intelligent Gemini AI Fallback
-                    if not final_reply and len(raw_text) >= 2:
+                    if reply_mode == "none":
+                        final_reply = None
+                    elif reply_mode == "ai" and len(raw_text) >= 2:
                         ai_generated = generate_ai_reply(
                             comment_text=raw_text,
                             username=comment.get("username", ""),
@@ -1804,10 +1827,31 @@ def run_auto_reply_scan():
                         if ai_generated:
                             final_reply = ai_generated
                             reply_source = "Gemini AI"
+                    elif post_custom_reply:
+                        final_reply = post_custom_reply
+                        reply_source = "Post Custom Rule"
+                    else:
+                        # Priority B: Global Keyword Rule
+                        for kw, reply_msg in rules.items():
+                            if kw.lower() in lower_text:
+                                final_reply = reply_msg
+                                reply_source = f"Rule ({kw})"
+                                break
+                        # Priority C: Intelligent Gemini AI Fallback
+                        if not final_reply and len(raw_text) >= 2:
+                            ai_generated = generate_ai_reply(
+                                comment_text=raw_text,
+                                username=comment.get("username", ""),
+                                post_caption=post_caption,
+                                cta_link=post_cta_link,
+                                send_dm=post_send_dm
+                            )
+                            if ai_generated:
+                                final_reply = ai_generated
+                                reply_source = "Gemini AI"
 
                     user_handle = comment.get('username', '')
-                    # Reliable fallback if keyword rule & AI both didn't return a reply
-                    if not final_reply and (post_send_dm or post_cta_link or len(raw_text) >= 2):
+                    if not final_reply and reply_mode != "none" and (post_send_dm or post_cta_link or len(raw_text) >= 2):
                         final_reply = "Halo kak, detail linknya udah dikirimin via DM ya! Cek inbox yuk 🙌"
                         reply_source = "Auto Fallback"
 
@@ -1980,10 +2024,33 @@ def process_webhook_event(payload):
                     post_dm_format = str(post_rule.get("dm_format", "button")).strip()
                     post_use_smart_link = post_rule.get("use_smart_link", True)
                     button_label = str(post_rule.get("button_text", "Buka Link Akses")).strip()
+                    # Check ManyChat trigger condition ("And this comment has:")
+                    trigger_type = post_rule.get("trigger_type", "any_word")
+                    trigger_keywords = post_rule.get("trigger_keywords", "")
+                    if trigger_type == "specific_words" and trigger_keywords:
+                        kws = [k.strip().lower() for k in trigger_keywords.split(",") if k.strip()]
+                        if kws and not any(k in raw_text.lower() for k in kws):
+                            # Comment does not contain trigger keywords -> Skip automation
+                            continue
 
                     final_reply = None
                     reply_source = "Rule"
-                    if post_custom_reply:
+                    reply_mode = post_rule.get("reply_mode", "custom")
+
+                    if reply_mode == "none":
+                        final_reply = None
+                    elif reply_mode == "ai" and len(raw_text) >= 2:
+                        ai_generated = generate_ai_reply(
+                            comment_text=raw_text,
+                            username=user_handle,
+                            post_caption="",
+                            cta_link=post_cta_link,
+                            send_dm=post_send_dm
+                        )
+                        if ai_generated:
+                            final_reply = ai_generated
+                            reply_source = "Gemini AI"
+                    elif post_custom_reply:
                         final_reply = post_custom_reply
                         reply_source = "Post Custom Rule"
                     else:
@@ -2003,25 +2070,25 @@ def process_webhook_event(payload):
                                         reply_source = f"Rule ({kw})"
                                         break
 
-                    # AI Fallback if configured
-                    if not final_reply and len(raw_text) >= 2:
-                        ai_generated = generate_ai_reply(
-                            comment_text=raw_text,
-                            username=user_handle,
-                            post_caption="",
-                            cta_link=post_cta_link,
-                            send_dm=post_send_dm
-                        )
-                        if ai_generated:
-                            final_reply = ai_generated
-                            reply_source = "Gemini AI"
+                        if not final_reply and len(raw_text) >= 2:
+                            ai_generated = generate_ai_reply(
+                                comment_text=raw_text,
+                                username=user_handle,
+                                post_caption="",
+                                cta_link=post_cta_link,
+                                send_dm=post_send_dm
+                            )
+                            if ai_generated:
+                                final_reply = ai_generated
+                                reply_source = "Gemini AI"
 
-                    if not final_reply:
+                    if not final_reply and reply_mode != "none":
                         final_reply = "Halo kak, detail linknya udah dikirimin via DM ya! Cek inbox yuk 🙌"
 
-                    # 1. Send Public Reply
-                    reply_res = reply_to_comment(c_id, final_reply)
-                    print(f"[WEBHOOK BOT] Public reply sent to @{user_handle}: {reply_res}")
+                    # 1. Send Public Reply (if reply_mode is not 'none')
+                    if final_reply and reply_mode != "none":
+                        reply_res = reply_to_comment(c_id, final_reply)
+                        print(f"[WEBHOOK BOT] Public reply sent to @{user_handle}: {reply_res}")
 
                     # IMMEDIATELY record comment in database so no duplicate reply can ever happen!
                     record_replied_comment(
@@ -2029,7 +2096,7 @@ def process_webhook_event(payload):
                         post_id=p_id,
                         username=user_handle,
                         comment_text=raw_text,
-                        reply_text=f"[{reply_source}] {final_reply}"
+                        reply_text=f"[{reply_source}] {final_reply}" if final_reply else "[Direct DM Only]"
                     )
                     replied_ids.add(c_id)
 
