@@ -184,7 +184,8 @@ async function loadInstagramAccounts() {
     if (data.accounts) {
       currentActiveAccountId = data.active_account_id;
       const activeAcc = data.accounts.find(a => a.is_active) || data.accounts[0];
-      currentActiveUsername = activeAcc.username;
+      const cleanUser = String(activeAcc.username || '').replace(/^@+/, '').trim();
+      currentActiveUsername = cleanUser;
 
       // Update UI Header & Targets
       const headerIg = document.getElementById('header-ig-username');
@@ -194,27 +195,29 @@ async function loadInstagramAccounts() {
       const previewUsername = document.getElementById('preview-account-username');
       const settingsAccId = document.getElementById('settings-account-id');
 
-      if (headerIg) headerIg.innerText = `@${activeAcc.username}`;
-      if (statUser) statUser.innerText = `@${activeAcc.username}`;
-      if (currentAccLabel) currentAccLabel.innerText = `@${activeAcc.username}`;
-      if (publishTarget) publishTarget.innerText = `@${activeAcc.username}`;
-      if (previewUsername) previewUsername.innerText = activeAcc.username;
+      if (headerIg) headerIg.innerText = `@${cleanUser}`;
+      if (statUser) statUser.innerText = `@${cleanUser}`;
+      if (currentAccLabel) currentAccLabel.innerText = `@${cleanUser}`;
+      if (publishTarget) publishTarget.innerText = `@${cleanUser}`;
+      if (previewUsername) previewUsername.innerText = cleanUser;
       if (settingsAccId) settingsAccId.innerText = activeAcc.id;
 
       const listContainer = document.getElementById('ig-accounts-list');
       if (listContainer) {
-        listContainer.innerHTML = data.accounts.map(acc => `
-          <button class="dropdown-item ${acc.is_active ? 'active' : ''}" onclick="switchInstagramAccount('${acc.id}', '${acc.username}')">
+        listContainer.innerHTML = data.accounts.map(acc => {
+          const u = String(acc.username || '').replace(/^@+/, '').trim();
+          return `
+          <button class="dropdown-item ${acc.is_active ? 'active' : ''}" onclick="switchInstagramAccount('${acc.id}', '${u}')">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <i data-lucide="at-sign" style="width: 14px; height: 14px; color: ${acc.is_active ? 'var(--primary)' : 'var(--ink-mute)'};"></i>
+              <i data-lucide="instagram" style="width: 14px; height: 14px; color: ${acc.is_active ? 'var(--primary)' : 'var(--ink-mute)'};"></i>
               <div style="display: flex; flex-direction: column;">
-                <span style="font-weight: 600; font-size: 13px;">@${acc.username}</span>
+                <span style="font-weight: 600; font-size: 13px;">@${u}</span>
                 <span style="font-size: 11px; color: var(--ink-mute);">${acc.name} (${acc.media_count} Posts)</span>
               </div>
             </div>
             ${acc.is_active ? '<i data-lucide="check" style="width: 14px; height: 14px; color: var(--primary);"></i>' : ''}
           </button>
-        `).join('');
+        `}).join('');
       }
     }
   } catch (err) {
