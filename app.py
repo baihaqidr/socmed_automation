@@ -824,36 +824,18 @@ def get_fitted_og_bytes(img_url='', title='', domain=''):
 
 
 def make_smart_link(original_url, title=None, post_id=None):
-    """Wraps any 3rd-party or custom URL into an ultra-clean anti-crop Smart Link."""
+    """Direct official website link without any redirect wrapper."""
     if not original_url:
         return ""
     clean = original_url.strip()
     if not clean.startswith("http://") and not clean.startswith("https://"):
         clean = f"https://{clean}"
-    if "/l?" in clean or "/r?" in clean or "/to/" in clean or "/go?" in clean:
-        return clean
-
-    base = "https://socmedautomation.vercel.app"
-    if post_id:
-        return f"{base}/to/{post_id}"
-    return f"{base}/go?url={clean}"
+    return clean
 
 
 def wrap_text_urls(text, title=None, post_id=None):
-    """Find all external http/https URLs in text and replace them with uncropped smart link wrappers."""
-    if not text:
-        return text
-    def _rep(m):
-        raw = m.group(0)
-        if "socmedautomation.vercel.app/" in raw:
-            return raw
-        trailing = ""
-        while raw and raw[-1] in ".,!?;:)":
-            trailing = raw[-1] + trailing
-            raw = raw[:-1]
-        return make_smart_link(raw, title, post_id=post_id) + trailing
-    url_pattern = re.compile(r'https?://[^\s<>"]+')
-    return url_pattern.sub(_rep, text)
+    """Keep destination URLs 100% clean and direct without redirect wrappers."""
+    return text or ""
 
 
 def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_id=None, button_url=None, button_title=None, dm_format="button", use_smart_link=True, post_id=None, quick_replies=None):
@@ -861,7 +843,7 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
     dm_format: 'card' (Universal Rich Link Card, 100% clickable on Desktop & Mobile)
                or 'button' (Meta Button Template, interactive button on Mobile).
     quick_replies: List of interactive button dicts e.g. [{"title": "Send me the link", "payload": "REQ_LINK_123"}]
-    use_smart_link: Wrap URL in uncropped anti-crop 1200x630 OG previewer.
+    use_smart_link: Kept for backwards-compatibility.
     """
     acc_id = target_acc_id or get_active_account_id()
     page_id, page_token = get_page_for_ig_account(acc_id)
@@ -877,13 +859,8 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
         if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
             clean_url = f"https://{clean_url}"
 
+    # Always use direct official destination URL (100% direct, 0s loading, no redirect wrapper!)
     smart_link_url = clean_url
-    # Only wrap in Vercel OG preview smart link for Card mode (Button mode opens destination directly in 0s!)
-    if clean_url and use_smart_link and dm_format != "button":
-        smart_link_url = make_smart_link(clean_url, button_title, post_id=post_id)
-
-    if use_smart_link and dm_format != "button":
-        message = wrap_text_urls(message, button_title, post_id=post_id)
 
     # Mode 0: Interactive Quick Replies (Native Instagram Tappable Buttons as shown in AI Ads example)
     # Mode 0: Interactive Buttons / Quick Replies
