@@ -195,7 +195,7 @@ async function loadInstagramAccounts() {
       const previewUsername = document.getElementById('preview-account-username');
       const settingsAccId = document.getElementById('settings-account-id');
 
-      if (headerIg) headerIg.innerText = `@${cleanUser}`;
+      if (headerIg) headerIg.innerText = cleanUser;
       if (statUser) statUser.innerText = `@${cleanUser}`;
       if (currentAccLabel) currentAccLabel.innerText = `@${cleanUser}`;
       if (publishTarget) publishTarget.innerText = `@${cleanUser}`;
@@ -209,9 +209,9 @@ async function loadInstagramAccounts() {
           return `
           <button class="dropdown-item ${acc.is_active ? 'active' : ''}" onclick="switchInstagramAccount('${acc.id}', '${u}')">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <i data-lucide="instagram" style="width: 14px; height: 14px; color: ${acc.is_active ? 'var(--primary)' : 'var(--ink-mute)'};"></i>
+              <i data-lucide="at-sign" style="width: 14px; height: 14px; color: ${acc.is_active ? 'var(--primary)' : 'var(--ink-mute)'};"></i>
               <div style="display: flex; flex-direction: column;">
-                <span style="font-weight: 600; font-size: 13px;">@${u}</span>
+                <span style="font-weight: 600; font-size: 13px;">${u}</span>
                 <span style="font-size: 11px; color: var(--ink-mute);">${acc.name} (${acc.media_count} Posts)</span>
               </div>
             </div>

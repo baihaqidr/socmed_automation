@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Socmed Automation - Supabase Studio</title>
-  <link rel="stylesheet" href="/static/css/simplifyer.css?v=4.2">
+  <link rel="stylesheet" href="/static/css/simplifyer.css?v=4.3">
   <!-- Lucide Icons Official CDN (lucide.dev) -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -131,8 +131,8 @@
           <!-- 2. INSTAGRAM ACCOUNT SWITCHER -->
           <div class="supa-dropdown-wrapper" id="ig-dropdown-wrapper">
             <button class="supa-breadcrumb-btn" onclick="toggleIgDropdown(event)" id="btn-ig-switcher">
-              <i data-lucide="instagram" style="width: 14px; height: 14px; color: var(--primary);"></i>
-              <span class="breadcrumb-text" id="header-ig-username" style="font-weight: 600;">@sarangestate</span>
+              <i data-lucide="at-sign" style="width: 14px; height: 14px; color: var(--primary);"></i>
+              <span class="breadcrumb-text" id="header-ig-username" style="font-weight: 600;">sarangestate</span>
               <i data-lucide="chevron-down" style="width: 13px; height: 13px; color: var(--ink-mute);"></i>
             </button>
 
@@ -158,33 +158,17 @@
           </button>
         </div>
 
-        <!-- Right: Studio Tools -->
+        <!-- Right: Studio Tools (Functional Only) -->
         <div class="top-tools">
           <button class="btn-primary" onclick="runAutoReplyScan()" id="btn-scan" style="padding: 5px 12px; font-size: 12px;">
             <i data-lucide="scan-line" style="width: 14px; height: 14px;"></i>
             <span>Scan Comments</span>
           </button>
 
-          <a href="https://github.com/baihaqidr/socmed_automation" target="_blank" class="supa-header-link">Feedback</a>
-          
-          <div class="supa-search-bar" onclick="focusSearch()">
-            <i data-lucide="search" style="width: 13px; height: 13px;"></i>
-            <span>Search...</span>
-            <kbd>Ctrl K</kbd>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 8px; color: var(--ink-mute);">
-            <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch Light / Dark Mode">
-              <i data-lucide="sun" class="sun-icon" style="width: 15px; height: 15px;"></i>
-              <i data-lucide="moon" class="moon-icon" style="width: 15px; height: 15px; display: none;"></i>
-            </button>
-            <i data-lucide="help-circle" style="width: 16px; height: 16px; cursor: pointer;"></i>
-            <i data-lucide="bell" style="width: 16px; height: 16px; cursor: pointer;"></i>
-          </div>
-
-          <div class="user-top-badge" style="width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--card-surface); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--primary);">
-            B
-          </div>
+          <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch Light / Dark Mode">
+            <i data-lucide="sun" class="sun-icon" style="width: 15px; height: 15px;"></i>
+            <i data-lucide="moon" class="moon-icon" style="width: 15px; height: 15px; display: none;"></i>
+          </button>
         </div>
       </header>
 
@@ -923,6 +907,6 @@
     </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=9.4"></script>
+  <script src="/static/js/dashboard.js?v=9.5"></script>
 </body>
 </html>
