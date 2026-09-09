@@ -8,6 +8,7 @@ import threading
 import hashlib
 import urllib.parse
 import re
+import tempfile
 from io import BytesIO
 from PIL import Image, ImageFilter, ImageDraw, ImageStat
 from bs4 import BeautifulSoup
@@ -1100,9 +1101,9 @@ def clear_pending_follow(identifier):
         set_app_setting(key, "")
 
 
-def create_and_publish_image_post(image_input, caption):
+def create_and_publish_image_post(image_input, caption="", media_type="IMAGE"):
     acc_id = get_active_account_id()
-    image_input = image_input.strip('"').strip("'").strip()
+    image_input = str(image_input or "").strip('"').strip("'").strip()
     
     if not image_input.startswith("http://") and not image_input.startswith("https://"):
         public_url = upload_local_file_to_cloud(image_input)
@@ -1113,11 +1114,19 @@ def create_and_publish_image_post(image_input, caption):
         image_url = image_input
 
     container_url = f"{GRAPH_URL}/{acc_id}/media"
-    container_data = {
-        "image_url": image_url,
-        "caption": caption,
-        "access_token": ACCESS_TOKEN
-    }
+    is_story = (str(media_type or "").upper() == "STORIES")
+    if is_story:
+        container_data = {
+            "image_url": image_url,
+            "media_type": "STORIES",
+            "access_token": ACCESS_TOKEN
+        }
+    else:
+        container_data = {
+            "image_url": image_url,
+            "caption": caption or "",
+            "access_token": ACCESS_TOKEN
+        }
     container_res = requests.post(container_url, data=container_data).json()
 
     if "id" not in container_res:
@@ -1134,7 +1143,8 @@ def create_and_publish_image_post(image_input, caption):
     publish_res = requests.post(publish_url, data=publish_data).json()
     
     if "id" in publish_res:
-        log_published_post(publish_res["id"], caption, image_url)
+        log_caption = f"[Instagram Story] {caption}" if is_story else caption
+        log_published_post(publish_res["id"], log_caption, image_url)
         
     return publish_res
 
@@ -1686,12 +1696,51 @@ def api_reset_rules():
     return jsonify({"status": "success", "rules": rules})
 
 
+@app.route('/api/upload', methods=['POST'])
+def api_upload_media():
+    """Upload image file from browser client, save to cloud, and return public URL."""
+    if 'file' not in request.files:
+        return jsonify({"error": "Tidak ada file yang diunggah."}), 400
+    file = request.files['file']
+    if not file or file.filename == '':
+        return jsonify({"error": "Nama file kosong."}), 400
+    
+    try:
+        temp_dir = tempfile.gettempdir()
+        file_ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
+        temp_filename = f"ig_upload_{int(time.time())}_{hashlib.md5(file.filename.encode('utf-8')).hexdigest()[:8]}{file_ext}"
+        temp_path = os.path.join(temp_dir, temp_filename)
+        file.save(temp_path)
+        
+        # Upload to cloud host (Uguu / Catbox)
+        public_url = upload_local_file_to_cloud(temp_path)
+        
+        # Clean up temp file
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except Exception:
+            pass
+            
+        if public_url:
+            return jsonify({
+                "status": "success",
+                "url": public_url,
+                "filename": file.filename
+            })
+        else:
+            return jsonify({"error": "Gagal mengunggah file ke cloud hosting publik."}), 500
+    except Exception as e:
+        return jsonify({"error": f"Kesalahan upload file: {str(e)}"}), 500
+
+
 @app.route('/api/publish', methods=['POST'])
 def api_publish():
     data = request.get_json() or {}
     image_input = data.get('image_input', '')
     caption = data.get('caption', '')
-    res = create_and_publish_image_post(image_input, caption)
+    media_type = data.get('media_type', 'IMAGE')
+    res = create_and_publish_image_post(image_input, caption, media_type=media_type)
     return jsonify(res)
 
 

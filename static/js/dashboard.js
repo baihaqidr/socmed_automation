@@ -37,8 +37,19 @@ function switchTab(tabId) {
   if (tabId === 'autoreply') loadRulesData();
   if (tabId === 'inbox') loadInboxComments();
   if (tabId === 'insights') loadInsightsData();
-  if (tabId === 'storyrules') loadStoryRules();
-  if (tabId === 'scheduler') loadScheduledPosts();
+  if (tabId === 'publish') {
+    switchStudioSubTab('publisher');
+  }
+  if (tabId === 'storyrules') {
+    switchTab('publish');
+    switchStudioSubTab('storyrules');
+    return;
+  }
+  if (tabId === 'scheduler') {
+    switchTab('publish');
+    switchStudioSubTab('scheduler');
+    return;
+  }
 
   setTimeout(refreshIcons, 50);
 }
@@ -85,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadInstagramAccounts();
   loadDashboardData();
   setupLivePreview();
+  setupDropzoneEvents();
 
   // Close dropdowns on outside click
   document.addEventListener('click', (e) => {
@@ -193,6 +205,7 @@ async function loadInstagramAccounts() {
       const currentAccLabel = document.getElementById('current-account-label');
       const publishTarget = document.getElementById('publish-account-target');
       const previewUsername = document.getElementById('preview-account-username');
+      const previewStoryUsername = document.getElementById('preview-story-username');
       const settingsAccId = document.getElementById('settings-account-id');
 
       if (headerIg) headerIg.innerText = cleanUser;
@@ -200,6 +213,7 @@ async function loadInstagramAccounts() {
       if (currentAccLabel) currentAccLabel.innerText = `@${cleanUser}`;
       if (publishTarget) publishTarget.innerText = `@${cleanUser}`;
       if (previewUsername) previewUsername.innerText = cleanUser;
+      if (previewStoryUsername) previewStoryUsername.innerText = cleanUser;
       if (settingsAccId) settingsAccId.innerText = activeAcc.id;
 
       const listContainer = document.getElementById('ig-accounts-list');
@@ -282,6 +296,7 @@ async function loadPostsFeed() {
     const data = await res.json();
 
     if (data.data && data.data.length > 0) {
+      window.latestFetchedPosts = data.data;
       document.getElementById('post-count-badge').innerText = `${data.data.length} Posts`;
       
       container.innerHTML = data.data.map(post => `
@@ -1222,45 +1237,359 @@ async function testAIReply() {
   }
 }
 
-// Publish Post
-async function publishPost() {
+// ==========================================
+// UNIFIED CONTENT & STORY STUDIO LOGIC
+// ==========================================
+let currentPublishTarget = 'IMAGE'; // 'IMAGE' or 'STORIES'
+let currentPublishMode = 'now'; // 'now' or 'schedule'
+
+function switchStudioSubTab(subTab) {
+  document.querySelectorAll('.studio-pill').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.studio-panel').forEach(panel => panel.style.display = 'none');
+
+  const btn = document.getElementById(`subtab-btn-${subTab}`);
+  const panel = document.getElementById(`studio-panel-${subTab}`);
+
+  if (btn) btn.classList.add('active');
+  if (panel) panel.style.display = 'block';
+
+  if (subTab === 'scheduler') {
+    if (typeof loadScheduledPosts === 'function') loadScheduledPosts();
+  } else if (subTab === 'storyrules') {
+    if (typeof loadStoryRules === 'function') loadStoryRules();
+  }
+  refreshIcons();
+}
+
+function setPublishTarget(target) {
+  currentPublishTarget = target;
+  const btnFeed = document.getElementById('target-btn-feed');
+  const btnStory = document.getElementById('target-btn-story');
+  const feedCard = document.getElementById('preview-feed-card');
+  const storyCard = document.getElementById('preview-story-card');
+  const badge = document.getElementById('preview-mode-badge');
+  const captionHint = document.getElementById('caption-target-hint');
+  const btnPublishLabel = document.getElementById('btn-publish-label');
+
+  if (target === 'STORIES') {
+    if (btnFeed) btnFeed.classList.remove('active');
+    if (btnStory) btnStory.classList.add('active');
+    if (feedCard) feedCard.style.display = 'none';
+    if (storyCard) storyCard.style.display = 'flex';
+    if (badge) {
+      badge.innerText = 'Instagram Story (9:16)';
+      badge.className = 'pill-badge pill-yellow';
+    }
+    if (captionHint) captionHint.innerText = 'Opsional untuk Story (Hanya media visual yang tayang di Story)';
+    if (btnPublishLabel) btnPublishLabel.innerText = currentPublishMode === 'now' ? 'Publish ke Instagram Story Sekarang' : 'Jadwalkan Instagram Story';
+  } else {
+    if (btnFeed) btnFeed.classList.add('active');
+    if (btnStory) btnStory.classList.remove('active');
+    if (feedCard) feedCard.style.display = 'block';
+    if (storyCard) storyCard.style.display = 'none';
+    if (badge) {
+      badge.innerText = 'Feed Format (1:1)';
+      badge.className = 'pill-badge pill-green';
+    }
+    if (captionHint) captionHint.innerText = 'Diperlukan untuk Feed';
+    if (btnPublishLabel) btnPublishLabel.innerText = currentPublishMode === 'now' ? 'Publish ke Feed Instagram Sekarang' : 'Jadwalkan Feed Post';
+  }
+  refreshIcons();
+}
+
+function togglePublishScheduleMode(mode) {
+  currentPublishMode = mode;
+  const schedWrap = document.getElementById('publish-schedule-datetime-wrap');
+  const btnPublishLabel = document.getElementById('btn-publish-label');
+  
+  if (mode === 'schedule') {
+    if (schedWrap) schedWrap.style.display = 'block';
+    if (btnPublishLabel) btnPublishLabel.innerText = currentPublishTarget === 'STORIES' ? 'Jadwalkan Instagram Story' : 'Jadwalkan Feed Post';
+  } else {
+    if (schedWrap) schedWrap.style.display = 'none';
+    if (btnPublishLabel) btnPublishLabel.innerText = currentPublishTarget === 'STORIES' ? 'Publish ke Instagram Story Sekarang' : 'Publish ke Feed Instagram Sekarang';
+  }
+}
+
+// Trigger File Picker
+function triggerFilePicker() {
+  const fileInput = document.getElementById('publish-file-picker');
+  if (fileInput) fileInput.click();
+}
+
+// Handle File Selection (Upload to Cloud + Live Preview)
+async function handleFileSelect(e) {
+  const file = e.target.files ? e.target.files[0] : null;
+  if (!file) return;
+
+  // Local object preview immediately
+  const objectUrl = URL.createObjectURL(file);
+  updateComposerMediaPreview(objectUrl);
+
+  const progress = document.getElementById('upload-progress-text');
+  if (progress) {
+    progress.style.display = 'block';
+    progress.innerHTML = `<i data-lucide="loader-2" class="lucide-spin" style="width: 12px; height: 12px; vertical-align: middle;"></i> Mengunggah ${file.name} ke cloud hosting...`;
+    refreshIcons();
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+
+    if (data.status === 'success' && data.url) {
+      document.getElementById('publish-image-input').value = data.url;
+      if (progress) {
+        progress.innerHTML = `✅ File terunggah aman: <span style="font-family: monospace; color: var(--ink-strong);">${data.url}</span>`;
+      }
+      showToast('Gambar berhasil diunggah dan siap dipublish!', 'success');
+    } else {
+      if (progress) {
+        progress.innerHTML = `<span style="color: var(--danger);">❌ ${data.error || 'Gagal upload file'}</span>`;
+      }
+      showToast(data.error || 'Gagal mengunggah file.', 'error');
+    }
+  } catch (err) {
+    if (progress) progress.innerHTML = '<span style="color: var(--danger);">❌ Terjadi kesalahan jaringan saat upload</span>';
+    showToast('Gagal menghubungi endpoint upload.', 'error');
+  } finally {
+    refreshIcons();
+  }
+}
+
+function handleImageUrlInput(url) {
+  updateComposerMediaPreview(url.trim());
+}
+
+function updateComposerMediaPreview(url) {
+  const feedBox = document.getElementById('preview-image-box');
+  const storyBox = document.getElementById('preview-story-media-box');
+
+  if (!url) {
+    if (feedBox) feedBox.innerHTML = '<i data-lucide="image" style="width: 36px; height: 36px; opacity: 0.4;"></i>';
+    if (storyBox) storyBox.innerHTML = '<i data-lucide="sparkles" style="width: 32px; height: 32px; opacity: 0.3;"></i>';
+    refreshIcons();
+    return;
+  }
+
+  const imgHtml = `<img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src=''; this.alt='Gagal memuat gambar';">`;
+  if (feedBox) feedBox.innerHTML = imgHtml;
+  if (storyBox) storyBox.innerHTML = imgHtml;
+}
+
+function updatePreviewCaption(text) {
+  const capBox = document.getElementById('preview-caption-box');
+  if (capBox) {
+    capBox.innerText = text.trim() ? text : 'Preview caption akan tampil di sini...';
+  }
+}
+
+// Media Library: Pilih dari Postingan Lama
+function openMediaLibraryModal() {
+  const modal = document.getElementById('media-library-modal');
+  const grid = document.getElementById('media-library-grid');
+  if (!modal || !grid) return;
+
+  grid.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; text-align: center; grid-column: 1/-1; padding: 30px;">Memuat media dari postingan...</div>';
+  modal.style.display = 'flex';
+
+  if (window.latestFetchedPosts && window.latestFetchedPosts.length > 0) {
+    renderMediaLibraryGrid(window.latestFetchedPosts);
+  } else {
+    fetch('/api/posts?limit=50')
+      .then(res => res.json())
+      .then(data => {
+        const posts = data.data || data.posts || [];
+        window.latestFetchedPosts = posts;
+        renderMediaLibraryGrid(posts);
+      })
+      .catch(() => {
+        grid.innerHTML = '<div style="color: var(--danger); font-size: 13px; text-align: center; grid-column: 1/-1; padding: 20px;">Gagal memuat daftar postingan.</div>';
+      });
+  }
+  refreshIcons();
+}
+
+function renderMediaLibraryGrid(posts) {
+  const grid = document.getElementById('media-library-grid');
+  if (!grid) return;
+
+  if (!posts || posts.length === 0) {
+    grid.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px; text-align: center; grid-column: 1/-1; padding: 30px;">Tidak ada postingan yang ditemukan.</div>';
+    return;
+  }
+
+  grid.innerHTML = posts.map(p => {
+    const mediaUrl = p.media_url || p.thumbnail_url || '';
+    const caption = (p.caption || '').replace(/"/g, '&quot;');
+    const cleanCap = (p.caption || 'Tanpa caption').slice(0, 45);
+    return `
+      <div class="media-grid-item" onclick="selectMediaFromOldPost('${mediaUrl}', '${caption}')" title="${cleanCap}">
+        <img src="${mediaUrl}" loading="lazy" alt="Media" onerror="this.src='';">
+        <div class="media-grid-overlay">
+          <div class="media-grid-caption">${cleanCap}</div>
+          <button type="button" class="btn-primary" style="margin-top: 4px; padding: 2px 8px; font-size: 10px; border-radius: 10px; width: 100%; justify-content: center;">
+            Pilih Media
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function closeMediaLibraryModal() {
+  const modal = document.getElementById('media-library-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function selectMediaFromOldPost(mediaUrl, caption) {
+  if (!mediaUrl) {
+    showToast('Media tidak memiliki URL valid.', 'warning');
+    return;
+  }
+
+  document.getElementById('publish-image-input').value = mediaUrl;
+  updateComposerMediaPreview(mediaUrl);
+
+  const capInput = document.getElementById('publish-caption-input');
+  if (capInput && !capInput.value.trim() && caption) {
+    capInput.value = caption;
+    updatePreviewCaption(caption);
+  }
+
+  closeMediaLibraryModal();
+  showToast('Media dari postingan lama berhasil dipilih! Anda bisa langsung publish ke Feed atau Story.', 'success');
+}
+
+// Execute Publish Sekarang or Jadwalkan
+async function executePublishOrSchedule() {
   const imageInput = document.getElementById('publish-image-input').value.trim();
   const caption = document.getElementById('publish-caption-input').value.trim();
   const btn = document.getElementById('btn-publish');
 
   if (!imageInput) {
-    showToast('Harap masukkan URL gambar atau path file lokal.', 'warning');
+    showToast('Harap pilih gambar terlebih dahulu (Browse file dari komputer, atau pilih dari postingan lama).', 'warning');
     return;
   }
 
-  btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Sedang Memproses & Mengunggah...';
-  refreshIcons();
-
-  try {
-    const res = await fetch('/api/publish', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_input: imageInput, caption: caption })
-    });
-
-    const data = await res.json();
-
-    if (data.id) {
-      showToast(`Sukses publish ke Instagram! Media ID: ${data.id}`, 'success');
-      document.getElementById('publish-image-input').value = '';
-      document.getElementById('publish-caption-input').value = '';
-      loadDashboardData();
-    } else {
-      showToast(`Gagal: ${JSON.stringify(data.error || data)}`, 'error');
-    }
-  } catch (err) {
-    showToast('Terjadi kesalahan saat mempublish.', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="send" style="width: 14px; height: 14px;"></i> Publish ke Feed Instagram Sekarang';
-    refreshIcons();
+  if (currentPublishTarget === 'IMAGE' && !caption) {
+    showToast('Harap masukkan caption untuk Feed Post.', 'warning');
+    return;
   }
+
+  if (currentPublishMode === 'schedule') {
+    const schedTime = document.getElementById('publish-sched-datetime').value;
+    if (!schedTime) {
+      showToast('Harap tentukan tanggal dan jam tayang jadwal.', 'warning');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Menjadwalkan...';
+    refreshIcons();
+
+    try {
+      const res = await fetch('/api/scheduled-posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_url: imageInput,
+          caption: caption,
+          scheduled_at: schedTime,
+          media_type: currentPublishTarget
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast('Postingan berhasil dijadwalkan!', 'success');
+        switchStudioSubTab('scheduler');
+      } else {
+        showToast(`Gagal menjadwalkan: ${data.error || 'Terjadi kesalahan'}`, 'error');
+      }
+    } catch (err) {
+      showToast('Gagal menghubungi server scheduler.', 'error');
+    } finally {
+      btn.disabled = false;
+      refreshIcons();
+    }
+  } else {
+    // Mode Now
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="lucide-spin" style="width: 14px; height: 14px;"></i> Memproses & Mengunggah ke Meta API...';
+    refreshIcons();
+
+    try {
+      const res = await fetch('/api/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_input: imageInput,
+          caption: caption,
+          media_type: currentPublishTarget
+        })
+      });
+      const data = await res.json();
+
+      if (data.id) {
+        const dest = currentPublishTarget === 'STORIES' ? 'Instagram Story' : 'Instagram Feed';
+        showToast(`Sukses publish ke ${dest}! Media ID: ${data.id}`, 'success');
+        document.getElementById('publish-image-input').value = '';
+        document.getElementById('publish-caption-input').value = '';
+        updateComposerMediaPreview('');
+        updatePreviewCaption('');
+        const progress = document.getElementById('upload-progress-text');
+        if (progress) progress.style.display = 'none';
+        loadDashboardData();
+      } else {
+        showToast(`Gagal publish: ${JSON.stringify(data.error || data.details || data)}`, 'error');
+      }
+    } catch (err) {
+      showToast('Terjadi kesalahan saat mempublish ke Instagram.', 'error');
+    } finally {
+      btn.disabled = false;
+      setPublishTarget(currentPublishTarget);
+      refreshIcons();
+    }
+  }
+}
+
+// Alias for compatibility
+const publishPost = executePublishOrSchedule;
+
+// Setup Drag & Drop Listeners
+function setupDropzoneEvents() {
+  const dropzone = document.getElementById('upload-dropzone');
+  if (!dropzone) return;
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('dragover');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('dragover');
+    }, false);
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files && files.length > 0) {
+      handleFileSelect({ target: { files: files } });
+    }
+  }, false);
 }
 
 // Run Auto-Reply Scan Across All Posts

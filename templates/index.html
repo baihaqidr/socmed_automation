@@ -38,9 +38,9 @@
           </button>
         </li>
         <li class="nav-item">
-          <button onclick="switchTab('publish')">
+          <button onclick="switchTab('publish')" id="nav-btn-publish">
             <i data-lucide="plus-square"></i>
-            <span>Content Publisher</span>
+            <span>Content & Story Studio</span>
           </button>
         </li>
         <li class="nav-item">
@@ -59,18 +59,6 @@
           <button onclick="switchTab('scraper')">
             <i data-lucide="search"></i>
             <span>Competitor & Hashtags</span>
-          </button>
-        </li>
-        <li class="nav-item">
-          <button onclick="switchTab('storyrules')">
-            <i data-lucide="award"></i>
-            <span>Story Mentions Auto-DM</span>
-          </button>
-        </li>
-        <li class="nav-item">
-          <button onclick="switchTab('scheduler')">
-            <i data-lucide="calendar"></i>
-            <span>Content Scheduler</span>
           </button>
         </li>
         <li class="nav-item">
@@ -337,48 +325,219 @@
           </div>
         </div>
 
-        <!-- TAB 4: CONTENT PUBLISHER -->
+        <!-- TAB 4: UNIFIED CONTENT & STORY STUDIO -->
         <div id="tab-publish" class="tab-view">
           <div class="section-header">
-            <h1 class="section-title">Instagram Content Publisher</h1>
-            <p class="section-desc">Unggah foto langsung ke Feed Instagram akun yang sedang aktif (<span id="publish-account-target">@sarangestate</span>).</p>
+            <h1 class="section-title">Content & Story Studio</h1>
+            <p class="section-desc">Pusat penerbitan konten terpadu untuk akun <span id="publish-account-target" style="font-weight: 600; color: var(--primary);">@sarangestate</span>: Publish Feed, Repost ke Story, Penjadwalan Otomatis, dan Trigger Auto-DM Story Mentions.</p>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
+          <!-- Studio Sub-Navigation -->
+          <div class="studio-subnav">
+            <button type="button" class="studio-pill active" id="subtab-btn-publisher" onclick="switchStudioSubTab('publisher')">
+              <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+              <span>Publish & Repost Story</span>
+            </button>
+            <button type="button" class="studio-pill" id="subtab-btn-scheduler" onclick="switchStudioSubTab('scheduler')">
+              <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+              <span>Antrean Jadwal (Scheduler)</span>
+            </button>
+            <button type="button" class="studio-pill" id="subtab-btn-storyrules" onclick="switchStudioSubTab('storyrules')">
+              <i data-lucide="award" style="width: 14px; height: 14px;"></i>
+              <span>Story Mentions Auto-DM</span>
+            </button>
+          </div>
+
+          <!-- SUB-PANEL 1: PUBLISHER & STORY REPOST COMPOSER -->
+          <div id="studio-panel-publisher" class="studio-panel">
+            <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px; align-items: start;">
+              
+              <!-- Left Form Card -->
+              <div class="supa-card">
+                <!-- 1. Destination Target -->
+                <div class="form-group" style="margin-bottom: 18px;">
+                  <label class="form-label" style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Target Publikasi Instagram</label>
+                  <div class="target-selector-wrap">
+                    <button type="button" class="target-pill-btn active" id="target-btn-feed" onclick="setPublishTarget('IMAGE')">
+                      <i data-lucide="image" style="width: 16px; height: 16px;"></i>
+                      <span>Feed Post (1:1 / 4:5)</span>
+                    </button>
+                    <button type="button" class="target-pill-btn" id="target-btn-story" onclick="setPublishTarget('STORIES')">
+                      <i data-lucide="sparkles" style="width: 16px; height: 16px; color: #f59e0b;"></i>
+                      <span>Instagram Story (9:16)</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2. Media Source & Upload Dropzone -->
+                <div class="form-group" style="margin-bottom: 18px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <label class="form-label" style="margin-bottom: 0;">Pilih atau Unggah Media</label>
+                    <button type="button" class="btn-secondary" onclick="openMediaLibraryModal()" style="padding: 4px 10px; font-size: 11.5px; border-radius: 14px;">
+                      <i data-lucide="library" style="width: 13px; height: 13px;"></i>
+                      <span>Pilih dari Postingan Lama</span>
+                    </button>
+                  </div>
+
+                  <!-- Drag & Drop Zone -->
+                  <div class="upload-dropzone" id="upload-dropzone" onclick="triggerFilePicker()">
+                    <input type="file" id="publish-file-picker" accept="image/jpeg,image/png,image/webp,image/jpg" style="display: none;" onchange="handleFileSelect(event)">
+                    <div class="upload-dropzone-icon">
+                      <i data-lucide="cloud-upload" style="width: 20px; height: 20px;"></i>
+                    </div>
+                    <div style="font-weight: 600; font-size: 13px; color: var(--ink-strong);">
+                      Tarik & Lepas Gambar di Sini atau <span style="color: var(--primary); text-decoration: underline;">Browse File Komputer</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--ink-mute); margin-top: 4px;">
+                      Format JPG, PNG, WEBP • Otomatis diproses & di-stream ke Meta Graph API
+                    </div>
+                    <div id="upload-progress-text" style="font-size: 11.5px; color: var(--primary); font-weight: 600; margin-top: 8px; display: none;"></div>
+                  </div>
+
+                  <!-- Or Direct URL / Local Path (Fallback) -->
+                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                    <input type="text" id="publish-image-input" class="form-input" style="font-size: 12px;" placeholder="Atau paste URL gambar publik di sini..." oninput="handleImageUrlInput(this.value)">
+                  </div>
+                </div>
+
+                <!-- 3. Caption -->
+                <div class="form-group" id="publish-caption-group" style="margin-bottom: 18px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label class="form-label" style="margin-bottom: 0;">Caption Postingan</label>
+                    <span id="caption-target-hint" style="font-size: 11px; color: var(--ink-mute);">Diperlukan untuk Feed</span>
+                  </div>
+                  <textarea id="publish-caption-input" class="form-textarea" rows="4" placeholder="Tulis caption postingan Anda di sini..." oninput="updatePreviewCaption(this.value)"></textarea>
+                </div>
+
+                <!-- 4. Schedule Timing Mode -->
+                <div class="form-group" style="margin-bottom: 20px; padding: 12px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <label class="form-label" style="font-size: 12px; font-weight: 600; margin-bottom: 0;">Waktu Publikasi</label>
+                    <div style="display: flex; gap: 12px; font-size: 12px;">
+                      <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="radio" name="publish_mode" value="now" id="radio-publish-now" checked onchange="togglePublishScheduleMode('now')"> Publish Sekarang
+                      </label>
+                      <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="radio" name="publish_mode" value="schedule" id="radio-publish-sched" onchange="togglePublishScheduleMode('schedule')"> Jadwalkan Otomatis
+                      </label>
+                    </div>
+                  </div>
+                  <div id="publish-schedule-datetime-wrap" style="display: none; margin-top: 10px;">
+                    <label style="font-size: 11px; color: var(--ink-mute); margin-bottom: 4px; display: block;">Tentukan Tanggal & Jam Tayang:</label>
+                    <input type="datetime-local" id="publish-sched-datetime" class="form-input">
+                  </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button class="btn-primary" onclick="executePublishOrSchedule()" id="btn-publish" style="width: 100%; justify-content: center; height: 42px;">
+                  <i data-lucide="send"></i>
+                  <span id="btn-publish-label">Publish Sekarang ke Instagram</span>
+                </button>
+              </div>
+
+              <!-- Right: Adaptive Real-time Preview -->
+              <div class="supa-card" style="background: var(--canvas-night-soft); display: flex; flex-direction: column; align-items: center;">
+                <div style="width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <h3 style="font-size: 13px; font-weight: 600; color: var(--ink-mute);">Preview Konten Real-Time</h3>
+                  <span class="pill-badge pill-green" id="preview-mode-badge">Feed Format</span>
+                </div>
+
+                <!-- FEED PREVIEW CARD -->
+                <div id="preview-feed-card" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--canvas-night);">
+                  <div style="padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color);">
+                    <div style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; color: #000; font-weight: 700; font-size: 11px;">S</div>
+                    <span style="font-size: 12px; font-weight: 600;" id="preview-account-username">sarangestate</span>
+                  </div>
+                  <div id="preview-image-box" style="height: 240px; background: #141414; display: flex; align-items: center; justify-content: center; color: var(--ink-mute); font-size: 13px; overflow: hidden;">
+                    <i data-lucide="image" style="width: 36px; height: 36px; opacity: 0.4;"></i>
+                  </div>
+                  <div id="preview-caption-box" style="padding: 12px; font-size: 12px; color: var(--ink-mute); max-height: 90px; overflow-y: auto; line-height: 1.4;">
+                    Preview caption akan tampil di sini...
+                  </div>
+                </div>
+
+                <!-- STORY PREVIEW CARD (VERTICAL 9:16) -->
+                <div id="preview-story-card" class="story-preview-container" style="display: none;">
+                  <div class="story-progress-bar">
+                    <div class="story-progress-fill"></div>
+                  </div>
+                  <div class="story-preview-header">
+                    <div class="ig-story-ring" style="padding: 1.5px;">
+                      <div style="width: 26px; height: 26px; border-radius: 50%; background: #222; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; border: 1.5px solid #000;">S</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column;">
+                      <span style="font-size: 11.5px; font-weight: 600; color: #fff;" id="preview-story-username">sarangestate</span>
+                      <span style="font-size: 9.5px; color: rgba(255, 255, 255, 0.7);">Baru saja</span>
+                    </div>
+                  </div>
+                  <div id="preview-story-media-box" style="width: 100%; height: 100%; background: #181818; display: flex; align-items: center; justify-content: center; color: #666; overflow: hidden;">
+                    <i data-lucide="sparkles" style="width: 32px; height: 32px; opacity: 0.3;"></i>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- SUB-PANEL 2: SCHEDULER QUEUE -->
+          <div id="studio-panel-scheduler" class="studio-panel" style="display: none;">
             <div class="supa-card">
-              <div class="form-group">
-                <label class="form-label">Sumber Gambar (URL atau Path File Komputer)</label>
-                <input type="text" id="publish-image-input" class="form-input" placeholder="contoh: D:\foto.jpg atau https://example.com/foto.jpg">
-                <span style="font-size: 11px; color: var(--ink-mute-2); margin-top: 4px; display: block;">File lokal otomatis di-stream secara aman ke Meta API crawler.</span>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                <div>
+                  <h3 style="font-size: 15px; font-weight: 600;">Daftar Antrean Penjadwalan Otomatis</h3>
+                  <p style="font-size: 12px; color: var(--ink-mute); margin-top: 2px;">Postingan yang dijadwalkan akan dipublikasikan ke Instagram secara otomatis sesuai tanggal & jam.</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <button class="btn-secondary" onclick="loadScheduledPostsList()">
+                    <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i>
+                    <span>Muat Ulang</span>
+                  </button>
+                  <span class="pill-badge pill-green" id="sched-queue-count">0 Terjadwal</span>
+                </div>
+              </div>
+
+              <div id="sched-queue-container" style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="color: var(--ink-mute); font-size: 13px; text-align: center; padding: 24px;">Belum ada postingan yang dijadwalkan.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB-PANEL 3: STORY MENTIONS AUTO-DM -->
+          <div id="studio-panel-storyrules" class="studio-panel" style="display: none;">
+            <div class="supa-card" style="max-width: 680px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle);">
+                <div>
+                  <h3 style="font-size: 15px; font-weight: 600;">Trigger Story Mention Auto-DM</h3>
+                  <span style="font-size: 12px; color: var(--ink-mute);">Kirimkan voucher promo secara otomatis saat ada audiens yang mention Story akun Anda.</span>
+                </div>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--primary); cursor: pointer;">
+                  <input type="checkbox" id="story-rule-active" checked style="accent-color: var(--primary); cursor: pointer;"> Aktifkan Trigger
+                </label>
               </div>
 
               <div class="form-group">
-                <label class="form-label">Caption Postingan</label>
-                <textarea id="publish-caption-input" class="form-textarea" rows="7" placeholder="Tulis caption postingan Anda..."></textarea>
+                <label class="form-label">Teks Pesan DM Terima Kasih</label>
+                <textarea id="story-rule-message" class="form-textarea" rows="4" placeholder="Terima kasih banyak sudah mention kami di IG Story kamu! 🎉"></textarea>
               </div>
 
-              <button class="btn-primary" onclick="publishPost()" id="btn-publish" style="width: 100%; justify-content: center;">
-                <i data-lucide="send"></i>
-                <span>Publish ke Feed Instagram Sekarang</span>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                  <label class="form-label">Kode Voucher Promo (Opsional)</label>
+                  <input type="text" id="story-rule-voucher" class="form-input" placeholder="contoh: STORYPROMO15">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tautan Link Landing Page / Katalog</label>
+                  <input type="text" id="story-rule-link" class="form-input" placeholder="contoh: https://www.simplifyer.site/">
+                </div>
+              </div>
+
+              <button class="btn-primary" onclick="saveStoryRules()" style="margin-top: 12px;">
+                <i data-lucide="save"></i> Simpan Pengaturan Story Mention
               </button>
             </div>
-
-            <div class="supa-card" style="background: var(--canvas-night-soft);">
-              <h3 style="font-size: 13px; font-weight: 600; color: var(--ink-mute); margin-bottom: 12px;">Preview Postingan</h3>
-              <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background: var(--canvas-night);">
-                <div style="padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color);">
-                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary);"></div>
-                  <span style="font-size: 12px; font-weight: 600;" id="preview-account-username">sarangestate</span>
-                </div>
-                <div id="preview-image-box" style="height: 220px; background: #181818; display: flex; align-items: center; justify-content: center; color: var(--ink-mute); font-size: 13px;">
-                  <i data-lucide="image" style="width: 36px; height: 36px;"></i>
-                </div>
-                <div id="preview-caption-box" style="padding: 12px; font-size: 12px; color: var(--ink-mute); max-height: 100px; overflow-y: auto;">
-                  Preview caption akan tampil di sini...
-                </div>
-              </div>
-            </div>
           </div>
+
         </div>
 
         <!-- TAB 5: COMMENTS INBOX -->
@@ -565,96 +724,32 @@
           </div>
         </div>
 
-        <!-- TAB: STORY MENTIONS AUTO-DM -->
-        <div id="tab-storyrules" class="tab-view">
-          <div class="section-header">
-            <h1 class="section-title">Story Mentions Auto-Voucher DM</h1>
-            <p class="section-desc">Kirimkan DM ucapan terima kasih + kode voucher promo secara otomatis saat ada audiens yang meng-tag akun Anda di IG Story.</p>
-          </div>
-
-          <div class="supa-card" style="max-width: 680px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle);">
-              <div>
-                <h3 style="font-size: 15px; font-weight: 600;">Status Auto-DM Story Mention</h3>
-                <span style="font-size: 12px; color: var(--ink-mute);">Pemicu otomatis berjalan 24/7 di akun aktif</span>
+        <!-- MEDIA LIBRARY MODAL (PILIH KONTEN LAMA) -->
+        <div class="modal-overlay" id="media-library-modal" style="display: none;">
+          <div class="modal-card" style="max-width: 680px;">
+            <div class="modal-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="brand-icon" style="width: 28px; height: 28px;">
+                  <i data-lucide="image" style="width: 14px; height: 14px;"></i>
+                </div>
+                <div>
+                  <h3 style="font-size: 15px; font-weight: 600;">Pilih dari Postingan Feed Lama</h3>
+                  <p style="font-size: 12px; color: var(--ink-mute); margin-top: 2px;">Pilih foto postingan yang sudah pernah diunggah untuk langsung di-repost ke Instagram Story atau Feed baru.</p>
+                </div>
               </div>
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--primary); cursor: pointer;">
-                <input type="checkbox" id="story-rule-active" checked style="accent-color: var(--primary); cursor: pointer;"> Aktifkan Trigger
-              </label>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Teks Pesan DM Terima Kasih</label>
-              <textarea id="story-rule-message" class="form-textarea" rows="4" placeholder="Terima kasih banyak sudah mention kami di IG Story kamu! 🎉"></textarea>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div class="form-group">
-                <label class="form-label">Kode Voucher Promo (Opsional)</label>
-                <input type="text" id="story-rule-voucher" class="form-input" placeholder="contoh: STORYPROMO15">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Tautan Link Landing Page / Katalog</label>
-                <input type="text" id="story-rule-link" class="form-input" placeholder="contoh: https://www.simplifyer.site/">
-              </div>
-            </div>
-
-            <button class="btn-primary" onclick="saveStoryRules()" style="margin-top: 12px;">
-              <i data-lucide="save"></i> Simpan Pengaturan Story Mention
-            </button>
-          </div>
-        </div>
-
-        <!-- TAB: CONTENT SCHEDULER -->
-        <div id="tab-scheduler" class="tab-view">
-          <div class="section-header">
-            <h1 class="section-title">Bulk Content Scheduler & Reels</h1>
-            <p class="section-desc">Jadwalkan postingan foto, carousel, atau Reels untuk diunggah secara otomatis pada tanggal & jam tertentu.</p>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-            <!-- Scheduler Form -->
-            <div class="supa-card">
-              <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Jadwalkan Postingan Baru</h3>
-              
-              <div class="form-group">
-                <label class="form-label">Tipe Media</label>
-                <select id="sched-media-type" class="form-input">
-                  <option value="IMAGE">Postingan Foto (Single Feed)</option>
-                  <option value="REELS">Instagram Reels (Video Feed)</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">URL Foto / File Video</label>
-                <input type="text" id="sched-image-url" class="form-input" placeholder="contoh: https://images.unsplash.com/... atau URL media publik">
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Caption Postingan</label>
-                <textarea id="sched-caption" class="form-textarea" rows="3" placeholder="Tuliskan caption postingan lengkap dengan hashtag..."></textarea>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Waktu Tayang (Tanggal & Jam)</label>
-                <input type="datetime-local" id="sched-time" class="form-input">
-              </div>
-
-              <button class="btn-primary" onclick="submitSchedulePost()" style="width: 100%; justify-content: center;">
-                <i data-lucide="calendar"></i> Masukkan ke Antrean Jadwal
+              <button onclick="closeMediaLibraryModal()" style="background: transparent; border: none; color: var(--ink-mute); cursor: pointer;">
+                <i data-lucide="x" style="width: 18px; height: 18px;"></i>
               </button>
             </div>
 
-            <!-- Schedule Queue List -->
-            <div class="supa-card">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                <h3 style="font-size: 15px; font-weight: 600;">Daftar Antrean Penjadwalan</h3>
-                <span class="pill-badge pill-green" id="sched-queue-count">0 Terjadwal</span>
+            <div style="padding: 16px;">
+              <div id="media-library-grid" class="media-grid-scroll">
+                <!-- Dynamically populated from posts cache -->
               </div>
+            </div>
 
-              <div id="sched-queue-container" style="display: flex; flex-direction: column; gap: 12px;">
-                <div style="color: var(--ink-mute); font-size: 13px;">Belum ada postingan yang dijadwalkan.</div>
-              </div>
+            <div class="modal-footer" style="padding: 12px 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+              <button type="button" class="btn-secondary" onclick="closeMediaLibraryModal()">Tutup</button>
             </div>
           </div>
         </div>
