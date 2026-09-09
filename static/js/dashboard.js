@@ -794,12 +794,12 @@ function updateMcPhonePreview() {
 
   const currentTab = _MC_BUILDER_STATE.previewTab || 'dm';
   const kw = _MC_BUILDER_STATE.keywords.split(',')[0]?.trim() || 'info';
-  const userCommentText = (_MC_BUILDER_STATE.conditionMode === 'specific_words' && kw) ? `Mau ${kw} dong min!` : 'Halo mau info lengkapnya dong min';
+  const userCommentText = (_MC_BUILDER_STATE.conditionMode === 'specific_words' && kw) ? `Mau ${kw} dong kak!` : 'Halo mau info lengkapnya dong kak!';
   
   const repMode = document.querySelector('input[name="mc-reply-mode"]:checked')?.value || 'custom';
   const customReply = document.getElementById('mc-custom-reply-text')?.value.trim();
   const botReplyText = (repMode === 'ai') 
-    ? 'Halo kak @audiens! ✨ Terima kasih sudah tertarik, detail link lengkapnya sudah kami kirimkan ke DM kamu ya, silakan di-cek!'
+    ? 'Halo kak @audiens! ✨ Terima kasih sudah tertarik, detail link lengkapnya sudah kami kirimkan ke DM kamu ya, silakan di-cek inbox-nya! 🙌'
     : (customReply || 'Halo kak @audiens, linknya sudah kami kirimkan via DM ya! Cek inbox yuk 🙌');
   
   const dmMsg = document.getElementById('mc-dm-message')?.value || '';
@@ -808,65 +808,213 @@ function updateMcPhonePreview() {
   const enablePublic = document.getElementById('mc-enable-public-reply')?.checked;
   const enableDm = document.getElementById('mc-enable-dm')?.checked;
 
-  if (currentTab === 'comments') {
+  const rawUser = String(currentActiveUsername || 'produkly').replace(/^@+/, '').trim();
+
+  if (currentTab === 'dm') {
     container.innerHTML = `
-      <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 600;">Feed Post Comments</div>
-      
-      <!-- User Comment -->
-      <div class="sim-comment-box">
-        <div class="sim-avatar">U</div>
-        <div style="flex: 1;">
-          <div style="display: flex; gap: 6px; align-items: baseline;">
-            <span style="font-weight: 700; color: #fff;">audiens</span>
-            <span style="font-size: 10px; color: #666;">1m</span>
+      <div class="ig-dm-container">
+        <!-- Top Nav Bar -->
+        <div class="ig-dm-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer;">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <div class="ig-story-ring" style="width: 32px; height: 32px; padding: 1.5px;">
+              <div class="ig-story-inner" style="width: 100%; height: 100%; background: #262626; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 13px;">
+                ${rawUser.charAt(0).toUpperCase()}
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; gap: 3px;">
+                <span style="font-weight: 700; font-size: 12.5px; color: #fff; letter-spacing: -0.1px;">${rawUser}</span>
+                <span class="ig-verified-badge">✓</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8e8e8e;">
+                <span style="width: 5px; height: 5px; border-radius: 50%; background: #10B981;"></span>
+                <span>Aktif sekarang</span>
+              </div>
+            </div>
           </div>
-          <div style="color: #ddd; margin-top: 2px;">${userCommentText}</div>
+          <div style="display: flex; align-items: center; gap: 14px; color: #ffffff;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="23 7 16 12 23 17 23 7"></polygon>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Chat Messages Scroll Area -->
+        <div class="ig-dm-scrollable">
+          <div class="ig-dm-date-pill">Hari ini 09:41</div>
+
+          <!-- Private Reply Context Pill -->
+          <div class="ig-dm-reply-context">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Membalas komentar Anda di postingan</span>
+          </div>
+
+          <!-- Commenter Question Bubble (Left) -->
+          <div class="ig-dm-commenter-bubble">
+            ${userCommentText}
+          </div>
+
+          <!-- Automated Brand Message Card (Right) -->
+          ${enableDm ? `
+            <div class="ig-dm-card-bubble">
+              <div class="ig-dm-card-text">
+                ${dmMsg ? dmMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Halo kak! Terima kasih sudah tertarik 🙌 Detail link akses & informasinya ada di tombol bawah ini ya:'}
+              </div>
+              <div class="ig-dm-card-btn">
+                <span>${btnText}</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </div>
+            </div>
+            <div class="ig-dm-delivery-status">09:42 • Terkirim</div>
+          ` : `
+            <div style="padding: 16px; text-align: center; color: #737373; font-size: 11px; font-style: italic;">
+              (Pesan DM dinonaktifkan)
+            </div>
+          `}
+        </div>
+
+        <!-- Chat Input Bottom Bar -->
+        <div class="ig-dm-footer">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #0095F6; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+          </div>
+          <div class="ig-dm-input-capsule">
+            <span>Kirim pesan...</span>
+            <div style="display: flex; align-items: center; gap: 8px; color: #888;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+            </div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
         </div>
       </div>
-
-      <!-- Bot Automated Reply -->
-      ${enablePublic ? `
-        <div class="sim-comment-box" style="margin-left: 20px; border-left: 2px solid var(--primary); background: #161616;">
-          <div class="sim-avatar" style="background: #10B981;">S</div>
-          <div style="flex: 1;">
-            <div style="display: flex; gap: 6px; align-items: baseline;">
-              <span style="font-weight: 700; color: #10B981;">sarangestate</span>
-              <span class="pill-badge pill-green" style="font-size: 8px; padding: 1px 4px;">Author</span>
-              <span style="font-size: 10px; color: #666;">just now</span>
-            </div>
-            <div style="color: #fff; margin-top: 2px;">${botReplyText}</div>
-          </div>
-        </div>
-      ` : `
-        <div style="margin-left: 20px; padding: 8px; font-size: 11px; color: #666; font-style: italic;">
-          (Balasan publik dinonaktifkan - Hanya kirim DM)
-        </div>
-      `}
     `;
   } else {
-    // DM View
+    // Comments Sheet View
+    const targetPost = (window._POSTS_CACHE_DATA || []).find(p => String(p.id) === String(_MC_BUILDER_STATE.postId));
+    const captionSnippet = targetPost?.caption ? (targetPost.caption.slice(0, 75) + '...') : 'Postingan resmi dari akun Instagram Anda...';
+
     container.innerHTML = `
-      <div style="font-size: 10px; color: #666; text-align: center; margin-bottom: 8px;">
-        sarangestate messaged you about a comment that you made on their post.
+      <div class="ig-comments-container">
+        <!-- Sheet Drag Handle & Header -->
+        <div class="ig-comments-header">
+          <div class="ig-drag-handle"></div>
+          <div style="font-weight: 700; font-size: 13.5px; color: #fff;">Komentar</div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" style="position: absolute; right: 14px; top: 14px;">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </div>
+
+        <!-- Comments Scroll Area -->
+        <div class="ig-comments-scrollable">
+          
+          <!-- Post Author Caption Row -->
+          <div class="ig-caption-row">
+            <div class="ig-story-ring" style="width: 28px; height: 28px; padding: 1.5px;">
+              <div class="ig-story-inner" style="width: 100%; height: 100%; background: #262626; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 11px;">
+                ${rawUser.charAt(0).toUpperCase()}
+              </div>
+            </div>
+            <div style="flex: 1;">
+              <div style="color: #fff; font-size: 12px; line-height: 1.35;">
+                <span style="font-weight: 700; color: #fff; margin-right: 4px;">${rawUser}</span>
+                <span class="ig-verified-badge" style="margin-right: 4px;">✓</span>
+                <span style="color: #e5e5e5;">${captionSnippet}</span>
+              </div>
+              <div style="font-size: 10px; color: #737373; margin-top: 4px;">2 j</div>
+            </div>
+          </div>
+
+          <!-- User Comment Row -->
+          <div class="ig-comment-row">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #EC4899); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 11px; flex-shrink: 0;">
+              A
+            </div>
+            <div style="flex: 1;">
+              <div style="color: #fff; font-size: 12px; line-height: 1.35;">
+                <span style="font-weight: 700; color: #fff; margin-right: 4px;">audiens_official</span>
+                <span style="color: #f0f0f0;">${userCommentText}</span>
+              </div>
+              <div class="ig-comment-actions">
+                <span>2 j</span>
+                <span style="font-weight: 600; cursor: pointer;">Balas</span>
+                <span style="font-weight: 600; cursor: pointer;">Kirim pesan</span>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 2px; color: #737373; padding-top: 2px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+              <span style="font-size: 9px;">1</span>
+            </div>
+          </div>
+
+          <!-- Nested Brand Reply (Threaded) -->
+          ${enablePublic ? `
+            <div class="ig-threaded-reply">
+              <div style="width: 22px; height: 22px; border-radius: 50%; background: #10B981; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 10px; flex-shrink: 0;">
+                ${rawUser.charAt(0).toUpperCase()}
+              </div>
+              <div style="flex: 1;">
+                <div style="color: #fff; font-size: 11.5px; line-height: 1.35;">
+                  <span style="font-weight: 700; color: #fff; margin-right: 3px;">${rawUser}</span>
+                  <span class="ig-verified-badge" style="margin-right: 4px;">✓</span>
+                  <span style="font-size: 9px; background: #262626; color: #8e8e8e; padding: 1px 4px; border-radius: 3px; margin-right: 4px;">Penulis</span>
+                  <span style="color: #f0f0f0;">${botReplyText}</span>
+                </div>
+                <div class="ig-comment-actions">
+                  <span>1 m</span>
+                  <span style="font-weight: 600; cursor: pointer;">Suka</span>
+                  <span style="font-weight: 600; cursor: pointer;">Balas</span>
+                </div>
+              </div>
+              <div style="color: #737373; padding-top: 2px;">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+              </div>
+            </div>
+          ` : `
+            <div style="margin-left: 28px; padding: 8px 12px; font-size: 10.5px; color: #737373; font-style: italic; background: #181818; border-radius: 8px;">
+              ⚪ Balasan komentar publik dinonaktifkan (hanya kirim pesan DM).
+            </div>
+          `}
+
+        </div>
+
+        <!-- Docked Comment Input Footer -->
+        <div class="ig-comments-footer">
+          <div class="ig-emoji-bar">
+            <span>❤️</span><span>🙌</span><span>🔥</span><span>👏</span><span>😢</span><span>😍</span><span>😮</span><span>🎉</span>
+          </div>
+          <div class="ig-comment-input-row">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #888; flex-shrink: 0;">
+              U
+            </div>
+            <div style="flex: 1; background: #262626; border-radius: 18px; padding: 6px 12px; font-size: 11.5px; color: #737373;">
+              Tambahkan komentar...
+            </div>
+            <span style="color: #0095F6; font-weight: 600; font-size: 12px; opacity: 0.5; cursor: default;">Posting</span>
+          </div>
+        </div>
+
       </div>
-      
-      ${enableDm ? `
-        <div class="sim-dm-card">
-          <div class="sim-dm-body">
-            ${dmMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-          </div>
-          <div class="sim-dm-button">
-            ${btnText} 🔗
-          </div>
-        </div>
-        <div style="font-size: 10px; color: #888; text-align: right; margin-top: 4px; padding-right: 4px;">
-          Tautan: ${ctaUrl.slice(0, 26)}...
-        </div>
-      ` : `
-        <div style="padding: 24px; text-align: center; color: #666; font-size: 12px;">
-          (Pesan DM dinonaktifkan)
-        </div>
-      `}
     `;
   }
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Socmed Automation - Supabase Studio</title>
-  <link rel="stylesheet" href="/static/css/simplifyer.css?v=4.3">
+  <link rel="stylesheet" href="/static/css/simplifyer.css?v=4.4">
   <!-- Lucide Icons Official CDN (lucide.dev) -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -882,19 +882,41 @@
             </button>
           </div>
 
-          <!-- Phone Frame -->
+          <!-- iPhone 15 Pro Realistic Frame -->
           <div class="phone-mockup">
-            <div class="phone-notch"></div>
-            
-            <div class="phone-ig-topbar">
-              <span style="font-size: 10px; color: #888;">9:41</span>
-              <span id="preview-account-header">@sarangestate</span>
-              <span style="font-size: 12px; color: #888;">•••</span>
+            <!-- Dynamic Island -->
+            <div class="phone-dynamic-island">
+              <div class="island-camera"></div>
             </div>
 
+            <!-- iOS Status Bar -->
+            <div class="phone-ios-status-bar">
+              <span class="ios-time">9:41</span>
+              <div class="ios-status-icons">
+                <svg width="14" height="10" viewBox="0 0 17 11" fill="none">
+                  <rect x="0.5" y="8" width="2.5" height="3" rx="0.8" fill="#fff"/>
+                  <rect x="4.5" y="5.5" width="2.5" height="5.5" rx="0.8" fill="#fff"/>
+                  <rect x="8.5" y="3" width="2.5" height="8" rx="0.8" fill="#fff"/>
+                  <rect x="12.5" y="0.5" width="2.5" height="10.5" rx="0.8" fill="#fff"/>
+                </svg>
+                <svg width="13" height="10" viewBox="0 0 16 12" fill="#fff">
+                  <path d="M8 9a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm-3.5-2.5a5 5 0 017 0l1.2-1.2a6.8 6.8 0 00-9.4 0l1.2 1.2zm-2.4-2.4a8.5 8.5 0 0111.8 0l1.2-1.2a10.2 10.2 0 00-14.2 0l1.2 1.2z"/>
+                </svg>
+                <svg width="20" height="10" viewBox="0 0 25 12" fill="none">
+                  <rect x="0.5" y="0.5" width="21" height="11" rx="3" stroke="#fff" stroke-opacity="0.8"/>
+                  <rect x="2" y="2" width="15" height="8" rx="1.5" fill="#fff"/>
+                  <path d="M23 4v4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.4"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Dynamic Instagram Screen Content -->
             <div class="phone-content" id="phone-preview-content">
               <!-- Dynamically rendered based on active preview tab -->
             </div>
+
+            <!-- iPhone Home Bar Indicator -->
+            <div class="phone-home-indicator"></div>
           </div>
 
           <div style="font-size: 11px; color: var(--ink-mute-2); margin-top: 12px; text-align: center;">
@@ -907,6 +929,6 @@
     </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=9.5"></script>
+  <script src="/static/js/dashboard.js?v=9.6"></script>
 </body>
 </html>
