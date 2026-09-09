@@ -1833,6 +1833,7 @@ def run_auto_reply_scan():
                             button_label = str(post_rule.get("button_text", "")).strip() or "Buka Link Akses"
                             post_dm_format = str(post_rule.get("dm_format", "button")).strip()
                             post_use_smart_link = post_rule.get("use_smart_link", True)
+                            require_follow = bool(post_rule.get("require_follow", False))
                             effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link and post_dm_format != "button") else post_cta_link
 
                             now_ts = time.time()
