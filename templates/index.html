@@ -35,7 +35,6 @@
           <button onclick="switchTab('postrules')" id="nav-btn-postrules">
             <i data-lucide="zap"></i>
             <span>Comment Automations</span>
-            <span class="pill-badge pill-green" style="font-size: 9px; padding: 1px 6px; margin-left: auto;">ManyChat</span>
           </button>
         </li>
         <li class="nav-item">
@@ -266,14 +265,14 @@
           </div>
         </div>
 
-        <!-- TAB 2: COMMENT AUTOMATIONS (MANYCHAT FLOW) -->
+        <!-- TAB 2: COMMENT AUTOMATIONS STUDIO -->
         <div id="tab-postrules" class="tab-view">
           <div class="section-header">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
               <div>
                 <h1 class="section-title" style="display: flex; align-items: center; gap: 10px;">
                   <i data-lucide="zap" style="color: var(--primary);"></i> Comment Automations Studio
-                  <span class="pill-badge pill-green" style="font-size: 11px;">ManyChat Engine</span>
+                  <span class="pill-badge pill-green" style="font-size: 11px;">Smart Flow</span>
                 </h1>
                 <p class="section-desc">Atur alur otomatisasi balasan komentar publik & pesan DM bertombol secara instan per postingan.</p>
               </div>
@@ -284,7 +283,7 @@
           </div>
 
           <div id="post-rules-cards-container" style="display: flex; flex-direction: column; gap: 20px;">
-            <!-- Dynamically populated with all posts and their ManyChat flow cards -->
+            <!-- Dynamically populated with all posts and their automation flow cards -->
           </div>
         </div>
 
@@ -712,7 +711,7 @@
     </div>
   </div>
 
-  <!-- ManyChat Automation Flow Studio Modal -->
+  <!-- Unified Automation Flow Studio Modal -->
   <div id="mc-builder-overlay" class="mc-builder-overlay">
     <div class="mc-builder-modal">
       
@@ -724,7 +723,7 @@
           </div>
           <div>
             <h3 style="font-size: 15px; font-weight: 700; color: var(--on-dark-bright); margin: 0;" id="mc-modal-title">Automation Builder</h3>
-            <p style="font-size: 12px; color: var(--ink-mute); margin: 2px 0 0 0;" id="mc-modal-subtitle">Atur pemicu kata kunci dan aksi balasan otomatis ManyChat Flow</p>
+            <p style="font-size: 12px; color: var(--ink-mute); margin: 2px 0 0 0;" id="mc-modal-subtitle">Atur pemicu kata kunci dan aksi balasan otomatis</p>
           </div>
         </div>
         <button type="button" class="btn-ghost" onclick="closeAutomationBuilder()" style="color: var(--ink-mute); font-size: 18px; padding: 4px 8px; border-radius: var(--radius-sm); border: none; background: transparent; cursor: pointer;">
@@ -924,6 +923,6 @@
     </div>
   </div>
 
-  <script src="/static/js/dashboard.js?v=9.1"></script>
+  <script src="/static/js/dashboard.js?v=9.2"></script>
 </body>
 </html>

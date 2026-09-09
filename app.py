@@ -317,7 +317,7 @@ def load_post_rules(force_refresh=False):
 
 
 def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg="", request_btn_text="Kirim Linknya", follow_btn_text="Sudah Follow", intro_dm_message="", trigger_type="any_word", trigger_keywords="", reply_mode="custom"):
-    """Save custom automation rule for a specific post (ManyChat unified flow)."""
+    """Save custom automation rule for a specific post (unified flow)."""
     global _POST_RULES_CACHE
     _POST_RULES_CACHE = None
     btn_text = (button_text or "Ini link aksesnya").strip()
@@ -1798,7 +1798,7 @@ def run_auto_reply_scan():
                         replied_ids.add(c_id)
                         continue
 
-                    # 4. Check ManyChat trigger condition ("And this comment has:")
+                    # 4. Check trigger condition ("And this comment has:")
                     raw_text = comment.get("text", "").strip()
                     lower_text = raw_text.lower()
 
@@ -2024,7 +2024,7 @@ def process_webhook_event(payload):
                     post_dm_format = str(post_rule.get("dm_format", "button")).strip()
                     post_use_smart_link = post_rule.get("use_smart_link", True)
                     button_label = str(post_rule.get("button_text", "Buka Link Akses")).strip()
-                    # Check ManyChat trigger condition ("And this comment has:")
+                    # Check trigger condition ("And this comment has:")
                     trigger_type = post_rule.get("trigger_type", "any_word")
                     trigger_keywords = post_rule.get("trigger_keywords", "")
                     if trigger_type == "specific_words" and trigger_keywords:

@@ -383,7 +383,7 @@ async function loadPostRulesView() {
 
       const statusBadge = isSaved
         ? `<span class="pill-badge pill-green" style="font-size: 11px; font-weight: 700; padding: 3px 10px; display: inline-flex; align-items: center; gap: 4px;">
-             <i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> AKTIF (ManyChat Flow)
+             <i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> AKTIF (Auto Flow)
            </span>`
         : `<span class="pill-badge" style="font-size: 11px; color: var(--ink-mute); background: var(--canvas-night-soft); border: 1px solid var(--border-subtle); padding: 3px 10px; display: inline-flex; align-items: center; gap: 4px;">
              <i data-lucide="circle-dashed" style="width: 12px; height: 12px;"></i> Belum Diatur
@@ -434,7 +434,7 @@ async function loadPostRulesView() {
             </a>
           </div>
 
-          <!-- Center: ManyChat Flow Summary -->
+          <!-- Center: Automation Flow Summary -->
           <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
@@ -449,7 +449,7 @@ async function loadPostRulesView() {
             <!-- Flow Step Badges -->
             <div style="background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
               <div style="font-size: 11px; color: var(--ink-mute); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
-                ⚡ Alur Otomatisasi (ManyChat Flow):
+                ⚡ Alur Otomatisasi:
               </div>
               <div>${triggerBadgeHtml}</div>
               <div style="display: flex; align-items: center; gap: 16px; font-size: 12px; margin-top: 2px; flex-wrap: wrap;">
@@ -600,7 +600,7 @@ async function savePostRule(postId) {
 }
 
 // ============================================================================
-// ManyChat-Style Automation Studio Controller & Reactive Live Phone Simulator
+// Unified Automation Studio Controller & Reactive Live Phone Simulator
 // ============================================================================
 let _MC_BUILDER_STATE = {
   postId: '',
