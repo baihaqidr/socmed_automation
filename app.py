@@ -667,6 +667,20 @@ def reply_to_comment(comment_id, message):
     return requests.post(url, data=data).json()
 
 
+def get_account_for_post(post_id):
+    """Find the Instagram Account ID that owns a given post_id."""
+    if not post_id:
+        return get_active_account_id()
+    p_str = str(post_id).strip()
+    for acc_id, posts in _POSTS_CACHE.items():
+        for p in posts:
+            if str(p.get("id")) == p_str:
+                return acc_id
+    if p_str == "18123081262893453":
+        return "17841466987503898"
+    return get_active_account_id()
+
+
 _PAGE_TOKEN_CACHE = {}  # key: acc_id or page_id -> (page_id, page_token)
 
 def get_page_for_ig_account(acc_id):
@@ -1831,22 +1845,28 @@ def run_auto_reply_scan():
                                 acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(acc_id)), None)
                                 acc_name = acc_info["username"] if acc_info else "kami"
                                 require_follow = bool(post_rule.get("require_follow", False))
+                                is_already_following = False
 
-                                if require_follow:
-                                    # Step 1: Send Friendly Intro DM with [Kirim Linknya] postback button docked in bubble card
-                                    intro_template = post_rule.get("intro_dm_message") or (
-                                        "Halo kak! Seneng banget kamu mampir, makasih banyak yaa 😊\n\n"
-                                        "Klik tombol di bawah ini buat ambil linknya yaa ✨"
+                                if require_follow and from_id:
+                                    f_check = check_is_following_business(scoped_user_id=from_id, target_acc_id=acc_id)
+                                    if f_check.get("is_user_follow_business") is True:
+                                        is_already_following = True
+
+                                if require_follow and not is_already_following:
+                                    # User has NOT followed yet! Gatekeeper prompt with [Sudah Follow] button
+                                    follow_prompt_template = post_rule.get("follow_prompt") or (
+                                        "Eits bentar kak, link ini khusus buat followers kita nih ✨\n\n"
+                                        "Yuk follow dulu akun kita, abis itu klik tombol di bawah biar langsung dikirimin yaa! 🎉"
                                     )
-                                    intro_msg = intro_template.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kita").replace("{account}", "kita")
-                                    req_btn_label = str(post_rule.get("request_btn_text") or "Kirim Linknya").strip()[:20]
-                                    quick_replies = [{"title": req_btn_label, "payload": f"REQ_LINK_{p_id}"}]
+                                    follow_prompt = follow_prompt_template.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kita").replace("{account}", "kita")
+                                    follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
+                                    quick_replies = [{"title": follow_btn_label, "payload": f"CHECK_FOLLOW_{p_id}"}]
 
-                                    set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=from_id, step="awaiting_request")
+                                    set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=from_id, step="awaiting_follow")
 
                                     dm_res = send_private_dm(
                                         comment_id=c_id,
-                                        message=intro_msg,
+                                        message=follow_prompt,
                                         target_acc_id=acc_id,
                                         quick_replies=quick_replies,
                                         use_smart_link=False,
@@ -1854,12 +1874,13 @@ def run_auto_reply_scan():
                                     )
                                     actual_uid = dm_res.get("result", {}).get("recipient_id")
                                     if actual_uid:
-                                        set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=actual_uid, step="awaiting_request")
+                                        set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=actual_uid, step="awaiting_follow")
                                     dm_status = dm_res.get("status", "sent")
                                     if dm_status == "success":
                                         total_dms_sent += 1
                                 else:
-                                    # Direct Delivery: No follow gatekeeper
+                                    # User IS ALREADY FOLLOWING (or follow gatekeeper is disabled)!
+                                    # Direct delivery of the CTA link / Button Template!
                                     if post_dm_message:
                                         dm_content = post_dm_message.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kami").replace("{account}", "kami")
                                     else:
@@ -2023,38 +2044,46 @@ def process_webhook_event(payload):
 
                     if (post_send_dm or post_cta_link) and not is_burst_duplicate:
                         _LAST_DM_TIME_PER_USER[(user_handle.lower(), p_id)] = now_ts
+                        post_acc_id = get_account_for_post(p_id) or entry_id
                         require_follow = bool(post_rule.get("require_follow", False))
                         post_dm_format = str(post_rule.get("dm_format", "button")).strip()
                         effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link and post_dm_format != "button") else post_cta_link
-                        acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(entry_id)), None)
+                        acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(post_acc_id)), None)
                         acc_name = acc_info["username"] if acc_info else "kami"
+                        is_already_following = False
 
-                        if require_follow:
-                            # Step 1: Send Friendly Intro DM with [Kirim Linknya] postback button docked in bubble card
-                            intro_template = post_rule.get("intro_dm_message") or (
-                                "Halo kak! Seneng banget kamu mampir, makasih banyak yaa 😊\n\n"
-                                "Klik tombol di bawah ini buat ambil linknya yaa ✨"
+                        if require_follow and from_id:
+                            f_check = check_is_following_business(scoped_user_id=from_id, target_acc_id=post_acc_id)
+                            if f_check.get("is_user_follow_business") is True:
+                                is_already_following = True
+
+                        if require_follow and not is_already_following:
+                            # User has NOT followed yet! Gatekeeper prompt with [Sudah Follow] button
+                            follow_prompt_template = post_rule.get("follow_prompt") or (
+                                "Eits bentar kak, link ini khusus buat followers kita nih ✨\n\n"
+                                "Yuk follow dulu akun kita, abis itu klik tombol di bawah biar langsung dikirimin yaa! 🎉"
                             )
-                            intro_msg = intro_template.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kita").replace("{account}", "kita")
-                            req_btn_label = str(post_rule.get("request_btn_text") or "Kirim Linknya").strip()[:20]
-                            quick_replies = [{"title": req_btn_label, "payload": f"REQ_LINK_{p_id}"}]
+                            follow_prompt = follow_prompt_template.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kita").replace("{account}", "kita")
+                            follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
+                            quick_replies = [{"title": follow_btn_label, "payload": f"CHECK_FOLLOW_{p_id}"}]
 
-                            set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id, user_id=from_id, step="awaiting_request")
+                            set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=post_acc_id, user_id=from_id, step="awaiting_follow")
 
                             dm_res = send_private_dm(
                                 comment_id=c_id,
-                                message=intro_msg,
-                                target_acc_id=entry_id,
+                                message=follow_prompt,
+                                target_acc_id=post_acc_id,
                                 quick_replies=quick_replies,
                                 use_smart_link=False,
                                 post_id=p_id
                             )
                             actual_uid = dm_res.get("result", {}).get("recipient_id")
                             if actual_uid:
-                                set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id, user_id=actual_uid, step="awaiting_request")
-                            print(f"[WEBHOOK BOT] Follow Gatekeeper Intro DM sent to @{user_handle}: {dm_res}")
+                                set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=post_acc_id, user_id=actual_uid, step="awaiting_follow")
+                            print(f"[WEBHOOK BOT] Follow Gatekeeper DM sent to @{user_handle}: {dm_res}")
                         else:
-                            # Direct Delivery: No follow gatekeeper
+                            # User IS ALREADY FOLLOWING (or follow gatekeeper is disabled)!
+                            # Direct Delivery of CTA link / Button Template!
                             if post_dm_message:
                                 dm_content = post_dm_message.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kami").replace("{account}", "kami")
                             else:
@@ -2067,7 +2096,7 @@ def process_webhook_event(payload):
                             dm_res = send_private_dm(
                                 comment_id=c_id,
                                 message=dm_content,
-                                target_acc_id=entry_id,
+                                target_acc_id=post_acc_id,
                                 button_url=post_cta_link if post_cta_link else None,
                                 button_title=button_label or "Buka Link Akses",
                                 dm_format=post_dm_format,
@@ -2165,7 +2194,7 @@ def handle_incoming_dm_follow_check(payload):
             if not p_id:
                 continue
 
-            target_acc_id = (pending.get("acc_id") if pending else None) or entry_id
+            target_acc_id = get_account_for_post(p_id) or (pending.get("acc_id") if pending else None) or entry_id
             current_step = (pending.get("step") if pending else None) or "awaiting_request"
             post_rule = post_rules.get(p_id, {})
             acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(target_acc_id)), None)
@@ -2204,10 +2233,10 @@ def handle_incoming_dm_follow_check(payload):
 
             require_follow = bool(post_rule.get("require_follow", False))
 
-            if not user_info:
-                user_info = check_is_following_business(scoped_user_id=sender_id, target_acc_id=target_acc_id)
-                user_handle = user_info.get("username", "").lower()
-
+            # Query follow status against the post owner account
+            user_info = check_is_following_business(scoped_user_id=sender_id, target_acc_id=target_acc_id)
+            if user_info.get("username"):
+                user_handle = user_info.get("username").lower()
             is_following = bool(user_info.get("is_user_follow_business", False))
             has_meta_err = bool(user_info.get("error"))
 
@@ -2261,11 +2290,11 @@ def handle_incoming_dm_follow_check(payload):
                     )
             else:
                 # STAGE 2 -> User tapped [Sudah Follow] or replied 'Sudah' -> Verify Follow Status & Deliver Link
-                if not is_following and not has_meta_err:
+                if not is_following:
                     # User has NOT followed yet! Friendly reminder + [Sudah Follow] button docked in bubble card
                     not_f_template = post_rule.get("not_following_msg") or (
                         "Eh kamu belum follow akun kita nih kak 🥺\n\n"
-                        "Yuk follow dulu, terus klik tombol di bawah lagi yaa:"
+                        "Yuk follow dulu akun kita, terus klik tombol di bawah lagi yaa:"
                     )
                     not_f_msg = not_f_template.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kita").replace("{account}", "kita")
                     follow_btn_label = str(post_rule.get("follow_btn_text") or "Sudah Follow").strip()[:20]
