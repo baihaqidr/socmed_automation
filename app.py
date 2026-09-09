@@ -1875,7 +1875,11 @@ def run_auto_reply_scan():
                                     if post_dm_message:
                                         dm_content = post_dm_message.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kami").replace("{account}", "kami")
                                     else:
-                                        dm_content = "Halo kak! Makasih banyak ya udah mampir ke postingan kita 😊\n\nSilakan klik tombol di bawah ini buat langsung akses website kami:"
+                                        dm_content = (
+                                            "Halo kak! Makasih banyak ya udah mampir ke postingan kita 😊\n\n"
+                                            "Silakan klik tombol di bawah ini buat langsung akses info lengkapnya yaa.\n\n"
+                                            "Oiya kak, bantu follow akun kita juga ya biar bisa dapet lebih banyak insight & update menarik lainnya! Makasih banyak ✨"
+                                        )
 
                                     # Only add raw text link if format is NOT button
                                     if post_dm_format != "button" and effective_link and effective_link not in dm_content:
@@ -1972,7 +1976,8 @@ def process_webhook_event(payload):
                     post_custom_reply = post_rule.get("custom_reply", "")
                     post_send_dm = post_rule.get("send_dm", False)
                     post_dm_message = post_rule.get("dm_message", "")
-                    post_dm_format = str(post_rule.get("dm_format", "card")).strip()
+                    post_dm_format = str(post_rule.get("dm_format", "button")).strip()
+                    post_use_smart_link = post_rule.get("use_smart_link", True)
                     button_label = str(post_rule.get("button_text", "Buka Link Akses")).strip()
 
                     final_reply = None
@@ -2070,7 +2075,11 @@ def process_webhook_event(payload):
                             if post_dm_message:
                                 dm_content = post_dm_message.replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kami").replace("{account}", "kami")
                             else:
-                                dm_content = "Halo kak! Makasih banyak ya udah mampir ke postingan kita 😊\n\nSilakan klik tombol di bawah ini buat langsung akses website kami:"
+                                dm_content = (
+                                    "Halo kak! Makasih banyak ya udah mampir ke postingan kita 😊\n\n"
+                                    "Silakan klik tombol di bawah ini buat langsung akses info lengkapnya yaa.\n\n"
+                                    "Oiya kak, bantu follow akun kita juga ya biar bisa dapet lebih banyak insight & update menarik lainnya! Makasih banyak ✨"
+                                )
 
                             # Only add raw text link if format is NOT button
                             if post_dm_format != "button" and effective_link and effective_link not in dm_content:
