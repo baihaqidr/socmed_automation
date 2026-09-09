@@ -1861,6 +1861,9 @@ def run_auto_reply_scan():
                                         use_smart_link=False,
                                         post_id=p_id
                                     )
+                                    actual_uid = dm_res.get("result", {}).get("recipient_id")
+                                    if actual_uid:
+                                        set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=acc_id, user_id=actual_uid, step="awaiting_request")
                                     dm_status = dm_res.get("status", "sent")
                                     if dm_status == "success":
                                         total_dms_sent += 1
@@ -2055,6 +2058,9 @@ def process_webhook_event(payload):
                                 use_smart_link=False,
                                 post_id=p_id
                             )
+                            actual_uid = dm_res.get("result", {}).get("recipient_id")
+                            if actual_uid:
+                                set_pending_follow(user_handle=user_handle, post_id=p_id, acc_id=entry_id, user_id=actual_uid, step="awaiting_request")
                             print(f"[WEBHOOK BOT] Follow Gatekeeper Intro DM sent to @{user_handle}: {dm_res}")
                         else:
                             # Direct Delivery: No follow gatekeeper
@@ -2146,22 +2152,57 @@ def handle_incoming_dm_follow_check(payload):
                     "user_id": sender_id
                 }
 
-            if not pending:
+            # Fallback 1: Extract post_id from pending if available
+            if not p_id and pending:
+                p_id = str(pending.get("post_id", ""))
+
+            # Fallback 2: Check recent comment in Supabase replied_comments for this user handle
+            if not p_id and user_handle and supabase_client:
+                try:
+                    c_res = supabase_client.table("replied_comments").select("post_id").eq("username", user_handle).order("replied_at", desc=True).limit(1).execute()
+                    if c_res.data:
+                        p_id = str(c_res.data[0].get("post_id", ""))
+                except Exception:
+                    pass
+
+            # Fallback 3: Active target post with follow/cta rules (e.g. 18123081262893453)
+            if not p_id:
+                active_rule_pids = [k for k, v in post_rules.items() if v.get("is_active", True) and (v.get("require_follow") or v.get("cta_link"))]
+                if active_rule_pids:
+                    p_id = "18123081262893453" if "18123081262893453" in active_rule_pids else active_rule_pids[0]
+
+            if not p_id:
                 continue
 
-            p_id = str(pending.get("post_id", ""))
-            target_acc_id = pending.get("acc_id") or entry_id
-            current_step = pending.get("step", "awaiting_request")
+            target_acc_id = (pending.get("acc_id") if pending else None) or entry_id
+            current_step = (pending.get("step") if pending else None) or "awaiting_request"
             post_rule = post_rules.get(p_id, {})
             acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(target_acc_id)), None)
             acc_name = acc_info["username"] if acc_info else "kami"
-            display_user = user_handle or pending.get("user_handle") or ""
+            display_user = user_handle or (pending.get("user_handle") if pending else "") or ""
 
-            lower_msg = raw_msg.lower()
-            is_req_link = ("req_link" in qr_payload.lower() or 
-                           "send me the link" in lower_msg or 
-                           "kirim link" in lower_msg or 
-                           (current_step == "awaiting_request" and "following" not in lower_msg and "sudah" not in lower_msg))
+            lower_msg = raw_msg.lower().strip()
+            # Detect Request Link Intent vs Confirm Follow Intent (supports mobile buttons, web clicks & text replies)
+            if ("req_link" in qr_payload.lower() or 
+                "kirim link" in lower_msg or 
+                "send me the link" in lower_msg or 
+                "ambil link" in lower_msg or 
+                "mau link" in lower_msg):
+                is_req_link = True
+                is_check_follow = False
+            elif ("check_follow" in qr_payload.lower() or 
+                  "sudah follow" in lower_msg or 
+                  "following" in lower_msg or 
+                  "udah follow" in lower_msg or 
+                  lower_msg in ["sudah", "udah", "done", "sdh", "done follow"]):
+                is_req_link = False
+                is_check_follow = True
+            elif current_step == "awaiting_follow":
+                is_req_link = False
+                is_check_follow = True
+            else:
+                is_req_link = True
+                is_check_follow = False
 
             now_ts = time.time()
             action_key = (str(sender_id), str(p_id), "req" if is_req_link else "chk")
@@ -2182,7 +2223,7 @@ def handle_incoming_dm_follow_check(payload):
             if is_req_link:
                 # STAGE 1 -> Check follow status! If user is ALREADY following, skip gatekeeper and deliver link directly!
                 if require_follow and not is_following:
-                    # User has NOT followed yet -> Send Gatekeeper Prompt with [Sudah Follow] button
+                    # User has NOT followed yet (or unknown status) -> Send Gatekeeper Prompt with [Sudah Follow] button
                     follow_prompt_template = post_rule.get("follow_prompt") or (
                         "Eits bentar kak, link ini khusus buat followers kita nih ✨\n\n"
                         "Yuk follow dulu akun kita, abis itu klik tombol di bawah biar langsung dikirimin yaa! 🎉"
@@ -2205,7 +2246,7 @@ def handle_incoming_dm_follow_check(payload):
                     clear_pending_follow(sender_id)
                     if user_handle:
                         clear_pending_follow(user_handle)
-                    if pending.get("user_handle"):
+                    if pending and pending.get("user_handle"):
                         clear_pending_follow(pending.get("user_handle"))
 
                     post_cta_link = str(post_rule.get("cta_link", "")).strip()
@@ -2251,7 +2292,7 @@ def handle_incoming_dm_follow_check(payload):
                     clear_pending_follow(sender_id)
                     if user_handle:
                         clear_pending_follow(user_handle)
-                    if pending.get("user_handle"):
+                    if pending and pending.get("user_handle"):
                         clear_pending_follow(pending.get("user_handle"))
 
                     post_cta_link = str(post_rule.get("cta_link", "")).strip()
