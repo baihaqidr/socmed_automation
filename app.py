@@ -878,10 +878,11 @@ def send_private_dm(comment_id=None, recipient_id=None, message="", target_acc_i
             clean_url = f"https://{clean_url}"
 
     smart_link_url = clean_url
-    if clean_url and use_smart_link:
+    # Only wrap in Vercel OG preview smart link for Card mode (Button mode opens destination directly in 0s!)
+    if clean_url and use_smart_link and dm_format != "button":
         smart_link_url = make_smart_link(clean_url, button_title, post_id=post_id)
 
-    if use_smart_link:
+    if use_smart_link and dm_format != "button":
         message = wrap_text_urls(message, button_title, post_id=post_id)
 
     # Mode 0: Interactive Quick Replies (Native Instagram Tappable Buttons as shown in AI Ads example)
@@ -1340,6 +1341,19 @@ def render_smart_page(target_url, custom_title="", custom_img="", canonical_url=
 
     if not target_url.startswith("http://") and not target_url.startswith("https://"):
         target_url = f"https://{target_url}"
+
+    # Detect crawler vs human visitor:
+    ua = (request.headers.get('User-Agent') or '').lower()
+    crawler_bots = [
+        'facebookexternalhit', 'facebot', 'meta-externalagent',
+        'twitterbot', 'whatsapp', 'telegrambot',
+        'slackbot', 'linkedinbot', 'discordbot', 'pinterest', 'googlebot'
+    ]
+    is_crawler = any(bot in ua for bot in crawler_bots)
+
+    # For real human visitors (mobile browser / in-app browser), immediately redirect via HTTP 302 (instant 0s, no scraping delay!)
+    if not is_crawler:
+        return redirect(target_url, code=302)
 
     parsed = urllib.parse.urlparse(target_url)
     domain = parsed.netloc or "website"
@@ -1828,7 +1842,7 @@ def run_auto_reply_scan():
                             button_label = str(post_rule.get("button_text", "")).strip() or "Buka Link Akses"
                             post_dm_format = str(post_rule.get("dm_format", "button")).strip()
                             post_use_smart_link = post_rule.get("use_smart_link", True)
-                            effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
+                            effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link and post_dm_format != "button") else post_cta_link
 
                             now_ts = time.time()
                             last_dm_ts = _LAST_DM_TIME_PER_USER.get((user_handle.lower(), p_id), 0)
@@ -2033,8 +2047,8 @@ def process_webhook_event(payload):
                     if (post_send_dm or post_cta_link) and not is_burst_duplicate:
                         _LAST_DM_TIME_PER_USER[(user_handle.lower(), p_id)] = now_ts
                         require_follow = bool(post_rule.get("require_follow", False))
-                        post_use_smart_link = post_rule.get("use_smart_link", True)
-                        effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link) else post_cta_link
+                        post_dm_format = str(post_rule.get("dm_format", "button")).strip()
+                        effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link and post_dm_format != "button") else post_cta_link
                         acc_info = next((a for a in KNOWN_INSTAGRAM_ACCOUNTS if str(a["id"]) == str(entry_id)), None)
                         acc_name = acc_info["username"] if acc_info else "kami"
 
