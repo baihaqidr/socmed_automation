@@ -495,11 +495,11 @@ function filterPostCards(type) {
   cards.forEach(card => {
     const isSaved = card.getAttribute('data-saved') === 'true';
     if (type === 'all') {
-      card.style.display = 'grid';
+      card.style.display = 'flex';
     } else if (type === 'saved') {
-      card.style.display = isSaved ? 'grid' : 'none';
+      card.style.display = isSaved ? 'flex' : 'none';
     } else if (type === 'unsaved') {
-      card.style.display = !isSaved ? 'grid' : 'none';
+      card.style.display = !isSaved ? 'flex' : 'none';
     }
   });
 }

@@ -797,6 +797,38 @@ svg.lucide, [data-lucide] {
   color: var(--primary) !important;
 }
 
+/* Post Card Item Robust Flex Layout */
+.post-card-item {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 20px;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.post-card-item[style*="display: none"] {
+  display: none !important;
+}
+
+/* Post Cards Filter Buttons */
+.filter-btn-post {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.filter-btn-post:hover {
+  background: var(--canvas-night-soft);
+  color: var(--on-dark-bright);
+}
+
+.filter-btn-post.active {
+  background: rgba(62, 207, 142, 0.15) !important;
+  color: var(--primary) !important;
+  border-color: rgba(62, 207, 142, 0.4) !important;
+  font-weight: 600;
+}
+
 /* ==========================================================================
    Unified Automation Flow Studio Styles
    ========================================================================== */
