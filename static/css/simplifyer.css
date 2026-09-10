@@ -28,28 +28,28 @@
   --primary: #4B93FF;
   --primary-deep: #2B7FFF;
   --primary-soft: #70BEFF;
-  --primary-glow: rgba(75, 147, 255, 0.22);
+  --primary-glow: rgba(75, 147, 255, 0.18);
   --on-primary: #FFFFFF; /* High-contrast crisp white on blue */
   
-  /* Ink Palette */
-  --ink: #171717;
-  --ink-secondary: #212121;
-  --ink-mute: #8E8E8E;
+  /* Ink Palette (Muse.ai Neutral Grays) */
+  --ink: #111112;
+  --ink-secondary: #181819;
+  --ink-mute: #9CA3AF;
   --ink-mute-2: #6B7280;
   --ink-faint: #4B5563;
-  --on-dark: #EDEDED;
+  --on-dark: #F3F4F6;
   --on-dark-bright: #FFFFFF;
 
-  /* Surfaces & Canvas (Dark Canvas) */
-  --canvas-night: #101216;
-  --canvas-night-soft: #161920;
-  --card-bg: #1B1E26;
-  --card-surface: #222631;
-  --card-hover: #282D3A;
+  /* Surfaces & Canvas (Muse.ai Matte Black & Deep Charcoal Palette) */
+  --canvas-night: #0E0E10;
+  --canvas-night-soft: #161719;
+  --card-bg: #1A1B1E;
+  --card-surface: #222327;
+  --card-hover: #292A2E;
 
-  /* Hairlines & Borders */
-  --border-color: #272C38;
-  --border-subtle: #1F232D;
+  /* Hairlines & Borders (Crisp Neutral Translucent Borders) */
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
   --border-focus: #4B93FF;
 
   /* Accents */
@@ -72,16 +72,18 @@
   --spacing-xl: 24px;
   --spacing-xxl: 32px;
 
-  /* Radii Scale */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Radii Scale (Muse.ai Smooth Rounded Pill Aesthetic) */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
   --radius-full: 9999px;
 
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  --shadow-dropdown: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-dropdown: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
+
 
 /* Muse.ai Clean Light Mode Design System */
 [data-theme="light"] {
@@ -342,19 +344,20 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  background: rgba(62, 207, 142, 0.15);
-  border: 1px solid rgba(62, 207, 142, 0.3);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--primary-glow);
+  border: 1px solid rgba(75, 147, 255, 0.35);
   color: var(--primary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .supa-btn-connect:hover {
-  background: rgba(62, 207, 142, 0.25);
+  background: rgba(75, 147, 255, 0.25);
+  border-color: var(--primary);
 }
 
 /* Supabase Dropdown Menus */
@@ -408,7 +411,7 @@ body {
 }
 
 .dropdown-item.active {
-  background: rgba(62, 207, 142, 0.1);
+  background: var(--primary-glow);
   color: var(--primary);
   font-weight: 600;
 }
@@ -563,51 +566,59 @@ body {
   color: var(--on-dark-bright);
 }
 
-/* Buttons (DESIGN-supabase rules) */
+/* Buttons (Muse.ai Pill-Shaped Aesthetic) */
 .btn-primary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   background-color: var(--primary);
-  color: var(--on-primary); /* Signature near-black text on green */
+  color: var(--on-primary);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  padding: 10px 22px;
+  border-radius: var(--radius-full);
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  box-shadow: 0 4px 16px var(--primary-glow);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary:hover {
   background-color: var(--primary-deep);
+  box-shadow: 0 6px 22px rgba(75, 147, 255, 0.38);
+  transform: translateY(-1px);
 }
 
 .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-secondary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   background-color: var(--canvas-night-soft);
   color: var(--on-dark);
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-color);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background-color: var(--card-hover);
-  border-color: var(--ink-mute-2);
+  background-color: var(--card-surface);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--on-dark-bright);
 }
 
 /* Forms */
@@ -627,18 +638,19 @@ body {
   width: 100%;
   background-color: var(--canvas-night-soft);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
   color: var(--on-dark-bright);
   font-family: var(--font-sans);
   font-size: 13px;
   outline: none;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .form-input:focus, .form-textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(62, 207, 142, 0.2);
+  background-color: var(--card-bg);
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 .form-input::placeholder, .form-textarea::placeholder {
@@ -981,12 +993,12 @@ svg.lucide, [data-lucide] {
 
 .mc-radio-box:hover {
   border-color: var(--primary);
-  background: rgba(62, 207, 142, 0.03);
+  background: var(--primary-glow);
 }
 
 .mc-radio-box.active {
   border-color: var(--primary);
-  background: rgba(62, 207, 142, 0.08);
+  background: var(--primary-glow);
   box-shadow: 0 0 0 1px var(--primary);
 }
 
@@ -1459,35 +1471,37 @@ svg.lucide, [data-lucide] {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 12px;
+  padding: 11px 14px;
   background: var(--canvas-night-soft);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--ink-mute);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
 .target-pill-btn:hover {
-  border-color: var(--border-subtle);
-  color: var(--ink-strong);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--card-surface);
+  color: var(--on-dark-bright);
 }
 
 .target-pill-btn.active {
   border-color: var(--primary);
   background: var(--primary-glow);
   color: var(--primary);
+  box-shadow: 0 0 16px var(--primary-glow);
 }
 
 /* Upload Dropzone */
 .upload-dropzone {
-  border: 2px dashed var(--border-color);
-  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--radius-lg);
   background: var(--canvas-night-soft);
-  padding: 22px 16px;
+  padding: 24px 16px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1498,15 +1512,15 @@ svg.lucide, [data-lucide] {
 
 .upload-dropzone:hover, .upload-dropzone.dragover {
   border-color: var(--primary);
-  background: rgba(34, 197, 94, 0.05);
+  background: var(--primary-glow);
   transform: translateY(-1px);
 }
 
 .upload-dropzone-icon {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(34, 197, 94, 0.12);
+  background: var(--primary-glow);
   color: var(--primary);
   display: inline-flex;
   align-items: center;
