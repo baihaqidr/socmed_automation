@@ -1,17 +1,35 @@
 /* ==========================================================================
-   SUPABASE DESIGN SYSTEM (DESIGN-supabase.md)
-   Engineered technical aesthetic with Emerald Green signature (#3ECF8E)
-   100% Lucide Icons Integration
+   MUSE.AI DESIGN SYSTEM ADAPTATION
+   Signature Muse.ai Electric Blue Accent (#4B93FF / #0066E2)
+   Authentic Optimistic AI Typography & 100% Lucide Icons Integration
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Exact Muse.ai Optimistic AI Variable Webfonts */
+@font-face {
+  font-family: 'Optimistic Text';
+  src: url('/static/fonts/OptimisticAI.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Optimistic Mono';
+  src: url('/static/fonts/OptimisticMono.woff2') format('woff2');
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root, [data-theme="dark"] {
-  /* Supabase Emerald Brand Tokens */
-  --primary: #3ECF8E;
-  --primary-deep: #24B47E;
-  --primary-soft: #4ADE80;
-  --on-primary: #171717; /* Signature dark ink on green button */
+  /* Muse.ai Signature Electric Blue Brand Tokens (Dark Mode) */
+  --primary: #4B93FF;
+  --primary-deep: #2B7FFF;
+  --primary-soft: #70BEFF;
+  --primary-glow: rgba(75, 147, 255, 0.22);
+  --on-primary: #FFFFFF; /* High-contrast crisp white on blue */
   
   /* Ink Palette */
   --ink: #171717;
@@ -22,28 +40,28 @@
   --on-dark: #EDEDED;
   --on-dark-bright: #FFFFFF;
 
-  /* Surfaces & Canvas (Supabase Studio Canvas Night) */
-  --canvas-night: #121212;
-  --canvas-night-soft: #171717;
-  --card-bg: #1C1C1C;
-  --card-surface: #222222;
-  --card-hover: #262626;
+  /* Surfaces & Canvas (Dark Canvas) */
+  --canvas-night: #101216;
+  --canvas-night-soft: #161920;
+  --card-bg: #1B1E26;
+  --card-surface: #222631;
+  --card-hover: #282D3A;
 
   /* Hairlines & Borders */
-  --border-color: #2E2E2E;
-  --border-subtle: #232323;
-  --border-focus: #3ECF8E;
+  --border-color: #272C38;
+  --border-subtle: #1F232D;
+  --border-focus: #4B93FF;
 
   /* Accents */
-  --accent-blue: #38BDF8;
+  --accent-blue: #4B93FF;
   --accent-purple: #818CF8;
   --accent-amber: #F59E0B;
   --accent-emerald: #10B981;
   --danger: #EF4444;
 
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+  /* Typography (Muse.ai Official Optimistic Stack) */
+  --font-sans: 'Optimistic Text', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Optimistic Mono', 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
 
   /* Spacing Scale */
   --spacing-xxs: 2px;
@@ -54,7 +72,7 @@
   --spacing-xl: 24px;
   --spacing-xxl: 32px;
 
-  /* Radii Scale (DESIGN-supabase: 6px for buttons, 8px inputs, 12px cards) */
+  /* Radii Scale */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -65,12 +83,13 @@
   --shadow-dropdown: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-/* Supabase Studio Light / White Mode Design System */
+/* Muse.ai Clean Light Mode Design System */
 [data-theme="light"] {
-  /* Supabase Emerald Brand Tokens for Light Mode */
-  --primary: #10B981;
-  --primary-deep: #059669;
-  --primary-soft: #34D399;
+  /* Muse.ai Signature Sapphire Blue Tokens for Light Mode */
+  --primary: #0066E2;
+  --primary-deep: #0052B8;
+  --primary-soft: #3EAAFF;
+  --primary-glow: rgba(0, 102, 226, 0.16);
   --on-primary: #FFFFFF;
   
   /* Ink Palette for Light Mode */
@@ -82,7 +101,7 @@
   --on-dark: #1E293B;
   --on-dark-bright: #0F172A;
 
-  /* Surfaces & Canvas (Supabase Studio Clean White) */
+  /* Surfaces & Canvas */
   --canvas-night: #F8FAFC;
   --canvas-night-soft: #FFFFFF;
   --card-bg: #FFFFFF;
@@ -92,10 +111,10 @@
   /* Hairlines & Borders */
   --border-color: #E2E8F0;
   --border-subtle: #F1F5F9;
-  --border-focus: #10B981;
+  --border-focus: #0066E2;
 
   /* Accents adjusted for crisp light visibility */
-  --accent-blue: #0284C7;
+  --accent-blue: #0066E2;
   --accent-purple: #6366F1;
   --accent-amber: #D97706;
   --accent-emerald: #059669;
@@ -171,8 +190,8 @@ body {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: rgba(62, 207, 142, 0.15);
-  border: 1px solid rgba(62, 207, 142, 0.3);
+  background: var(--primary-glow);
+  border: 1px solid rgba(75, 147, 255, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -507,10 +526,10 @@ body {
   justify-content: center;
 }
 
-.stat-icon.emerald {
-  background: rgba(62, 207, 142, 0.12);
+.stat-icon.emerald, .stat-icon.primary {
+  background: var(--primary-glow);
   color: var(--primary);
-  border: 1px solid rgba(62, 207, 142, 0.25);
+  border: 1px solid rgba(75, 147, 255, 0.3);
 }
 
 .stat-icon.blue {
@@ -641,10 +660,10 @@ body {
   font-weight: 600;
 }
 
-.pill-green, .badge-success {
-  background: rgba(62, 207, 142, 0.12);
+.pill-green, .badge-success, .pill-primary {
+  background: var(--primary-glow);
   color: var(--primary);
-  border: 1px solid rgba(62, 207, 142, 0.3);
+  border: 1px solid rgba(75, 147, 255, 0.35);
 }
 
 .pill-amber {
@@ -823,9 +842,9 @@ svg.lucide, [data-lucide] {
 }
 
 .filter-btn-post.active {
-  background: rgba(62, 207, 142, 0.15) !important;
+  background: var(--primary-glow) !important;
   color: var(--primary) !important;
-  border-color: rgba(62, 207, 142, 0.4) !important;
+  border-color: rgba(75, 147, 255, 0.45) !important;
   font-weight: 600;
 }
 
@@ -1417,32 +1436,39 @@ svg.lucide, [data-lucide] {
 
 .studio-pill.active {
   background: var(--primary);
-  color: #000000;
-  box-shadow: 0 2px 10px rgba(34, 197, 94, 0.35);
+  color: #ffffff;
+  box-shadow: 0 4px 14px var(--primary-glow);
 }
 
 /* Target Selector Pills */
 .target-selector-wrap {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 16px;
+}
+
+@media (max-width: 900px) {
+  .target-selector-wrap {
+    grid-template-columns: 1fr;
+  }
 }
 
 .target-pill-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 11px 16px;
+  gap: 8px;
+  padding: 11px 12px;
   background: var(--canvas-night-soft);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   color: var(--ink-mute);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .target-pill-btn:hover {
@@ -1452,7 +1478,7 @@ svg.lucide, [data-lucide] {
 
 .target-pill-btn.active {
   border-color: var(--primary);
-  background: rgba(34, 197, 94, 0.08);
+  background: var(--primary-glow);
   color: var(--primary);
 }
 

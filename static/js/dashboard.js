@@ -366,7 +366,7 @@ async function loadPostRulesView() {
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 12px 18px; background: var(--canvas-night-soft); border-radius: var(--radius-sm); border: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 13px; font-weight: 600; color: var(--on-dark);">Total: ${posts.length} Post</span>
-          <span class="pill-badge pill-green" style="font-size: 11px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.35);">
+          <span class="pill-badge pill-green" style="font-size: 11px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; background: var(--primary-glow); color: var(--primary); border: 1px solid var(--primary);">
             <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i> ${savedCount} Postingan Aktif
           </span>
           <span class="pill-badge" style="font-size: 11px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px; color: var(--ink-mute); border: 1px solid var(--border-subtle); background: var(--canvas-night);">
@@ -375,7 +375,7 @@ async function loadPostRulesView() {
         </div>
         <div style="display: flex; gap: 6px;">
           <button type="button" class="btn-ghost filter-btn-post active" id="btn-filter-all" onclick="filterPostCards('all')" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--on-dark);">Semua (${posts.length})</button>
-          <button type="button" class="btn-ghost filter-btn-post" id="btn-filter-saved" onclick="filterPostCards('saved')" style="font-size: 11px; padding: 4px 10px; border: 1px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-sm); color: #10B981;">🟢 Hanya Aktif (${savedCount})</button>
+          <button type="button" class="btn-ghost filter-btn-post" id="btn-filter-saved" onclick="filterPostCards('saved')" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--primary);">🔵 Hanya Aktif (${savedCount})</button>
           <button type="button" class="btn-ghost filter-btn-post" id="btn-filter-unsaved" onclick="filterPostCards('unsaved')" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--ink-mute);">⚪ Belum Diatur (${unsavedCount})</button>
         </div>
       </div>
@@ -400,7 +400,7 @@ async function loadPostRulesView() {
       const isSaved = Boolean(rule && (rule.cta_link || rule.send_dm || rule.custom_reply || rule.trigger_keywords));
 
       const cardBorder = isSaved
-        ? 'border: 1.5px solid rgba(16, 185, 129, 0.45); border-left: 5px solid #10B981; background: rgba(16, 185, 129, 0.02);'
+        ? 'border: 1.5px solid rgba(75, 147, 255, 0.45); border-left: 5px solid var(--primary); background: var(--primary-glow);'
         : 'border: 1px solid var(--border-color); border-left: 4px solid var(--border-subtle);';
 
       const statusBadge = isSaved
@@ -437,7 +437,7 @@ async function loadPostRulesView() {
         : (replyMode === 'ai' ? '<span style="color: #FBBF24; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="sparkles" style="width: 11px; height: 11px;"></i> Gemini AI</span>' : `<span style="color: var(--on-dark);">💬 Balas: "${customReply ? (customReply.length > 35 ? customReply.slice(0, 35) + '...' : customReply) : 'Halo kak, link sudah dikirim...'}"</span>`);
 
       const dmSummary = sendDm
-        ? `<span style="color: #10B981; font-weight: 500;">✉️ DM: [ ${buttonText} ] ➡️ <span style="font-size: 11px; text-decoration: underline; color: var(--ink-mute);">${ctaLink ? ctaLink.replace('https://', '').slice(0, 25) : 'simplifyer.site'}</span></span>`
+        ? `<span style="color: var(--primary); font-weight: 500;">✉️ DM: [ ${buttonText} ] ➡️ <span style="font-size: 11px; text-decoration: underline; color: var(--ink-mute);">${ctaLink ? ctaLink.replace('https://', '').slice(0, 25) : 'simplifyer.site'}</span></span>`
         : '<span style="color: var(--ink-mute);">⚪ DM: Nonaktif</span>';
 
       return `
@@ -989,7 +989,7 @@ function updateMcPhonePreview() {
           <!-- Nested Brand Reply (Threaded) -->
           ${enablePublic ? `
             <div class="ig-threaded-reply">
-              <div style="width: 22px; height: 22px; border-radius: 50%; background: #10B981; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 10px; flex-shrink: 0;">
+              <div style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 10px; flex-shrink: 0;">
                 ${rawUser.charAt(0).toUpperCase()}
               </div>
               <div style="flex: 1;">
@@ -1954,7 +1954,7 @@ function applyScraperSortFilter() {
         <!-- AUTHOR HEADER -->
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);">
           <a href="https://www.instagram.com/${authorUsername}/" target="_blank" style="display: flex; align-items: center; gap: 8px; text-decoration: none; overflow: hidden;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #10B981, #3B82F6); display: flex; align-items: center; justify-content: center; color: #FFF; font-weight: 700; font-size: 11px; flex-shrink: 0;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #818CF8); display: flex; align-items: center; justify-content: center; color: #FFF; font-weight: 700; font-size: 11px; flex-shrink: 0;">
               ${authorUsername[0].toUpperCase()}
             </div>
             <span style="font-size: 12px; font-weight: 600; color: var(--on-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
