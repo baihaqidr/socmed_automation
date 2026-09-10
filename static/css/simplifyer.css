@@ -4,15 +4,78 @@
    Authentic Optimistic AI Typography & 100% Lucide Icons Integration
    ========================================================================== */
 
-/* Exact Muse.ai Optimistic AI Variable Webfonts */
+/* 1. Optimistic Text Light (300) */
+@font-face {
+  font-family: 'optimisticText';
+  src: url('/static/fonts/OptimisticText-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: 'Optimistic Text';
-  src: url('/static/fonts/OptimisticAI.woff2') format('woff2');
-  font-weight: 300 700;
+  src: url('/static/fonts/OptimisticText-Light.woff2') format('woff2');
+  font-weight: 300;
   font-style: normal;
   font-display: swap;
 }
 
+/* 2. Optimistic Text Regular (400, 500) */
+@font-face {
+  font-family: 'optimisticText';
+  src: url('/static/fonts/OptimisticText-Regular.woff2') format('woff2');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Optimistic Text';
+  src: url('/static/fonts/OptimisticText-Regular.woff2') format('woff2');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 3. Optimistic Text Bold (600, 700, 800) */
+@font-face {
+  font-family: 'optimisticText';
+  src: url('/static/fonts/OptimisticText-Bold.woff2') format('woff2');
+  font-weight: 600 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Optimistic Text';
+  src: url('/static/fonts/OptimisticText-Bold.woff2') format('woff2');
+  font-weight: 600 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 4. Optimistic AI Variable Font (Headings, Branding, Primary UI) */
+@font-face {
+  font-family: 'optimisticAI';
+  src: url('/static/fonts/OptimisticAI.woff2') format('woff2');
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Optimistic AI';
+  src: url('/static/fonts/OptimisticAI.woff2') format('woff2');
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 5. Optimistic Mono Variable Font (Code, System Logs, Data) */
+@font-face {
+  font-family: 'optimisticMono';
+  src: url('/static/fonts/OptimisticMono.woff2') format('woff2');
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: 'Optimistic Mono';
   src: url('/static/fonts/OptimisticMono.woff2') format('woff2');
@@ -20,8 +83,6 @@
   font-style: normal;
   font-display: swap;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root, [data-theme="dark"] {
   /* Muse.ai Signature Electric Blue Brand Tokens (Dark Mode) */
@@ -59,9 +120,9 @@
   --accent-emerald: #10B981;
   --danger: #EF4444;
 
-  /* Typography (Muse.ai Official Optimistic Stack) */
-  --font-sans: 'Optimistic Text', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Optimistic Mono', 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+  /* Typography (100% Muse.ai Official Optimistic Stack) */
+  --font-sans: 'optimisticAI', 'Optimistic Text', 'optimisticText', 'Optimistic AI', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'optimisticMono', 'Optimistic Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
 
   /* Spacing Scale */
   --spacing-xxs: 2px;
