@@ -605,7 +605,7 @@ async function savePostRule(postId) {
 
     const data = await res.json();
     if (data.status === 'success') {
-      showToast('Pengaturan postingan berhasil disimpan ke Supabase!', 'success');
+      showToast('Pengaturan postingan berhasil disimpan ke Database!', 'success');
       await loadPostRulesView();
     } else {
       showToast('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'), 'error');
@@ -1137,12 +1137,12 @@ async function loadRulesData() {
 
 // Reset Rules to General Defaults
 async function resetGeneralRules() {
-  if (!confirm("Apakah Anda yakin ingin mereset aturan di Supabase ke Aturan General Universal?")) return;
+  if (!confirm("Apakah Anda yakin ingin mereset aturan ke Aturan General Universal?")) return;
   try {
     const res = await fetch('/api/reset-rules', { method: 'POST' });
     const data = await res.json();
     if (data.status === 'success') {
-      showToast("Aturan di Supabase berhasil direset ke Aturan General Universal!", "success");
+      showToast("Aturan berhasil direset ke Aturan General Universal!", "success");
       loadRulesData();
     }
   } catch (err) {
@@ -1169,7 +1169,7 @@ async function addRule() {
 
     const data = await res.json();
     if (data.status === 'success') {
-      showToast(`Aturan untuk kata "${keyword}" berhasil disimpan ke Supabase!`, 'success');
+      showToast(`Aturan untuk kata "${keyword}" berhasil disimpan ke Database!`, 'success');
       document.getElementById('new-keyword').value = '';
       document.getElementById('new-reply').value = '';
       loadRulesData();

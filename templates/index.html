@@ -7,7 +7,7 @@
   <!-- Preload Official Muse.ai Optimistic Webfonts -->
   <link rel="preload" href="/static/fonts/OptimisticAI.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/OptimisticText-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/static/css/simplifyer.css?v=6.0">
+  <link rel="stylesheet" href="/static/css/simplifyer.css?v=7.0">
   <!-- Lucide Icons Official CDN (lucide.dev) -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -172,11 +172,11 @@
           <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
             <div>
               <h1 class="section-title">Overview & Live Status</h1>
-              <p class="section-desc">Pantau statistik akun yang aktif, status database Supabase, dan postingan Instagram.</p>
+              <p class="section-desc">Pantau statistik akun yang aktif, status koneksi database, dan postingan Instagram.</p>
             </div>
             <div style="display: flex; gap: 10px;">
               <span class="pill-badge pill-green" style="font-size: 12px; padding: 4px 10px;">
-                <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary); display: inline-block; margin-right: 6px;"></span> Supabase PostgreSQL Live
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary); display: inline-block; margin-right: 6px;"></span> Cloud Database Active
               </span>
             </div>
           </div>
@@ -288,7 +288,7 @@
 
               <button class="btn-primary" onclick="addRule()" style="width: 100%; justify-content: center;">
                 <i data-lucide="plus"></i>
-                <span>Simpan ke Supabase Database</span>
+                <span>Simpan ke Database</span>
               </button>
 
               <!-- AI Test Box -->
@@ -311,7 +311,7 @@
             <!-- Rules List -->
             <div class="supa-card">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                <h3 style="font-size: 15px; font-weight: 600;">Daftar Aturan Aktif (Supabase)</h3>
+                <h3 style="font-size: 15px; font-weight: 600;">Daftar Aturan Aktif</h3>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <button class="btn-secondary" onclick="resetGeneralRules()" style="padding: 3px 8px; font-size: 11px; gap: 4px;" title="Reset isi aturan ke Aturan General Universal">
                     <i data-lucide="rotate-ccw" style="width: 12px; height: 12px;"></i> Reset Rules General
@@ -725,7 +725,7 @@
         <div id="tab-settings" class="tab-view">
           <div class="section-header">
             <h1 class="section-title">Database & Cloud Configuration</h1>
-            <p class="section-desc">Konfigurasi Supabase, Meta Access Token, dan integrasi Vercel 24 Jam.</p>
+            <p class="section-desc">Konfigurasi Database Cloud, Meta Access Token, dan integrasi Vercel 24 Jam.</p>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">

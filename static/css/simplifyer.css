@@ -141,8 +141,8 @@
   --radius-xl: 22px;
   --radius-full: 9999px;
 
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-dropdown: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-card: none;
+  --shadow-dropdown: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--border-color);
 }
 
 
@@ -183,9 +183,9 @@
   --accent-emerald: #059669;
   --danger: #DC2626;
 
-  /* Crisp Light Mode Shadows */
-  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
-  --shadow-dropdown: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  /* Crisp Light Mode Shadows (Flat Seamless) */
+  --shadow-card: none;
+  --shadow-dropdown: 0 4px 20px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--border-color);
 }
 
 * {
@@ -284,7 +284,7 @@ body {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--ink-mute);
   font-family: var(--font-sans);
   font-size: 13px;
@@ -292,18 +292,21 @@ body {
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
+  box-shadow: none !important;
 }
 
 .nav-item button:hover {
-  background-color: var(--card-bg);
+  background-color: var(--card-surface);
   color: var(--on-dark-bright);
+  border-color: transparent;
+  box-shadow: none !important;
 }
 
 .nav-item button.active {
-  background-color: var(--card-bg);
+  background-color: var(--card-surface);
   color: var(--on-dark-bright);
   border: 1px solid var(--border-color);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: none !important;
 }
 
 .nav-item button.active i, .nav-item button.active svg {
@@ -554,13 +557,13 @@ body {
   line-height: 1.5;
 }
 
-/* Supabase Cards & Layout */
+/* Clean Seamless Cards & Layout (Flat Border-Based Aesthetic) */
 .supa-card, .simplifyer-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: var(--shadow-card);
+  box-shadow: none !important;
 }
 
 /* Stats Grid */
@@ -579,6 +582,7 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  box-shadow: none !important;
 }
 
 .stat-icon {
@@ -627,7 +631,7 @@ body {
   color: var(--on-dark-bright);
 }
 
-/* Buttons (Muse.ai Pill-Shaped Aesthetic) */
+/* Buttons (Flat Seamless Pill Aesthetic) */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -640,15 +644,15 @@ body {
   font-weight: 600;
   padding: 10px 22px;
   border-radius: var(--radius-full);
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  box-shadow: 0 4px 16px var(--primary-glow);
+  box-shadow: none !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary:hover {
   background-color: var(--primary-deep);
-  box-shadow: 0 6px 22px rgba(75, 147, 255, 0.38);
+  box-shadow: none !important;
   transform: translateY(-1px);
 }
 
@@ -656,7 +660,7 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .btn-secondary {
@@ -800,7 +804,7 @@ body {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  box-shadow: none !important;
   padding: 24px;
 }
 
@@ -947,7 +951,7 @@ svg.lucide, [data-lucide] {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+  box-shadow: none !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1510,7 +1514,7 @@ svg.lucide, [data-lucide] {
 .studio-pill.active {
   background: var(--primary);
   color: #ffffff;
-  box-shadow: 0 4px 14px var(--primary-glow);
+  box-shadow: none !important;
 }
 
 /* Target Selector Pills */
@@ -1554,7 +1558,7 @@ svg.lucide, [data-lucide] {
   border-color: var(--primary);
   background: var(--primary-glow);
   color: var(--primary);
-  box-shadow: 0 0 16px var(--primary-glow);
+  box-shadow: none !important;
 }
 
 /* Upload Dropzone */
@@ -2005,5 +2009,25 @@ svg.lucide, [data-lucide] {
   padding: 0 12px 12px 12px;
 }
 
-
-
+/* ==========================================================================
+   Global Seamless Architecture (Zero Box Shadows on All Boxes & Containers)
+   ========================================================================== */
+.supa-card,
+.simplifyer-card,
+.stat-card,
+.post-card-item,
+.modal-card,
+.mc-builder-modal,
+.studio-pill,
+.target-pill-btn,
+.btn-primary,
+.btn-secondary,
+.nav-item button,
+.upload-dropzone,
+.media-grid-item,
+.ig-vertical-mockup,
+.ig-feed-post-mockup,
+.filter-btn-post,
+.theme-toggle-btn {
+  box-shadow: none !important;
+}
