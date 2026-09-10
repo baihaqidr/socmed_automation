@@ -34,22 +34,22 @@
   /* Ink Palette (Muse.ai Neutral Grays) */
   --ink: #111112;
   --ink-secondary: #181819;
-  --ink-mute: #9CA3AF;
-  --ink-mute-2: #6B7280;
-  --ink-faint: #4B5563;
+  --ink-mute: #B2B5B9;
+  --ink-mute-2: #8E9196;
+  --ink-faint: #63666A;
   --on-dark: #F3F4F6;
   --on-dark-bright: #FFFFFF;
 
-  /* Surfaces & Canvas (Muse.ai Matte Black & Deep Charcoal Palette) */
-  --canvas-night: #0E0E10;
-  --canvas-night-soft: #161719;
-  --card-bg: #1A1B1E;
-  --card-surface: #222327;
-  --card-hover: #292A2E;
+  /* Surfaces & Canvas (Muse.ai Soft Charcoal & Lighter Gray Palette) */
+  --canvas-night: #1F2023;
+  --canvas-night-soft: #28292B;
+  --card-bg: #303136;
+  --card-surface: #383A3F;
+  --card-hover: #42444A;
 
-  /* Hairlines & Borders (Crisp Neutral Translucent Borders) */
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.04);
+  /* Hairlines & Borders (Crisp Clean Soft Borders) */
+  --border-color: rgba(255, 255, 255, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.06);
   --border-focus: #4B93FF;
 
   /* Accents */
