@@ -1568,21 +1568,6 @@ svg.lucide, [data-lucide] {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
-/* Phone Dynamic Island / Notch */
-.ig-phone-island {
-  position: absolute;
-  top: 7px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 68px;
-  height: 15px;
-  background: #0d0d0d;
-  border-radius: 12px;
-  z-index: 25;
-  pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-}
-
 /* Full Background Media Container */
 .ig-vertical-media-box {
   position: absolute;
@@ -1607,7 +1592,7 @@ svg.lucide, [data-lucide] {
 /* --- Instagram Reels Specific Styling --- */
 .ig-reels-top-bar {
   position: absolute;
-  top: 26px;
+  top: 14px;
   left: 14px;
   right: 14px;
   z-index: 10;
