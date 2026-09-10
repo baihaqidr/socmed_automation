@@ -1590,4 +1590,116 @@ svg.lucide, [data-lucide] {
   background: #fff;
 }
 
+/* ==========================================================================
+   Authentic Instagram Feed Post Mockup (3:4 Aspect Ratio)
+   ========================================================================== */
+.ig-feed-post-mockup {
+  width: 100%;
+  max-width: 330px;
+  background: #000000;
+  border: 1px solid #262626;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+[data-theme="light"] .ig-feed-post-mockup {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.ig-feed-header {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: inherit;
+}
+
+.ig-feed-username {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+
+.ig-feed-media-box {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #141414;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+[data-theme="light"] .ig-feed-media-box {
+  background: #f1f5f9;
+}
+
+.ig-feed-media-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ig-feed-actions {
+  padding: 10px 12px 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: inherit;
+}
+
+.ig-action-icon {
+  cursor: pointer;
+  stroke: #ffffff;
+  transition: transform 0.15s ease;
+}
+
+[data-theme="light"] .ig-action-icon {
+  stroke: #0f172a;
+}
+
+.ig-action-icon:hover {
+  transform: scale(1.12);
+}
+
+.ig-feed-likes {
+  padding: 0 12px;
+  font-size: 12px;
+  margin-bottom: 6px;
+  letter-spacing: -0.1px;
+}
+
+.ig-feed-caption-wrap {
+  padding: 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.ig-feed-caption-wrap .ig-feed-username {
+  margin-right: 5px;
+}
+
+.ig-feed-caption-text {
+  color: inherit;
+  opacity: 0.9;
+}
+
+.ig-feed-footer-meta {
+  padding: 0 12px 12px 12px;
+}
+
+
 

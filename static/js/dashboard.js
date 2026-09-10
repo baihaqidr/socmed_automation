@@ -205,6 +205,7 @@ async function loadInstagramAccounts() {
       const currentAccLabel = document.getElementById('current-account-label');
       const publishTarget = document.getElementById('publish-account-target');
       const previewUsername = document.getElementById('preview-account-username');
+      const previewCaptionUsername = document.getElementById('preview-caption-username');
       const previewStoryUsername = document.getElementById('preview-story-username');
       const settingsAccId = document.getElementById('settings-account-id');
 
@@ -213,6 +214,7 @@ async function loadInstagramAccounts() {
       if (currentAccLabel) currentAccLabel.innerText = `@${cleanUser}`;
       if (publishTarget) publishTarget.innerText = `@${cleanUser}`;
       if (previewUsername) previewUsername.innerText = cleanUser;
+      if (previewCaptionUsername) previewCaptionUsername.innerText = cleanUser;
       if (previewStoryUsername) previewStoryUsername.innerText = cleanUser;
       if (settingsAccId) settingsAccId.innerText = activeAcc.id;
 
@@ -1288,7 +1290,7 @@ function setPublishTarget(target) {
     if (feedCard) feedCard.style.display = 'block';
     if (storyCard) storyCard.style.display = 'none';
     if (badge) {
-      badge.innerText = 'Feed Format (1:1)';
+      badge.innerText = 'Feed Format (3:4)';
       badge.className = 'pill-badge pill-green';
     }
     if (captionHint) captionHint.innerText = 'Diperlukan untuk Feed';
