@@ -1115,10 +1115,18 @@ def create_and_publish_image_post(image_input, caption="", media_type="IMAGE"):
 
     container_url = f"{GRAPH_URL}/{acc_id}/media"
     is_story = (str(media_type or "").upper() == "STORIES")
+    is_reels = (str(media_type or "").upper() == "REELS")
     if is_story:
         container_data = {
             "image_url": image_url,
             "media_type": "STORIES",
+            "access_token": ACCESS_TOKEN
+        }
+    elif is_reels and (image_url.lower().endswith(".mp4") or image_url.lower().endswith(".mov")):
+        container_data = {
+            "video_url": image_url,
+            "media_type": "REELS",
+            "caption": caption or "",
             "access_token": ACCESS_TOKEN
         }
     else:
@@ -1143,7 +1151,8 @@ def create_and_publish_image_post(image_input, caption="", media_type="IMAGE"):
     publish_res = requests.post(publish_url, data=publish_data).json()
     
     if "id" in publish_res:
-        log_caption = f"[Instagram Story] {caption}" if is_story else caption
+        prefix = "[Instagram Story] " if is_story else ("[Instagram Reels] " if is_reels else "")
+        log_caption = f"{prefix}{caption}"
         log_published_post(publish_res["id"], log_caption, image_url)
         
     return publish_res

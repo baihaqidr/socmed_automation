@@ -206,6 +206,7 @@ async function loadInstagramAccounts() {
       const publishTarget = document.getElementById('publish-account-target');
       const previewUsername = document.getElementById('preview-account-username');
       const previewCaptionUsername = document.getElementById('preview-caption-username');
+      const previewReelsUsername = document.getElementById('preview-reels-username');
       const previewStoryUsername = document.getElementById('preview-story-username');
       const settingsAccId = document.getElementById('settings-account-id');
 
@@ -215,6 +216,7 @@ async function loadInstagramAccounts() {
       if (publishTarget) publishTarget.innerText = `@${cleanUser}`;
       if (previewUsername) previewUsername.innerText = cleanUser;
       if (previewCaptionUsername) previewCaptionUsername.innerText = cleanUser;
+      if (previewReelsUsername) previewReelsUsername.innerText = cleanUser;
       if (previewStoryUsername) previewStoryUsername.innerText = cleanUser;
       if (settingsAccId) settingsAccId.innerText = activeAcc.id;
 
@@ -1266,29 +1268,47 @@ function switchStudioSubTab(subTab) {
 function setPublishTarget(target) {
   currentPublishTarget = target;
   const btnFeed = document.getElementById('target-btn-feed');
+  const btnReels = document.getElementById('target-btn-reels');
   const btnStory = document.getElementById('target-btn-story');
   const feedCard = document.getElementById('preview-feed-card');
+  const reelsCard = document.getElementById('preview-reels-card');
   const storyCard = document.getElementById('preview-story-card');
   const badge = document.getElementById('preview-mode-badge');
   const captionHint = document.getElementById('caption-target-hint');
   const btnPublishLabel = document.getElementById('btn-publish-label');
 
+  // Reset active buttons
+  if (btnFeed) btnFeed.classList.remove('active');
+  if (btnReels) btnReels.classList.remove('active');
+  if (btnStory) btnStory.classList.remove('active');
+
+  // Hide all cards first
+  if (feedCard) feedCard.style.display = 'none';
+  if (reelsCard) reelsCard.style.display = 'none';
+  if (storyCard) storyCard.style.display = 'none';
+
   if (target === 'STORIES') {
-    if (btnFeed) btnFeed.classList.remove('active');
     if (btnStory) btnStory.classList.add('active');
-    if (feedCard) feedCard.style.display = 'none';
     if (storyCard) storyCard.style.display = 'flex';
     if (badge) {
-      badge.innerText = 'Instagram Story (9:16)';
+      badge.innerText = 'Story Format (9:16)';
       badge.className = 'pill-badge pill-yellow';
     }
     if (captionHint) captionHint.innerText = 'Opsional untuk Story (Hanya media visual yang tayang di Story)';
     if (btnPublishLabel) btnPublishLabel.innerText = currentPublishMode === 'now' ? 'Publish ke Instagram Story Sekarang' : 'Jadwalkan Instagram Story';
+  } else if (target === 'REELS') {
+    if (btnReels) btnReels.classList.add('active');
+    if (reelsCard) reelsCard.style.display = 'flex';
+    if (badge) {
+      badge.innerText = 'Reels Format (9:16)';
+      badge.className = 'pill-badge pill-pink';
+    }
+    if (captionHint) captionHint.innerText = 'Diperlukan untuk Reels';
+    if (btnPublishLabel) btnPublishLabel.innerText = currentPublishMode === 'now' ? 'Publish ke Instagram Reels Sekarang' : 'Jadwalkan Instagram Reels';
   } else {
+    // Default: Feed
     if (btnFeed) btnFeed.classList.add('active');
-    if (btnStory) btnStory.classList.remove('active');
     if (feedCard) feedCard.style.display = 'block';
-    if (storyCard) storyCard.style.display = 'none';
     if (badge) {
       badge.innerText = 'Feed Format (3:4)';
       badge.className = 'pill-badge pill-green';
@@ -1304,12 +1324,16 @@ function togglePublishScheduleMode(mode) {
   const schedWrap = document.getElementById('publish-schedule-datetime-wrap');
   const btnPublishLabel = document.getElementById('btn-publish-label');
   
+  let targetName = 'Feed Instagram';
+  if (currentPublishTarget === 'STORIES') targetName = 'Instagram Story';
+  else if (currentPublishTarget === 'REELS') targetName = 'Instagram Reels';
+  
   if (mode === 'schedule') {
     if (schedWrap) schedWrap.style.display = 'block';
-    if (btnPublishLabel) btnPublishLabel.innerText = currentPublishTarget === 'STORIES' ? 'Jadwalkan Instagram Story' : 'Jadwalkan Feed Post';
+    if (btnPublishLabel) btnPublishLabel.innerText = `Jadwalkan ${targetName}`;
   } else {
     if (schedWrap) schedWrap.style.display = 'none';
-    if (btnPublishLabel) btnPublishLabel.innerText = currentPublishTarget === 'STORIES' ? 'Publish ke Instagram Story Sekarang' : 'Publish ke Feed Instagram Sekarang';
+    if (btnPublishLabel) btnPublishLabel.innerText = `Publish ke ${targetName} Sekarang`;
   }
 }
 
@@ -1371,24 +1395,32 @@ function handleImageUrlInput(url) {
 
 function updateComposerMediaPreview(url) {
   const feedBox = document.getElementById('preview-image-box');
+  const reelsBox = document.getElementById('preview-reels-media-box');
   const storyBox = document.getElementById('preview-story-media-box');
 
   if (!url) {
     if (feedBox) feedBox.innerHTML = '<i data-lucide="image" style="width: 36px; height: 36px; opacity: 0.4;"></i>';
-    if (storyBox) storyBox.innerHTML = '<i data-lucide="sparkles" style="width: 32px; height: 32px; opacity: 0.3;"></i>';
+    if (reelsBox) reelsBox.innerHTML = '<i data-lucide="clapperboard" style="width: 38px; height: 38px; opacity: 0.35;"></i>';
+    if (storyBox) storyBox.innerHTML = '<i data-lucide="sparkles" style="width: 36px; height: 36px; opacity: 0.35;"></i>';
     refreshIcons();
     return;
   }
 
   const imgHtml = `<img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src=''; this.alt='Gagal memuat gambar';">`;
   if (feedBox) feedBox.innerHTML = imgHtml;
+  if (reelsBox) reelsBox.innerHTML = imgHtml;
   if (storyBox) storyBox.innerHTML = imgHtml;
 }
 
 function updatePreviewCaption(text) {
   const capBox = document.getElementById('preview-caption-box');
+  const reelsCapBox = document.getElementById('preview-reels-caption-box');
+  const clean = text.trim();
   if (capBox) {
-    capBox.innerText = text.trim() ? text : 'Preview caption akan tampil di sini...';
+    capBox.innerText = clean ? clean : 'Preview caption akan tampil di sini...';
+  }
+  if (reelsCapBox) {
+    reelsCapBox.innerText = clean ? clean : 'Preview caption postingan reels akan tampil di sini...';
   }
 }
 
@@ -1480,8 +1512,8 @@ async function executePublishOrSchedule() {
     return;
   }
 
-  if (currentPublishTarget === 'IMAGE' && !caption) {
-    showToast('Harap masukkan caption untuk Feed Post.', 'warning');
+  if ((currentPublishTarget === 'IMAGE' || currentPublishTarget === 'REELS') && !caption) {
+    showToast(`Harap masukkan caption untuk ${currentPublishTarget === 'REELS' ? 'Reels' : 'Feed Post'}.`, 'warning');
     return;
   }
 
@@ -1539,7 +1571,9 @@ async function executePublishOrSchedule() {
       const data = await res.json();
 
       if (data.id) {
-        const dest = currentPublishTarget === 'STORIES' ? 'Instagram Story' : 'Instagram Feed';
+        let dest = 'Instagram Feed';
+        if (currentPublishTarget === 'STORIES') dest = 'Instagram Story';
+        else if (currentPublishTarget === 'REELS') dest = 'Instagram Reels';
         showToast(`Sukses publish ke ${dest}! Media ID: ${data.id}`, 'success');
         document.getElementById('publish-image-input').value = '';
         document.getElementById('publish-caption-input').value = '';
