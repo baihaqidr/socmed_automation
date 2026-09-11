@@ -32,11 +32,17 @@ function switchTab(tabId) {
     }
   });
 
-  if (tabId === 'dashboard') loadDashboardData();
+  if (tabId === 'dashboard') {
+    loadDashboardData();
+    loadInsightsData();
+  }
   if (tabId === 'postrules') loadPostRulesView();
   if (tabId === 'autoreply') loadRulesData();
   if (tabId === 'inbox') loadInboxComments();
-  if (tabId === 'insights') loadInsightsData();
+  if (tabId === 'insights') {
+    switchTab('dashboard');
+    return;
+  }
   if (tabId === 'publish') {
     switchStudioSubTab('publisher');
   }
@@ -279,13 +285,15 @@ async function loadDashboardData() {
     const data = await res.json();
     
     if (data.id) {
-      document.getElementById('stat-username').innerText = `@${data.username}`;
-      document.getElementById('stat-media-count').innerText = data.media_count || 0;
+      const uEl = document.getElementById('stat-username');
+      const mEl = document.getElementById('stat-media-count');
+      if (uEl) uEl.innerText = `@${data.username}`;
+      if (mEl) mEl.innerText = data.media_count || 0;
     }
-    
-    loadPostsFeed();
   } catch (err) {
     console.error('Error loading account data:', err);
+  } finally {
+    loadInsightsData();
   }
 }
 

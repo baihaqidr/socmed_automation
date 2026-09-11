@@ -31,7 +31,7 @@
         <li class="nav-item">
           <button class="active" onclick="switchTab('dashboard')">
             <i data-lucide="layout-dashboard"></i>
-            <span>Project Overview</span>
+            <span>Overview</span>
           </button>
         </li>
         <li class="nav-item">
@@ -50,12 +50,6 @@
           <button onclick="switchTab('inbox')">
             <i data-lucide="inbox"></i>
             <span>Comments Inbox</span>
-          </button>
-        </li>
-        <li class="nav-item">
-          <button onclick="switchTab('insights')">
-            <i data-lucide="bar-chart-2"></i>
-            <span>Analytics & Insights</span>
           </button>
         </li>
         <li class="nav-item">
@@ -87,12 +81,6 @@
       <header class="top-bar">
         <!-- Left: Supabase Breadcrumbs Navigation -->
         <div class="supa-breadcrumbs">
-          <div style="display: flex; align-items: center; color: var(--primary); font-size: 16px;">
-            <i data-lucide="zap"></i>
-          </div>
-          
-          <span class="supa-breadcrumb-sep">/</span>
-
           <!-- 1. GMAIL / USER WORKSPACE SWITCHER -->
           <div class="supa-dropdown-wrapper" id="gmail-dropdown-wrapper">
             <button class="supa-breadcrumb-btn" onclick="toggleGmailDropdown(event)" id="btn-user-switcher">
@@ -151,11 +139,6 @@
 
         <!-- Right: Studio Tools (Functional Only) -->
         <div class="top-tools">
-          <button class="btn-primary" onclick="runAutoReplyScan()" id="btn-scan" style="padding: 5px 12px; font-size: 12px;">
-            <i data-lucide="scan-line" style="width: 14px; height: 14px;"></i>
-            <span>Scan Comments</span>
-          </button>
-
           <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch Light / Dark Mode">
             <i data-lucide="sun" class="sun-icon" style="width: 15px; height: 15px;"></i>
             <i data-lucide="moon" class="moon-icon" style="width: 15px; height: 15px; display: none;"></i>
@@ -169,19 +152,22 @@
         <!-- TAB 1: DASHBOARD OVERVIEW -->
         <div id="tab-dashboard" class="tab-view active">
           
-          <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
+          <div class="section-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <div>
-              <h1 class="section-title">Overview & Live Status</h1>
-              <p class="section-desc">Pantau statistik akun yang aktif, status koneksi database, dan postingan Instagram.</p>
+              <h1 class="section-title">Overview & Performance Analytics</h1>
+              <p class="section-desc">Pantau statistik akun Instagram aktif, performa jangkauan, dan peringkat postingan terbaik Anda.</p>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button class="btn-secondary" onclick="loadDashboardData()" style="padding: 6px 12px; font-size: 12px;">
+                <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i> Refresh Data
+              </button>
               <span class="pill-badge pill-green" style="font-size: 12px; padding: 4px 10px;">
                 <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--primary); display: inline-block; margin-right: 6px;"></span> Cloud Database Active
               </span>
             </div>
           </div>
 
-          <!-- Stats Grid -->
+          <!-- Account & System Stats Grid -->
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-icon primary">
@@ -224,18 +210,51 @@
             </div>
           </div>
 
-          <!-- Recent Posts Grid -->
-          <div class="supa-card" style="margin-top: 24px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+          <!-- Performance Analytics Stats Grid -->
+          <div class="stats-grid" style="margin-top: 16px;">
+            <div class="stat-card">
+              <div class="stat-icon emerald"><i data-lucide="eye"></i></div>
               <div>
-                <h3 style="font-size: 15px; font-weight: 600;">Semua Postingan Terpantau (<span id="current-account-label">@sarangestate</span>)</h3>
-                <p style="font-size: 13px; color: var(--ink-mute); margin-top: 4px;">Bot memindai komentar di semua postingan aktif di bawah ini secara berkala.</p>
+                <div class="stat-label">Total Reach</div>
+                <div class="stat-value" id="insight-reach">--</div>
               </div>
-              <span class="pill-badge pill-purple" id="post-count-badge">Loading...</span>
             </div>
+            <div class="stat-card">
+              <div class="stat-icon blue"><i data-lucide="trending-up"></i></div>
+              <div>
+                <div class="stat-label">Impressions</div>
+                <div class="stat-value" id="insight-impressions">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon purple"><i data-lucide="users"></i></div>
+              <div>
+                <div class="stat-label">Profile Views</div>
+                <div class="stat-value" id="insight-views">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon amber"><i data-lucide="heart"></i></div>
+              <div>
+                <div class="stat-label">Total Likes & Komen</div>
+                <div class="stat-value" id="insight-engagement">--</div>
+              </div>
+            </div>
+          </div>
 
-            <div id="dashboard-posts-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
-              <!-- Dynamically populated -->
+          <!-- Top 5 Posts Viral & High Engagement -->
+          <div class="supa-card" style="margin-top: 24px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 600;">🔥 Top 5 Postingan Paling Viral & Banyak Interaksi</h3>
+                <p style="font-size: 13px; color: var(--ink-mute); margin-top: 4px;">Peringkat postingan dengan likes dan komentar tertinggi dari akun aktif.</p>
+              </div>
+              <button class="btn-secondary" onclick="loadInsightsData()" style="padding: 4px 10px; font-size: 11px;">
+                <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i> Refresh Top Posts
+              </button>
+            </div>
+            <div id="insights-top-posts-container" style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="color: var(--ink-mute); font-size: 13px;">Memuat data analitik postingan...</div>
             </div>
           </div>
         </div>
@@ -761,56 +780,6 @@
           </div>
         </div>
 
-        <!-- TAB: ANALYTICS & INSIGHTS -->
-        <div id="tab-insights" class="tab-view">
-          <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              <h1 class="section-title">Instagram Performance Analytics</h1>
-              <p class="section-desc">Grafik jangkauan audiens, total tayangan, serta rangkuman performa postingan terbaik Anda.</p>
-            </div>
-            <button class="btn-secondary" onclick="loadInsightsData()">
-              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Refresh Insights
-            </button>
-          </div>
-
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon emerald"><i data-lucide="eye"></i></div>
-              <div>
-                <div class="stat-label">Total Reach</div>
-                <div class="stat-value" id="insight-reach">--</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon blue"><i data-lucide="trending-up"></i></div>
-              <div>
-                <div class="stat-label">Impressions</div>
-                <div class="stat-value" id="insight-impressions">--</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon purple"><i data-lucide="users"></i></div>
-              <div>
-                <div class="stat-label">Profile Views</div>
-                <div class="stat-value" id="insight-views">--</div>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon amber"><i data-lucide="heart"></i></div>
-              <div>
-                <div class="stat-label">Total Likes & Komen</div>
-                <div class="stat-value" id="insight-engagement">--</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="supa-card" style="margin-top: 24px;">
-            <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">🔥 Top 5 Postingan Paling Viral & Banyak Interaksi</h3>
-            <div id="insights-top-posts-container" style="display: flex; flex-direction: column; gap: 12px;">
-              <div style="color: var(--ink-mute); font-size: 13px;">Memuat data analitik postingan...</div>
-            </div>
-          </div>
-        </div>
 
         <!-- TAB: COMPETITOR & HASHTAG SCRAPER -->
         <div id="tab-scraper" class="tab-view">
