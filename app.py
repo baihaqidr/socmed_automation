@@ -2389,12 +2389,17 @@ def handle_incoming_dm_follow_check(payload):
 
                     post_cta_link = str(post_rule.get("cta_link", "")).strip()
                     button_label = str(post_rule.get("button_text", "Buka Link Akses")).strip() or "Buka Link Akses"
+                    post_dm_format = str(post_rule.get("dm_format", "button")).strip()
                     post_use_smart_link = post_rule.get("use_smart_link", True)
+                    effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link and post_dm_format != "button") else post_cta_link
 
                     if post_rule.get("dm_message"):
                         success_text = post_rule.get("dm_message").replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kami").replace("{account}", "kami")
                     else:
                         success_text = "Mantap, makasih banyak udah follow ya kak! 🎉\n\nSilakan klik tombol di bawah ini buat langsung akses website kami:"
+
+                    if post_dm_format != "button" and effective_link and effective_link not in success_text:
+                        success_text += f"\n\n👉 {effective_link}"
 
                     send_private_dm(
                         recipient_id=sender_id,
@@ -2402,7 +2407,7 @@ def handle_incoming_dm_follow_check(payload):
                         target_acc_id=target_acc_id,
                         button_url=post_cta_link if post_cta_link else None,
                         button_title=button_label,
-                        dm_format="button",
+                        dm_format=post_dm_format,
                         use_smart_link=post_use_smart_link,
                         post_id=p_id
                     )
@@ -2435,12 +2440,17 @@ def handle_incoming_dm_follow_check(payload):
 
                     post_cta_link = str(post_rule.get("cta_link", "")).strip()
                     button_label = str(post_rule.get("button_text", "Buka Link Akses")).strip() or "Buka Link Akses"
+                    post_dm_format = str(post_rule.get("dm_format", "button")).strip()
                     post_use_smart_link = post_rule.get("use_smart_link", True)
+                    effective_link = make_smart_link(post_cta_link, button_label, post_id=p_id) if (post_use_smart_link and post_cta_link and post_dm_format != "button") else post_cta_link
 
                     if post_rule.get("dm_message"):
                         success_text = post_rule.get("dm_message").replace("@{username}", "kak").replace("{username}", "kak").replace("@{account}", "kami").replace("{account}", "kami")
                     else:
                         success_text = "Mantap, makasih banyak udah follow ya kak! 🎉\n\nSilakan klik tombol di bawah ini buat langsung akses website kami:"
+
+                    if post_dm_format != "button" and effective_link and effective_link not in success_text:
+                        success_text += f"\n\n👉 {effective_link}"
 
                     send_private_dm(
                         recipient_id=sender_id,
@@ -2448,7 +2458,7 @@ def handle_incoming_dm_follow_check(payload):
                         target_acc_id=target_acc_id,
                         button_url=post_cta_link if post_cta_link else None,
                         button_title=button_label,
-                        dm_format="button",
+                        dm_format=post_dm_format,
                         use_smart_link=post_use_smart_link,
                         post_id=p_id
                     )

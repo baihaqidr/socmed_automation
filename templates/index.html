@@ -1047,18 +1047,50 @@
                   <input type="checkbox" id="mc-enable-dm" checked onchange="toggleMcDm(this.checked)" style="accent-color: #F59E0B; cursor: pointer;">
                   <i data-lucide="mail" style="width: 14px; height: 14px; color: #FBBF24;"></i> Kirim Pesan DM Otomatis (Private Reply)
                 </label>
-                <span class="pill-badge pill-purple" style="font-size: 10px;">Button Card</span>
+                <span class="pill-badge pill-purple" style="font-size: 10px;" id="mc-dm-format-badge">Tombol Interaktif</span>
               </div>
 
               <div id="mc-dm-details" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Format Selector: 2 Opsi (Button vs Link Card) -->
+                <div>
+                  <label class="form-label" style="font-size: 11px; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+                    <i data-lucide="layout" style="width: 12px; height: 12px; color: var(--primary);"></i> Format Tampilan DM (Pilih salah satu):
+                  </label>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <label class="dm-format-card-opt" id="dm-opt-btn" onclick="setMcDmFormat('button')" style="display: flex; align-items: flex-start; gap: 8px; padding: 9px 10px; background: var(--bg-tertiary); border: 1.5px solid var(--primary); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s;">
+                      <input type="radio" name="mc-dm-format" id="mc-dm-fmt-button" value="button" checked onchange="setMcDmFormat('button')" style="accent-color: var(--primary); margin-top: 2px;">
+                      <div>
+                        <div style="font-size: 12px; font-weight: 600; color: var(--on-dark); display: flex; align-items: center; gap: 4px;">
+                          📱 Tombol Interaktif
+                        </div>
+                        <div style="font-size: 10.5px; color: var(--ink-mute); margin-top: 2px; line-height: 1.3;">
+                          Tombol Meta di bubble chat (Khusus Aplikasi HP)
+                        </div>
+                      </div>
+                    </label>
+
+                    <label class="dm-format-card-opt" id="dm-opt-card" onclick="setMcDmFormat('card')" style="display: flex; align-items: flex-start; gap: 8px; padding: 9px 10px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s;">
+                      <input type="radio" name="mc-dm-format" id="mc-dm-fmt-card" value="card" onchange="setMcDmFormat('card')" style="accent-color: var(--primary); margin-top: 2px;">
+                      <div>
+                        <div style="font-size: 12px; font-weight: 600; color: var(--on-dark); display: flex; align-items: center; gap: 4px;">
+                          🖼️ Kartu Preview Link
+                        </div>
+                        <div style="font-size: 10.5px; color: var(--ink-mute); margin-top: 2px; line-height: 1.3;">
+                          Preview kotak bergambar & judul web (Mobile & Web)
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
                 <div>
                   <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Pesan DM (Teks Persuasif)</label>
                   <textarea id="mc-dm-message" class="form-textarea" rows="4" oninput="updateMcPhonePreview()" placeholder="Tulis isi pesan DM..." style="font-size: 12px;"></textarea>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                  <div>
-                    <label class="form-label" style="font-size: 11px; margin-bottom: 4px;">Label Tombol (Button Text)</label>
+                  <div id="mc-button-text-container">
+                    <label class="form-label" style="font-size: 11px; margin-bottom: 4px;" id="mc-button-text-label">Label Tombol (Button Text)</label>
                     <input type="text" id="mc-button-text" class="form-input" value="Buka Link Akses" oninput="updateMcPhonePreview()" placeholder="Buka Link Akses" style="font-size: 12px;">
                   </div>
                   <div>

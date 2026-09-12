@@ -444,8 +444,11 @@ async function loadPostRulesView() {
         ? '<span style="color: var(--ink-mute);">⚪ Balas Publik: Nonaktif</span>'
         : (replyMode === 'ai' ? '<span style="color: #FBBF24; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="sparkles" style="width: 11px; height: 11px;"></i> Gemini AI</span>' : `<span style="color: var(--on-dark);">💬 Balas: "${customReply ? (customReply.length > 35 ? customReply.slice(0, 35) + '...' : customReply) : 'Halo kak, link sudah dikirim...'}"</span>`);
 
+      const dmFormat = rule.dm_format || 'button';
       const dmSummary = sendDm
-        ? `<span style="color: var(--primary); font-weight: 500;">✉️ DM: [ ${buttonText} ] ➡️ <span style="font-size: 11px; text-decoration: underline; color: var(--ink-mute);">${ctaLink ? ctaLink.replace('https://', '').slice(0, 25) : 'simplifyer.site'}</span></span>`
+        ? (dmFormat === 'button'
+            ? `<span style="color: var(--primary); font-weight: 500;">📱 Tombol: [ ${buttonText} ] ➡️ <span style="font-size: 11px; text-decoration: underline; color: var(--ink-mute);">${ctaLink ? ctaLink.replace('https://', '').slice(0, 25) : 'simplifyer.site'}</span></span>`
+            : `<span style="color: #60A5FA; font-weight: 500;">🖼️ Link Card: ➡️ <span style="font-size: 11px; text-decoration: underline; color: var(--ink-mute);">${ctaLink ? ctaLink.replace('https://', '').slice(0, 25) : 'simplifyer.site'}</span></span>`)
         : '<span style="color: var(--ink-mute);">⚪ DM: Nonaktif</span>';
 
       return `
@@ -643,6 +646,7 @@ let _MC_BUILDER_STATE = {
   dmMessage: '',
   buttonText: 'Buka Link Akses',
   ctaLink: 'https://simplifyer.site/',
+  dmFormat: 'button', // 'button' or 'card'
   requireFollow: false,
   previewTab: 'dm' // 'dm' or 'comments'
 };
@@ -669,6 +673,7 @@ function openAutomationBuilder(postId) {
   );
   _MC_BUILDER_STATE.buttonText = rule.button_text || 'Buka Link Akses';
   _MC_BUILDER_STATE.ctaLink = rule.cta_link || 'https://simplifyer.site/';
+  _MC_BUILDER_STATE.dmFormat = rule.dm_format || 'button';
   _MC_BUILDER_STATE.requireFollow = rule.require_follow === true;
 
   // Set Post ID hidden input
@@ -719,6 +724,7 @@ function openAutomationBuilder(postId) {
   const chkDm = document.getElementById('mc-enable-dm');
   if (chkDm) chkDm.checked = _MC_BUILDER_STATE.sendDm;
   toggleMcDm(_MC_BUILDER_STATE.sendDm);
+  setMcDmFormat(_MC_BUILDER_STATE.dmFormat);
   const txtDm = document.getElementById('mc-dm-message');
   if (txtDm) txtDm.value = _MC_BUILDER_STATE.dmMessage;
   const txtBtn = document.getElementById('mc-button-text');
@@ -803,6 +809,52 @@ function toggleMcDm(checked) {
     details.style.opacity = checked ? '1' : '0.35';
     details.style.pointerEvents = checked ? 'auto' : 'none';
   }
+  updateMcPhonePreview();
+}
+
+function setMcDmFormat(format) {
+  _MC_BUILDER_STATE.dmFormat = format || 'button';
+  const isBtn = (_MC_BUILDER_STATE.dmFormat === 'button');
+  const optBtn = document.getElementById('dm-opt-btn');
+  const optCard = document.getElementById('dm-opt-card');
+  const radBtn = document.getElementById('mc-dm-fmt-button');
+  const radCard = document.getElementById('mc-dm-fmt-card');
+  const badge = document.getElementById('mc-dm-format-badge');
+  const btnWrap = document.getElementById('mc-button-text-container');
+  const btnLabel = document.getElementById('mc-button-text-label');
+  const btnInput = document.getElementById('mc-button-text');
+
+  if (radBtn) radBtn.checked = isBtn;
+  if (radCard) radCard.checked = !isBtn;
+
+  if (optBtn) {
+    optBtn.style.borderColor = isBtn ? 'var(--primary)' : 'var(--border-color)';
+    optBtn.style.background = isBtn ? 'rgba(75, 147, 255, 0.08)' : 'var(--bg-tertiary)';
+  }
+  if (optCard) {
+    optCard.style.borderColor = !isBtn ? 'var(--primary)' : 'var(--border-color)';
+    optCard.style.background = !isBtn ? 'rgba(75, 147, 255, 0.08)' : 'var(--bg-tertiary)';
+  }
+
+  if (badge) {
+    badge.textContent = isBtn ? 'Tombol Interaktif' : 'Kartu Preview Link';
+    badge.className = isBtn ? 'pill-badge pill-purple' : 'pill-badge pill-blue';
+  }
+
+  if (btnWrap && btnLabel && btnInput) {
+    if (isBtn) {
+      btnWrap.style.opacity = '1';
+      btnInput.disabled = false;
+      btnLabel.innerHTML = 'Label Tombol (Button Text)';
+      btnInput.placeholder = 'Buka Link Akses';
+    } else {
+      btnWrap.style.opacity = '0.5';
+      btnInput.disabled = true;
+      btnLabel.innerHTML = 'Label Tombol <span style="color:var(--ink-mute); font-weight:normal;">(Khusus Mode Button)</span>';
+      btnInput.placeholder = 'Otomatis mengikuti judul website';
+    }
+  }
+
   updateMcPhonePreview();
 }
 
@@ -892,19 +944,43 @@ function updateMcPhonePreview() {
 
           <!-- Automated Brand Message Card (Right) -->
           ${enableDm ? `
-            <div class="ig-dm-card-bubble">
-              <div class="ig-dm-card-text">
-                ${dmMsg ? dmMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Halo kak! Terima kasih sudah tertarik 🙌 Detail link akses & informasinya ada di tombol bawah ini ya:'}
+            ${(_MC_BUILDER_STATE.dmFormat === 'card') ? `
+              <div class="ig-dm-card-bubble" style="background: #262626; border-radius: 18px; overflow: hidden; padding: 0;">
+                <div class="ig-dm-card-text" style="padding: 12px 14px 8px 14px; font-size: 12.5px; line-height: 1.4;">
+                  ${dmMsg ? dmMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Halo kak! Terima kasih sudah tertarik 🙌 Ini link info lengkapnya ya:'}
+                  <div style="margin-top: 6px; color: #3897F0; word-break: break-all; font-size: 11.5px;">👉 ${ctaUrl}</div>
+                </div>
+                <!-- Instagram Rich Link Card Preview -->
+                <div style="background: #1e1e1e; border-top: 1px solid rgba(255,255,255,0.08); text-decoration: none; display: block;">
+                  <div style="height: 95px; background: linear-gradient(135deg, #1e293b, #0f172a); display: flex; align-items: center; justify-content: center; position: relative;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4B93FF" stroke-width="1.8" style="opacity: 0.85;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    <span style="position: absolute; bottom: 6px; left: 8px; font-size: 9px; font-weight: 700; background: rgba(0,0,0,0.7); color: #fff; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.3px;">WEBSITE PREVIEW</span>
+                  </div>
+                  <div style="padding: 10px 12px;">
+                    <div style="font-size: 12px; font-weight: 600; color: #f0f0f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      ${ctaUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                    </div>
+                    <div style="font-size: 10px; color: #8e8e8e; margin-top: 2px; display: flex; align-items: center; gap: 4px;">
+                      <span>🌐</span> <span>${(() => { try { return new URL(ctaUrl).hostname; } catch(e) { return 'simplifyer.site'; } })()}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="ig-dm-card-btn">
-                <span>${btnText}</span>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
+            ` : `
+              <div class="ig-dm-card-bubble">
+                <div class="ig-dm-card-text">
+                  ${dmMsg ? dmMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'Halo kak! Terima kasih sudah tertarik 🙌 Detail link akses & informasinya ada di tombol bawah ini ya:'}
+                </div>
+                <div class="ig-dm-card-btn">
+                  <span>${btnText}</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </div>
               </div>
-            </div>
+            `}
             <div class="ig-dm-delivery-status">09:42 • Terkirim</div>
           ` : `
             <div style="padding: 16px; text-align: center; color: #737373; font-size: 11px; font-style: italic;">
@@ -1074,6 +1150,7 @@ async function saveMcAutomation() {
   const buttonText = document.getElementById('mc-button-text')?.value.trim() || 'Buka Link Akses';
   const ctaLink = document.getElementById('mc-cta-link')?.value.trim() || 'https://simplifyer.site/';
   const requireFollow = document.getElementById('mc-require-follow')?.checked ?? false;
+  const dmFormat = document.querySelector('input[name="mc-dm-format"]:checked')?.value || _MC_BUILDER_STATE.dmFormat || 'button';
 
   const payload = {
     post_id: targetPostId,
@@ -1085,7 +1162,7 @@ async function saveMcAutomation() {
     dm_message: dmMessage,
     button_text: buttonText,
     cta_link: ctaLink,
-    dm_format: 'button',
+    dm_format: dmFormat,
     use_smart_link: true,
     require_follow: requireFollow
   };
