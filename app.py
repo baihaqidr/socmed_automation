@@ -254,7 +254,7 @@ def load_post_rules(force_refresh=False):
                 for row in res.data:
                     p_id = str(row["post_id"])
                     btn_txt = settings_map.get(f"BUTTON_TEXT_{p_id}") or local_data.get(p_id, {}).get("button_text") or "Ini link aksesnya"
-                    dm_fmt = settings_map.get(f"DM_FORMAT_{p_id}") or local_data.get(p_id, {}).get("dm_format") or "card"
+                    dm_fmt = settings_map.get(f"DM_FORMAT_{p_id}") or local_data.get(p_id, {}).get("dm_format") or "button"
                     smart_val = settings_map.get(f"SMART_LINK_{p_id}", None)
                     if smart_val is not None and str(smart_val).strip() != "":
                         use_smart = (str(smart_val).strip().lower() != "false")
@@ -317,12 +317,12 @@ def load_post_rules(force_refresh=False):
     return local_data
 
 
-def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="card", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg="", request_btn_text="Kirim Linknya", follow_btn_text="Sudah Follow", intro_dm_message="", trigger_type="any_word", trigger_keywords="", reply_mode="custom"):
+def save_post_rule_db(post_id, cta_link="", custom_reply="", send_dm=False, dm_message="", post_caption_preview="", button_text="Ini link aksesnya", dm_format="button", use_smart_link=True, require_follow=False, follow_prompt="", not_following_msg="", request_btn_text="Kirim Linknya", follow_btn_text="Sudah Follow", intro_dm_message="", trigger_type="any_word", trigger_keywords="", reply_mode="custom"):
     """Save custom automation rule for a specific post (unified flow)."""
     global _POST_RULES_CACHE
     _POST_RULES_CACHE = None
     btn_text = (button_text or "Ini link aksesnya").strip()
-    dm_fmt = (dm_format or "card").strip()
+    dm_fmt = (dm_format or "button").strip()
     req_btn = (request_btn_text or "Kirim Linknya").strip()
     fol_btn = (follow_btn_text or "Sudah Follow").strip()
     trig_type = (trigger_type or "any_word").strip()
@@ -1652,7 +1652,7 @@ def api_post_rules():
             dm_message=data.get('dm_message', ''),
             post_caption_preview=data.get('post_caption_preview', ''),
             button_text=data.get('button_text', 'Buka Link Akses'),
-            dm_format=data.get('dm_format', 'card'),
+            dm_format=data.get('dm_format', 'button'),
             use_smart_link=data.get('use_smart_link', True),
             require_follow=data.get('require_follow', False),
             follow_prompt=data.get('follow_prompt', ''),
