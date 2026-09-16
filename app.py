@@ -595,7 +595,7 @@ def get_all_posts(limit=100, target_id=None):
     all_posts = []
     url = f"{GRAPH_URL}/{acc_id}/media"
     params = {
-        "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,comments_count",
+        "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,comments_count,children{media_url,thumbnail_url}",
         "limit": min(limit, 50),
         "access_token": ACCESS_TOKEN
     }
@@ -607,6 +607,17 @@ def get_all_posts(limit=100, target_id=None):
         try:
             res = requests.get(req_url, params=req_params, timeout=12).json()
             if "data" in res:
+                for item in res["data"]:
+                    # Auto-extract thumbnail for Carousel Albums if root media_url is empty
+                    if not item.get("thumbnail_url"):
+                        if item.get("media_type") == "CAROUSEL_ALBUM":
+                            kids = item.get("children", {}).get("data", [])
+                            if kids:
+                                item["thumbnail_url"] = kids[0].get("media_url") or kids[0].get("thumbnail_url")
+                                if not item.get("media_url"):
+                                    item["media_url"] = item["thumbnail_url"]
+                        elif item.get("media_type") == "IMAGE":
+                            item["thumbnail_url"] = item.get("media_url")
                 all_posts.extend(res["data"])
             elif "error" in res:
                 err = res["error"]
