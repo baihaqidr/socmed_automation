@@ -14,6 +14,18 @@ function refreshIcons() {
   }
 }
 
+// Helper for Instagram Content Format Badge (3:4 Vertical Standard)
+function getFormatBadgeHtml(mediaType) {
+  const type = String(mediaType || 'IMAGE').toUpperCase();
+  if (type === 'VIDEO' || type === 'REELS') {
+    return `<span class="pill-badge pill-red" style="font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; background: rgba(239, 68, 68, 0.9); color: #fff; border: none; padding: 2px 6px; border-radius: 4px; backdrop-filter: blur(4px); letter-spacing: 0.3px;"><i data-lucide="video" style="width: 10px; height: 10px;"></i> REELS</span>`;
+  } else if (type === 'CAROUSEL_ALBUM' || type === 'CAROUSEL') {
+    return `<span class="pill-badge pill-blue" style="font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; background: rgba(59, 130, 246, 0.9); color: #fff; border: none; padding: 2px 6px; border-radius: 4px; backdrop-filter: blur(4px); letter-spacing: 0.3px;"><i data-lucide="layers" style="width: 10px; height: 10px;"></i> CAROUSEL</span>`;
+  } else {
+    return `<span class="pill-badge pill-green" style="font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; background: rgba(16, 185, 129, 0.9); color: #fff; border: none; padding: 2px 6px; border-radius: 4px; backdrop-filter: blur(4px); letter-spacing: 0.3px;"><i data-lucide="image" style="width: 10px; height: 10px;"></i> SINGLE POST</span>`;
+  }
+}
+
 // Switch Tab Navigation
 function switchTab(tabId) {
   document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
@@ -311,14 +323,33 @@ async function loadPostsFeed() {
       window.latestFetchedPosts = data.data;
       document.getElementById('post-count-badge').innerText = `${data.data.length} Posts`;
       
-      container.innerHTML = data.data.map(post => `
-        <div class="supa-card post-card" style="padding: 16px;">
-          <div style="font-size: 11px; color: var(--ink-mute); margin-bottom: 8px; font-family: var(--font-mono); display: flex; justify-content: space-between;">
-            <span>ID: ${post.id}</span>
-            <span style="color: var(--primary); font-weight: 500;">${new Date(post.timestamp).toLocaleDateString('id-ID')}</span>
-          </div>
-          <div class="post-caption">
-            ${post.caption ? post.caption : 'Tanpa Caption'}
+      container.innerHTML = data.data.map(post => {
+        const rawImg = post.thumbnail_url || post.media_url || '';
+        const proxiedImg = rawImg ? `/api/proxy-image?url=${encodeURIComponent(rawImg)}` : '';
+        const badgeHtml = getFormatBadgeHtml(post.media_type);
+        return `
+        <div class="supa-card post-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; color: var(--ink-mute); margin-bottom: 10px; font-family: var(--font-mono); display: flex; justify-content: space-between; align-items: center;">
+              <span>ID: ${post.id}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                ${badgeHtml}
+                <span style="color: var(--primary); font-weight: 500;">${new Date(post.timestamp).toLocaleDateString('id-ID')}</span>
+              </div>
+            </div>
+            ${rawImg ? `
+              <div style="width: 100%; aspect-ratio: 3 / 4; border-radius: var(--radius-sm); overflow: hidden; background: #111; margin-bottom: 12px; border: 1px solid var(--border-color); position: relative;">
+                <img src="${rawImg}" 
+                     referrerpolicy="no-referrer"
+                     loading="lazy" 
+                     alt="Post Media" 
+                     style="width: 100%; height: 100%; object-fit: cover;" 
+                     onerror="if(!this.dataset.proxied){this.dataset.proxied='true'; this.src='${proxiedImg}';}else{this.src='/templates/image.png';}">
+              </div>
+            ` : ''}
+            <div class="post-caption" style="margin-bottom: 12px;">
+              ${post.caption ? post.caption : 'Tanpa Caption'}
+            </div>
           </div>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
             <span style="font-size: 12px; color: var(--primary); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
@@ -329,7 +360,8 @@ async function loadPostsFeed() {
             </a>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     } else {
       container.innerHTML = '<div style="color: var(--ink-mute); font-size: 13px;">Belum ada postingan di akun ini.</div>';
       document.getElementById('post-count-badge').innerText = `0 Posts`;
@@ -403,7 +435,8 @@ async function loadPostRulesView() {
       const triggerKeywords = rule.trigger_keywords || '';
       const replyMode = rule.reply_mode || 'custom';
       const captionText = post.caption || 'Tanpa Caption';
-      const thumbUrl = post.thumbnail_url || post.media_url || '/templates/image.png';
+      const rawImg = post.thumbnail_url || post.media_url || '';
+      const proxiedImg = rawImg ? `/api/proxy-image?url=${encodeURIComponent(rawImg)}` : '';
 
       const isSaved = Boolean(rule && (rule.cta_link || rule.send_dm || rule.custom_reply || rule.trigger_keywords));
 
@@ -451,19 +484,40 @@ async function loadPostRulesView() {
             : `<span style="color: #60A5FA; font-weight: 500;">🖼️ Link Card: ➡️ <span style="font-size: 11px; text-decoration: underline; color: var(--ink-mute);">${ctaLink ? ctaLink.replace('https://', '').slice(0, 25) : 'simplifyer.site'}</span></span>`)
         : '<span style="color: var(--ink-mute);">⚪ DM: Nonaktif</span>';
 
+      const formatBadge = getFormatBadgeHtml(post.media_type);
+
       return `
         <div class="supa-card post-card-item" data-saved="${isSaved ? 'true' : 'false'}" style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 16px; padding: 18px; ${cardBorder}">
           
-          <!-- Left: Thumbnail & Post Meta -->
-          <div style="width: 140px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between;">
-            <div style="width: 100%; height: 110px; border-radius: var(--radius-sm); overflow: hidden; background: #1a1a1a; position: relative;">
-              <img src="${thumbUrl}" alt="Post Media" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/templates/image.png'">
-              <span class="pill-badge" style="position: absolute; bottom: 6px; right: 6px; font-size: 10px; background: rgba(0,0,0,0.75); color: #fff; padding: 2px 6px;">
+          <!-- Left: Thumbnail (3:4 Aspect Ratio) & Post Meta -->
+          <div style="width: 105px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="width: 100%; aspect-ratio: 3 / 4; border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-tertiary); position: relative; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center;">
+              <div style="position: absolute; top: 5px; left: 5px; z-index: 2;">
+                ${formatBadge}
+              </div>
+              ${rawImg ? `
+                <img src="${rawImg}" 
+                     referrerpolicy="no-referrer" 
+                     loading="lazy" 
+                     alt="Post Media" 
+                     style="width: 100%; height: 100%; object-fit: cover; display: block;" 
+                     onerror="if(!this.dataset.proxied){this.dataset.proxied='true'; this.src='${proxiedImg}';}else{this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';}">
+                <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1)); flex-direction: column; gap: 4px;">
+                  <i data-lucide="instagram" style="width: 20px; height: 20px; color: var(--primary);"></i>
+                  <span style="font-size: 9px; color: var(--ink-mute);">Post IG</span>
+                </div>
+              ` : `
+                <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1)); flex-direction: column; gap: 4px;">
+                  <i data-lucide="instagram" style="width: 20px; height: 20px; color: var(--primary);"></i>
+                  <span style="font-size: 9px; color: var(--ink-mute);">Post IG</span>
+                </div>
+              `}
+              <span class="pill-badge" style="position: absolute; bottom: 5px; right: 5px; font-size: 9.5px; background: rgba(0,0,0,0.8); color: #fff; padding: 2px 5px; border: none; backdrop-filter: blur(4px); z-index: 2;">
                 <i data-lucide="message-square" style="width: 10px; height: 10px;"></i> ${post.comments_count || 0}
               </span>
             </div>
-            <a href="${post.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--ink-mute); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 6px;">
-              Buka di IG <i data-lucide="external-link" style="width: 11px; height: 11px;"></i>
+            <a href="${post.permalink || '#'}" target="_blank" style="font-size: 11px; color: var(--ink-mute); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px; margin-top: 6px; padding: 4px; border-radius: 4px; background: var(--canvas-night-soft); border: 1px solid var(--border-subtle);">
+              Buka di IG <i data-lucide="external-link" style="width: 10px; height: 10px;"></i>
             </a>
           </div>
 
@@ -1544,22 +1598,55 @@ function renderMediaLibraryGrid(posts) {
     return;
   }
 
-  grid.innerHTML = posts.map(p => {
-    const mediaUrl = p.media_url || p.thumbnail_url || '';
-    const caption = (p.caption || '').replace(/"/g, '&quot;');
-    const cleanCap = (p.caption || 'Tanpa caption').slice(0, 45);
+  grid.innerHTML = posts.map((p, idx) => {
+    const rawImg = p.thumbnail_url || p.media_url || '';
+    const proxiedImg = rawImg ? `/api/proxy-image?url=${encodeURIComponent(rawImg)}` : '';
+    const cleanCap = (p.caption || 'Tanpa caption').slice(0, 50);
+    const badgeHtml = getFormatBadgeHtml(p.media_type);
     return `
-      <div class="media-grid-item" onclick="selectMediaFromOldPost('${mediaUrl}', '${caption}')" title="${cleanCap}">
-        <img src="${mediaUrl}" loading="lazy" alt="Media" onerror="this.src='';">
+      <div class="media-grid-item" onclick="selectMediaByIndex(${idx})" title="${cleanCap.replace(/"/g, '&quot;')}">
+        <div style="position: absolute; top: 6px; left: 6px; z-index: 2;">
+          ${badgeHtml}
+        </div>
+        <img src="${rawImg}" 
+             referrerpolicy="no-referrer"
+             loading="lazy" 
+             alt="Media" 
+             onerror="if(!this.dataset.proxied){this.dataset.proxied='true'; this.src='${proxiedImg}';}else{this.src='/templates/image.png';}">
         <div class="media-grid-overlay">
           <div class="media-grid-caption">${cleanCap}</div>
-          <button type="button" class="btn-primary" style="margin-top: 4px; padding: 2px 8px; font-size: 10px; border-radius: 10px; width: 100%; justify-content: center;">
-            Pilih Media
+          <button type="button" class="btn-primary" style="margin-top: 6px; padding: 4px 8px; font-size: 11px; border-radius: 6px; width: 100%; justify-content: center; pointer-events: none;">
+            <i data-lucide="check" style="width: 12px; height: 12px;"></i> Pilih Konten
           </button>
         </div>
       </div>
     `;
   }).join('');
+  refreshIcons();
+}
+
+function selectMediaByIndex(idx) {
+  const post = window.latestFetchedPosts ? window.latestFetchedPosts[idx] : null;
+  if (!post) {
+    showToast('Data postingan tidak ditemukan.', 'warning');
+    return;
+  }
+  const mediaUrl = post.media_url || post.thumbnail_url || '';
+  const caption = post.caption || '';
+  const mediaType = String(post.media_type || '').toUpperCase();
+
+  // Auto switch publish target mode if video/reels
+  if (mediaType === 'VIDEO' || mediaType === 'REELS') {
+    if (typeof setPublishTarget === 'function') {
+      setPublishTarget('REELS');
+    }
+  } else {
+    if (typeof setPublishTarget === 'function') {
+      setPublishTarget('FEED');
+    }
+  }
+
+  selectMediaFromOldPost(mediaUrl, caption);
 }
 
 function closeMediaLibraryModal() {
@@ -1573,17 +1660,18 @@ function selectMediaFromOldPost(mediaUrl, caption) {
     return;
   }
 
-  document.getElementById('publish-image-input').value = mediaUrl;
+  const input = document.getElementById('publish-image-input');
+  if (input) input.value = mediaUrl;
   updateComposerMediaPreview(mediaUrl);
 
   const capInput = document.getElementById('publish-caption-input');
-  if (capInput && !capInput.value.trim() && caption) {
+  if (capInput && (!capInput.value.trim() || capInput.value === 'Preview caption akan tampil di sini...') && caption) {
     capInput.value = caption;
     updatePreviewCaption(caption);
   }
 
   closeMediaLibraryModal();
-  showToast('Media dari postingan lama berhasil dipilih! Anda bisa langsung publish ke Feed atau Story.', 'success');
+  showToast('Konten berhasil dipilih! Siap untuk dipublikasikan ulang.', 'success');
 }
 
 // Execute Publish Sekarang or Jadwalkan
@@ -2020,14 +2108,7 @@ function applyScraperSortFilter() {
       }
     }
 
-    let badgeHtml = '';
-    if (mediaType === 'VIDEO' || mediaType === 'REELS') {
-      badgeHtml = `<span style="position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.9); color: #FFF; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; backdrop-filter: blur(4px); display: flex; align-items: center; gap: 4px; z-index: 2; letter-spacing: 0.3px;"><i data-lucide="video" style="width: 12px; height: 12px;"></i> REELS</span>`;
-    } else if (mediaType === 'CAROUSEL_ALBUM' || mediaType === 'CAROUSEL') {
-      badgeHtml = `<span style="position: absolute; top: 8px; right: 8px; background: rgba(59, 130, 246, 0.9); color: #FFF; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; backdrop-filter: blur(4px); display: flex; align-items: center; gap: 4px; z-index: 2; letter-spacing: 0.3px;"><i data-lucide="layers" style="width: 12px; height: 12px;"></i> CAROUSEL</span>`;
-    } else {
-      badgeHtml = `<span style="position: absolute; top: 8px; right: 8px; background: rgba(16, 185, 129, 0.9); color: #FFF; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; backdrop-filter: blur(4px); display: flex; align-items: center; gap: 4px; z-index: 2; letter-spacing: 0.3px;"><i data-lucide="image" style="width: 12px; height: 12px;"></i> SINGLE POST</span>`;
-    }
+    const badgeHtml = getFormatBadgeHtml(mediaType);
 
     const likes = Number(p.like_count || 0);
     const comments = Number(p.comments_count || 0);
@@ -2051,8 +2132,10 @@ function applyScraperSortFilter() {
           </span>
         </div>
 
-        <div style="width: 100%; height: 170px; border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden; background: var(--bg-tertiary); position: relative; border: 1px solid var(--border-color);">
-          ${badgeHtml}
+        <div style="width: 100%; aspect-ratio: 3 / 4; border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden; background: var(--bg-tertiary); position: relative; border: 1px solid var(--border-color);">
+          <div style="position: absolute; top: 8px; right: 8px; z-index: 2;">
+            ${badgeHtml}
+          </div>
           ${rawImg ? `
             <img src="${rawImg}" 
                  referrerpolicy="no-referrer" 
