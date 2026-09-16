@@ -501,11 +501,7 @@ async function loadPostRulesView() {
                      loading="lazy" 
                      alt="Post Media" 
                      style="width: 100%; height: 100%; object-fit: cover; display: block;" 
-                     onerror="if(!this.dataset.proxied){this.dataset.proxied='true'; this.src='${proxiedImg}';}else{this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';}">
-                <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1)); flex-direction: column; gap: 4px;">
-                  <i data-lucide="instagram" style="width: 20px; height: 20px; color: var(--primary);"></i>
-                  <span style="font-size: 9px; color: var(--ink-mute);">Post IG</span>
-                </div>
+                     onerror="if(!this.dataset.proxied){this.dataset.proxied='true'; this.src='${proxiedImg}';}">
               ` : `
                 <div style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1)); flex-direction: column; gap: 4px;">
                   <i data-lucide="instagram" style="width: 20px; height: 20px; color: var(--primary);"></i>
